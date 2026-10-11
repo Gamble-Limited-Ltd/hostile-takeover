@@ -181,6 +181,9 @@ function randomWorkerCreateProxy(numWorkers: number): Plugin {
 export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), "");
   const isProduction = mode === "production";
+  // Dev ports, overridable from .env (MASTER_PORT, VITE_PORT).
+  const masterPort = Number(env.MASTER_PORT || 3000);
+  const vitePort = Number(env.VITE_PORT || 9000);
   // Dev identity: the same INSTANCE_LETTER / NUM_WORKERS defaults the dev
   // server boots with (ServerEnv), so the dev-served index.html carries the
   // one-entry map production RenderHtml injects. The proxy below needs the
@@ -396,7 +399,7 @@ export default defineConfig(({ mode }) => {
     define: {
       __ASSET_MANIFEST__: JSON.stringify(assetManifest),
       "process.env.WEBSOCKET_URL": JSON.stringify(
-        isProduction ? "" : "localhost:3000",
+        isProduction ? "" : `localhost:${masterPort}`,
       ),
       "process.env.GAME_ENV": JSON.stringify(isProduction ? "prod" : "dev"),
       // Force empty under vitest (mode "test") so the getApiBase localhost-
@@ -436,19 +439,19 @@ export default defineConfig(({ mode }) => {
     },
 
     server: {
-      port: 9000,
+      port: vitePort,
       host: process.env.VITE_HOST === "lan",
       // Automatically open the browser when the server starts
       open: process.env.SKIP_BROWSER_OPEN !== "true",
       proxy: {
         "/lobbies": {
-          target: "ws://localhost:3000",
+          target: `ws://localhost:${masterPort}`,
           ws: true,
           changeOrigin: true,
         },
         // Worker proxies
         "/w0": {
-          target: "ws://localhost:3001",
+          target: `ws://localhost:${masterPort + 1}`,
           ws: true,
           secure: false,
           changeOrigin: true,
@@ -456,7 +459,7 @@ export default defineConfig(({ mode }) => {
           rewrite: (path) => path.replace(/^\/w0/, ""),
         },
         "/w1": {
-          target: "ws://localhost:3002",
+          target: `ws://localhost:${masterPort + 2}`,
           ws: true,
           secure: false,
           changeOrigin: true,
@@ -465,7 +468,7 @@ export default defineConfig(({ mode }) => {
         },
         // API proxies
         "/api": {
-          target: "http://localhost:3000",
+          target: `http://localhost:${masterPort}`,
           changeOrigin: true,
           secure: false,
         },

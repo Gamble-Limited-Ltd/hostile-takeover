@@ -148,8 +148,20 @@ export class ServerEnv {
   static workerPort(gameID: GameID): number {
     return ServerEnv.workerPortByIndex(ServerEnv.workerIndex(gameID));
   }
+  // Master listens on MASTER_PORT (default 3000), workers on the ports right
+  // after it. Hostile Takeover sets it in .env so dev doesn't collide with
+  // other apps on the same host.
+  static masterPort(): number {
+    const raw = process.env.MASTER_PORT;
+    if (raw === undefined || raw.length === 0) return 3000;
+    const n = Number(raw);
+    if (!Number.isInteger(n) || n < 1 || n > 65535) {
+      throw new Error(`Invalid MASTER_PORT: ${JSON.stringify(raw)}`);
+    }
+    return n;
+  }
   static workerPortByIndex(index: number): number {
-    return 3001 + index;
+    return ServerEnv.masterPort() + 1 + index;
   }
   // Mint a game id under this deployment's instance letter.
   static generateGameId(): GameID {

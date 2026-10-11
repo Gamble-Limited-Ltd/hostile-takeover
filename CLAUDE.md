@@ -2,6 +2,140 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
+## Hostile Takeover (this fork) — read first
+
+This repo is **Hostile Takeover**, a fork of OpenFront.io published by **Gamble Limited Ltd.** for a
+private friend group. Fork: `github.com/Gamble-Limited-Ltd/hostile-takeover` (public, `origin`);
+OpenFront is `upstream`. Where this section conflicts with the OpenFront sections below, this
+section wins.
+
+### Hard rules
+
+- **Isolation:** never start/stop/rebuild or touch the GLL (`gamble-limited-v2-*`, DB 5433) or
+  Meridian (compose `meridian`, DB 5435) containers or databases.
+- **License direction:** never copy code _out of_ this repo into GLL or Meridian (AGPL). Copying GLL
+  code _in_ is allowed but avoided — match GLL's look and rules, write the code fresh.
+- **Licensing:** all code (including our API) is AGPL v3; `resources/` is CC BY-SA; leave
+  `LICENSE`, `LICENSING.md` and `proprietary/` untouched. Keep a `NOTICE` saying what's OpenFront's,
+  what's ours and which licenses apply.
+- **Attribution:** keep "© OpenFront and Contributors" in the footer and loading screen, and add
+  "Hostile Takeover is published by Gamble Limited Ltd. · Based on OpenFront · Modified · Source
+  (AGPL v3)" linking to the fork. Never say "created by" or "official", and never use "OpenFront"
+  as the main title.
+- **Assets:** new art must be ours or CC-licensed. Never pull OpenFront's CDN or premium assets.
+- **Upstream changes:** the fork only sends small engine fixes back upstream (separate branches off
+  `upstream/main`). Fork-only work stays on `main`.
+
+### Decisions (don't re-ask)
+
+| Area           | Decision                                                                                                                                                                                                                              |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Domains        | Game `hostile-takeover.taps-holdings.org`, API `hostile-takeover-api.taps-holdings.org` (one level each, so the free Cloudflare cert covers them). Both go through cloudflared                                                        |
+| API URL        | Comes from its own `API_URL` env var, never derived as `api.<DOMAIN>`. JWT `iss` must equal `API_URL` exactly. `aud` comes from `DOMAIN`                                                                                              |
+| API            | Our own workspace package in this repo, AGPL. Uses schemas from `@openfront/shared`. Update `tests/LayerBoundaries.test.ts` to allow it                                                                                               |
+| Accounts       | Username + password (argon2id). Sign-up asks for first name, last name, email, username, password and a required "I'm 13 or older" checkbox                                                                                           |
+| Gatekeeping    | Emails must end in `@kmlhs.org`. The address is never verified and no email is ever sent                                                                                                                                              |
+| Password reset | An admin issues a one-time reset link or a temporary password                                                                                                                                                                         |
+| Ranks          | Rank is a DB column. `THE_STRONGEST` (the `thestrongest` account, as in GLL/Meridian) becomes JWT `role: "root"`. Every other account gets no role                                                                                    |
+| Database       | Our own Postgres container on port **5436** with its own credentials. Tables: `users`, `sessions` (refresh tokens), `password_resets`                                                                                                 |
+| Game records   | Not stored, so no replays. `POST /game/:id` replies OK without saving anything                                                                                                                                                        |
+| Removed        | Turnstile, Stripe and the store, ads, telemetry, and the Google/Discord/Steam/CrazyGames logins. `/users/@me` returns `adfree: true`. Dead platform modules can stay as long as the build passes                                      |
+| Hosting        | This VM: Docker Compose + nginx + cloudflared. No GHCR and no multi-host deploy                                                                                                                                                       |
+| Legal          | Our own short plain-English ToS and privacy policy with Gamble Limited Ltd. as operator. Covers 13+, the data we collect (name, email, username) and account deletion (keep the delete-account route). Never copy OpenFront's wording |
+
+### STRICT UI rules
+
+The UI must stay **as close as possible to the current OpenFront UI**. New screens should look like
+they were always part of the game.
+
+1. **Reuse, don't invent.** Build new screens (login, sign-up, admin reset, ToS/privacy pages) from
+   the existing building blocks: `BaseModal.ts`, `components/baseComponents/` (`Button.ts`,
+   `Modal.ts`, `SharedStyles.ts`, `setting/`) and the patterns in `AccountModal.ts` and
+   `TokenLoginModal.ts`. Copy the structure of an existing modal before writing new markup.
+2. **No new visual language.** No new colors, fonts, font sizes, radii, shadows, spacing scales,
+   icons, animations or CSS files. Use only Tailwind classes and tokens that are already in the
+   codebase. If a value you need doesn't exist, use the closest one that does.
+3. **Remove by hiding, not redesigning.** When removing the store, ads, providers or Turnstile, take out
+   the entry points (buttons, menu items, slots) and leave the surrounding layout as it was.
+   No reflowing, re-centering or "filling the gap" with new content.
+4. **Same placement.** Login and sign-up open from where the current login button is
+   (`NavAccountButton.ts` / the account menu). Don't add new nav items, pages or routes beyond
+   what the feature needs.
+5. **Text.** Every string goes through `translateText()` with an `en.json` entry, worded in the
+   game's existing tone. Edit only `en.json`. Rebranding changes names only, not layout.
+6. **Lazy loading.** New modals follow the `LazyModals.ts` rules in the Architecture section below.
+7. **Verify visually.** Before calling UI work done, run the game (`run-openfront` skill), take a
+   screenshot of the new or changed screen next to the nearest existing screen, and compare them.
+   Any visible difference beyond the content has to be justified or fixed.
+
+### Work plan (in order)
+
+1. Make the API URL configurable (`src/client/ApiBase.ts`, `src/server/ServerEnv.ts` `jwtIssuer()`)
+2. Stub API: JWKS (Ed25519), refresh, `/auth/revoke`, `/users/@me`, `POST/GET /game/:id`,
+   join_verify, `cosmetics.json`, `cluster.json`
+3. Sign-up/login with username + password, ranks, admin reset
+4. Remove, in this order: Turnstile → login providers → Stripe/store → ads/telemetry
+5. Rebrand (index.html, `en.json`, logo, hardcoded `openfront.io`/`openfront.dev` hosts, nginx, deploy scripts)
+6. Deploy: Compose, nginx, tunnel, Postgres 5436
+7. Fix tests as you go (`npm test`, `npm run typecheck`, `npm run lint`)
+
+Facts:
+
+- Raw persistent-ID auth only works with `GAME_ENV=dev` (`jwt.ts`). Production needs real EdDSA
+  JWTs with `jti`, `sub` (UUID as base64url), `iat`, `iss`, `aud`, `exp`, and optional `role` and `provider`.
+- `/users/@me` is parsed strictly. If any field fails to parse, the player shows as signed out.
+
+### Dev setup on the shared VM
+
+- **Node 24.21 + npm 12, for this repo only.** `.nvmrc` pins it. The VM's nvm default stays on
+  Node 22 for GLL and Meridian. Run `export PATH=~/.nvm/versions/node/v24.21.0/bin:$PATH` in a
+  shell before any npm command (`nvm use` complains about the `prefix` in `~/.npmrc`; leave that
+  file alone). Never `npm install -g` into `~/.npm-global`, because the other projects share it.
+- **Ports.** Upstream's dev ports (3000, 3001, 9000) are taken on this VM. The gitignored `.env`
+  sets `MASTER_PORT=3400` (workers 3401+) and `VITE_PORT=5178`; `example.env` documents them. The
+  dev API will use 8787 (the client's built-in dev default), and the dev Postgres 5436. Open the
+  game at `http://localhost:5178`.
+- **Baseline** (2026-10-10): typecheck is clean, and 7980/7982 tests pass. The failures are
+  `InventoryModal` tests timing out at random under VM load; they belong to the store UI we're
+  removing.
+
+### Syncing with upstream OpenFront
+
+`upstream` is `openfrontio/openfrontio`. We forked from its `main`. We never rebase our `main`;
+upstream changes come in by **merging**, so our history and the public fork stay intact.
+
+**When:** at each upstream release (tags `v0.NN.x`, release branches `vNN`), or sooner for a
+security or engine fix we want. Check what's waiting with
+`git fetch upstream && git log --oneline main..upstream/main | wc -l`.
+
+**How:**
+
+1. `git fetch upstream`, then `git switch -c sync/upstream-YYYY-MM-DD main`.
+2. `git merge upstream/main` (or a release tag). Resolve conflicts using `FORK_CHANGES.md`. For each
+   conflicting file, keep upstream's change and put our edit back on top. Don't revert upstream
+   code except where we deliberately removed a feature (Turnstile, store, ads, telemetry, other
+   logins), and then remove the _new_ entry points that came in with it as well.
+3. `npm run inst` (the lockfile may have changed), then `npm run typecheck`, `npm test` and
+   `npm run lint`.
+4. Quickly check the UI against the strict UI rules: new upstream screens may bring back
+   store, ad or login entry points, and new `OpenFront` strings may need rebranding in `en.json`.
+5. Check whether the API contract changed: diff `/users/@me` and the JWT, `cosmetics.json` and
+   `cluster.json` schemas under `packages/shared/src`, and update our API to match.
+6. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
+
+**Keeping merges cheap** (every fork change must follow these):
+
+- Put new code in **new files** (our API package, our sign-up and login modals, etc.) rather
+  than inside upstream files.
+- When an upstream file has to change, keep the edit small. Prefer an env var or flag that
+  defaults to upstream's behaviour (as with `MASTER_PORT`/`VITE_PORT`) over rewriting the code.
+- Hide features at their entry points rather than deleting their modules.
+- Record every upstream file we edit, and why, in `FORK_CHANGES.md` (create it with the first such
+  edit). It's the checklist for resolving conflicts.
+
+**Giving back:** an engine fix worth upstreaming goes on its own branch off `upstream/main`, with
+none of our fork changes, and gets a PR to `openfrontio/openfrontio`.
+
 ## Commands
 
 ```bash
