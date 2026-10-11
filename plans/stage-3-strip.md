@@ -60,7 +60,15 @@ There are about 17 Stripe files and about 41 subscription files.
 ## Slice 3.5 — Hide API-only features (Sonnet)
 
 Decided: hide **XP, levels, prestige, achievements, ranked/matchmaking, leaderboards, clans,
-friends, news promos, featured stream and the Steam wishlist**. For each one:
+friends, news promos, featured stream and the Steam wishlist**.
+
+**Keep them easy to bring back** (owner, 2026-10-11): the owner may self-host XP and the others later.
+Gate each hidden feature behind **one switch per feature** (e.g. a small `src/client/Features.ts` read from
+the bootstrap config, plus a server-side env flag where the server is involved), defaulting to off. Turning a
+feature back on should then be "implement its API endpoints in `packages/api` + flip the switch", with no
+UI rework. Don't delete their modules, tests or `en.json` strings.
+
+For each one:
 
 - Remove its nav, menu and homepage entry points, and its parts of the post-game screen (`GameXpPanel`,
   `PastGameXpCard`, `Ceremony`, `LevelBadge` on player names).
