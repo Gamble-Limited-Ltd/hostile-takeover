@@ -117,11 +117,12 @@ security or engine fix we want. Check what's waiting with
    logins), and then remove the _new_ entry points that came in with it as well.
 3. `npm run inst` (the lockfile may have changed), then `npm run typecheck`, `npm test` and
    `npm run lint`.
-4. Quickly check the UI against the strict UI rules: new upstream screens may bring back
+4. Check new `resources/news.json` / `changelog.md` entries and strip store, Discord or paid-feature links.
+5. Quickly check the UI against the strict UI rules: new upstream screens may bring back
    store, ad or login entry points, and new `OpenFront` strings may need rebranding in `en.json`.
-5. Check whether the API contract changed: diff `/users/@me` and the JWT, `cosmetics.json` and
+6. Check whether the API contract changed: diff `/users/@me` and the JWT, `cosmetics.json` and
    `cluster.json` schemas under `packages/shared/src`, and update our API to match.
-6. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
+7. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
 
 **Keeping merges cheap** (every fork change must follow these):
 
