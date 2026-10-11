@@ -153,6 +153,27 @@ describe("ServerEnv.jwtIssuer", () => {
     vi.stubEnv("DOMAIN", "openfront.io");
     expect(ServerEnv.jwtIssuer()).toBe("https://api.openfront.io");
   });
+
+  test("API_URL overrides the derived issuer", () => {
+    vi.stubEnv("DOMAIN", "hostile-takeover.taps-holdings.org");
+    vi.stubEnv("API_URL", "https://hostile-takeover-api.taps-holdings.org");
+    expect(ServerEnv.jwtIssuer()).toBe(
+      "https://hostile-takeover-api.taps-holdings.org",
+    );
+    expect(ServerEnv.jwtAudience()).toBe("hostile-takeover.taps-holdings.org");
+  });
+
+  test("API_URL has trailing slashes stripped", () => {
+    vi.stubEnv("DOMAIN", "openfront.io");
+    vi.stubEnv("API_URL", "https://api.example.org//");
+    expect(ServerEnv.jwtIssuer()).toBe("https://api.example.org");
+  });
+
+  test("empty API_URL falls back to the derived issuer", () => {
+    vi.stubEnv("DOMAIN", "openfront.io");
+    vi.stubEnv("API_URL", "");
+    expect(ServerEnv.jwtIssuer()).toBe("https://api.openfront.io");
+  });
 });
 
 describe("ServerEnv.allowedFlares", () => {

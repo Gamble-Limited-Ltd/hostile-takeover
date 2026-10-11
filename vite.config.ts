@@ -230,6 +230,9 @@ export default defineConfig(({ mode }) => {
     faroCollectorUrl: env.FARO_COLLECTOR_URL
       ? JSON.stringify(env.FARO_COLLECTOR_URL)
       : undefined,
+    apiUrl: env.API_URL
+      ? JSON.stringify(env.API_URL.trim().replace(/\/+$/, ""))
+      : undefined,
     instanceId: JSON.stringify(env.INSTANCE_ID ?? "DEV_ID"),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
     faviconHref: buildAssetUrl("images/Favicon.svg", assetManifest, cdnBase),

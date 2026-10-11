@@ -172,6 +172,7 @@ export class ClientEnv {
       stripePublishableKey: bc.stripePublishableKey,
       // Optional: absent keeps client telemetry off (see Telemetry.ts).
       faroCollectorUrl: bc.faroCollectorUrl,
+      apiUrl: bc.apiUrl,
       // Absent on a static page: only a server that renders the page knows
       // its own instance id. Empty means "none", and callers send it only
       // when it is there (the API ignores it either way).
@@ -244,7 +245,12 @@ export class ClientEnv {
   static gitCommit(): string {
     return ClientEnv.get().gitCommit;
   }
+  static apiUrl(): string | undefined {
+    return ClientEnv.get().apiUrl;
+  }
   static jwtIssuer(): string {
+    const apiUrl = ClientEnv.apiUrl();
+    if (apiUrl) return apiUrl;
     const audience = ClientEnv.jwtAudience();
     return audience === "localhost"
       ? "http://localhost:8787"
@@ -673,6 +679,8 @@ export interface ClientEnvValues {
   stripePublishableKey?: string;
   // Optional: absent keeps client telemetry off (Telemetry.ts).
   faroCollectorUrl?: string;
+  // Optional: explicit account-API origin; absent derives api.<jwtAudience>.
+  apiUrl?: string;
   // "" on a static page, which no server rendered.
   instanceId: string;
   gitCommit: string;

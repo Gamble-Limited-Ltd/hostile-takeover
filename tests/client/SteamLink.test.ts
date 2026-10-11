@@ -2,7 +2,7 @@ import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 vi.mock("../../src/client/ClientEnv", () => ({
-  ClientEnv: { jwtAudience: () => "localhost" },
+  ClientEnv: { jwtAudience: () => "localhost", apiUrl: () => undefined },
 }));
 
 // redeemSteamLink is authenticated; Auth is only mocked because Api.ts

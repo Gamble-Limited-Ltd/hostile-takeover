@@ -101,6 +101,11 @@ export async function renderHtmlContent(
       ServerEnv.faroCollectorUrl() === undefined
         ? undefined
         : JSON.stringify(ServerEnv.faroCollectorUrl()),
+    // Same shape: optional explicit API origin, line dropped when unset.
+    apiUrl:
+      ServerEnv.apiUrl() === undefined
+        ? undefined
+        : JSON.stringify(ServerEnv.apiUrl()),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
     faviconHref: buildAssetUrl("images/Favicon.svg", assetManifest, cdnBase),
     gameplayScreenshotUrl: buildAssetUrl(

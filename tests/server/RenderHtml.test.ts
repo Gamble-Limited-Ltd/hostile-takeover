@@ -253,6 +253,36 @@ describe("RenderHtml faroCollectorUrl injection", () => {
   });
 });
 
+describe("RenderHtml apiUrl injection", () => {
+  beforeEach(() => {
+    stubIdentity();
+    vi.stubEnv("TURNSTILE_SITE_KEY", "test-key");
+    vi.stubEnv("GIT_COMMIT", "abc");
+    vi.stubEnv("DOMAIN", "openfront.io");
+    vi.stubEnv("SUBDOMAIN", "blue");
+  });
+
+  afterEach(() => {
+    vi.unstubAllEnvs();
+    clearAppShellContentCache();
+  });
+
+  test("carries API_URL into the page", async () => {
+    vi.stubEnv("API_URL", "https://api.example.org/");
+    const html = await renderHtmlContent(REAL_TEMPLATE);
+    expect(bootstrapConfig(html)).toMatchObject({
+      apiUrl: "https://api.example.org",
+    });
+  });
+
+  test("omits the line entirely when API_URL is unset", async () => {
+    vi.stubEnv("API_URL", "");
+    const html = await renderHtmlContent(REAL_TEMPLATE);
+    expect(html).not.toContain("apiUrl");
+    expect(bootstrapConfig(html)).not.toHaveProperty("apiUrl");
+  });
+});
+
 // The real template, not a fixture. Everything above renders a one-line stub,
 // which is the right scope for those tests but cannot catch the thing this
 // file most needs to catch: that the guarded BOOTSTRAP_CONFIG block in

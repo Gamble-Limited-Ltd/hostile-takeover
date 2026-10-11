@@ -109,7 +109,16 @@ export class ServerEnv {
   static cdnBase(): string {
     return process.env.CDN_BASE ?? "";
   }
+  // Optional: the account API's origin when it is not api.<DOMAIN> (a
+  // two-level subdomain the free Cloudflare certificate does not cover).
+  static apiUrl(): string | undefined {
+    const v = process.env.API_URL?.trim();
+    if (!v) return undefined;
+    return v.replace(/\/+$/, "");
+  }
   static jwtIssuer(): string {
+    const apiUrl = ServerEnv.apiUrl();
+    if (apiUrl) return apiUrl;
     const audience = ServerEnv.jwtAudience();
     return audience === "localhost"
       ? "http://localhost:8787"
