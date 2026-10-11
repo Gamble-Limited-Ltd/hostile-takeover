@@ -28,7 +28,7 @@ Slice 2.1 comes first. Slices 2.2 and 2.3 can run in parallel after it (one is A
 - `POST /admin/password-resets` (JWT `role: root` only) `{ username }` → a one-time token that lasts
   24 hours. `POST /auth/reset` `{ token, newPassword }` uses it and revokes every session.
   Also add a CLI (`npm run api:admin -- reset <username>`) that prints a reset link.
-- Every admin action is logged (`admin_audit` table: who, what, target, when). Add it as migration `002`.
+- Every admin action is logged (`admin_audit` table: who, what, target, when). Add it as the next migration (`003`; `002` is taken by Slice 1.3).
 - **Refresh grace window (from Slice 1.3):** today two tabs refreshing at the same moment look like
   token reuse and log the user out everywhere. Accept a just-rotated token for about 30 seconds
   after its rotation, returning the current successor session's new token instead of revoking the chain.
