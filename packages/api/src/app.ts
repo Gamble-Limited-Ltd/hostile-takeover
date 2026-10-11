@@ -1,10 +1,12 @@
 import { base64urlToUuid, uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
+import { mountAccountRoutes } from "./accountRoutes";
 import { sameSecret } from "./apiKey";
 import type { ApiEnv } from "./env";
 import { mountGameRoutes } from "./gameRoutes";
 import type { SigningKeys } from "./keys";
-import type { Store } from "./store";
+import { defaultRateLimits, type RateLimits } from "./rateLimit";
+import type { SessionRow, Store } from "./store";
 import {
   hashRefreshToken,
   JWT_TTL_SECONDS,
@@ -24,7 +26,12 @@ export interface AppContext {
   env: ApiEnv;
   keys: SigningKeys;
   store: Store;
+  /** In-memory rate limits; tests pass tight ones. */
+  limits?: RateLimits;
 }
+
+/** A just-rotated refresh token still works this long (two tabs refreshing at once). */
+export const REFRESH_GRACE_MS = 30_000;
 
 export const REFRESH_COOKIE = "ht_refresh";
 
@@ -47,6 +54,8 @@ function readCookie(header: string | undefined, name: string): string | null {
 export function createApp(pool: Queryable, ctx?: AppContext): express.Express {
   const app = express();
   app.disable("x-powered-by");
+  // nginx on this host sets X-Forwarded-For; trust it from loopback only.
+  app.set("trust proxy", "loopback");
 
   app.get("/healthz", async (_req, res) => {
     const db = await pool.query("SELECT 1").then(
@@ -71,7 +80,12 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     const origin = req.headers.origin;
     if (origin !== undefined) {
       if (origin !== env.gameOrigin) {
-        if (req.method === "OPTIONS" || req.method === "POST") {
+        if (
+          req.method === "OPTIONS" ||
+          req.method === "POST" ||
+          req.method === "PATCH" ||
+          req.method === "DELETE"
+        ) {
           res.status(403).json({ error: "origin_not_allowed" });
           return;
         }
@@ -84,7 +98,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     if (req.method === "OPTIONS") {
       res.setHeader(
         "Access-Control-Allow-Methods",
-        "GET, POST, DELETE, OPTIONS",
+        "GET, POST, PATCH, DELETE, OPTIONS",
       );
       res.setHeader(
         "Access-Control-Allow-Headers",
@@ -139,22 +153,61 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     res.json({ keys: [keys.jwk] });
   });
 
+  async function liveSuccessor(from: SessionRow): Promise<SessionRow | null> {
+    let cur = from;
+    for (let hop = 0; hop < 5; hop++) {
+      if (!cur.revoked_at) return cur;
+      if (Date.now() - cur.revoked_at.getTime() > REFRESH_GRACE_MS) return null;
+      const next = await store.findSuccessor(cur.id);
+      if (!next) return null;
+      cur = next;
+    }
+    return null;
+  }
+
+  async function authenticate(
+    req: express.Request,
+  ): Promise<{ user: UserRow; role: unknown } | null> {
+    const m = /^Bearer (.+)$/.exec(req.headers.authorization ?? "");
+    if (!m) return null;
+    try {
+      const payload = await verifyJwt(keys, env, m[1]);
+      const user = await store.findUserById(
+        base64urlToUuid(String(payload.sub)),
+      );
+      if (!user || user.disabled_at) return null;
+      return { user, role: payload.role };
+    } catch {
+      return null;
+    }
+  }
+
   app.post("/auth/refresh", async (req, res, next) => {
     try {
       const raw = readCookie(req.headers.cookie, REFRESH_COOKIE);
       if (!raw) return deny(res);
-      const session = await store.findSessionByHash(hashRefreshToken(raw));
-      if (!session) return deny(res);
-      if (session.revoked_at) {
-        // A rotated or revoked token came back: assume it leaked.
-        await store.revokeAllForUser(session.user_id);
-        return deny(res);
+      const found = await store.findSessionByHash(hashRefreshToken(raw));
+      if (!found) return deny(res);
+      let session = found;
+      let graced = false;
+      if (found.revoked_at) {
+        // A rotated token came back. Within the grace window it is another tab
+        // that raced us: continue from the live successor. Otherwise assume
+        // the token leaked and revoke everything.
+        const live = await liveSuccessor(found);
+        if (!live) {
+          await store.revokeAllForUser(found.user_id);
+          return deny(res);
+        }
+        session = live;
+        graced = true;
       }
       if (session.expires_at.getTime() <= Date.now()) return deny(res);
       const user = await store.findUserById(session.user_id);
       if (!user || user.disabled_at) return deny(res);
       if (!(await store.rotateSession(session.id))) {
-        await store.revokeAllForUser(session.user_id);
+        // Lost a race to another refresh: only a reuse when not in grace.
+        if (!graced) await store.revokeAllForUser(session.user_id);
         return deny(res);
       }
       await startSession(res, user.id, req.headers["user-agent"], session.id);
@@ -240,6 +293,15 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     });
   }
 
+  mountAccountRoutes(app, {
+    ctx,
+    limits: ctx.limits ?? defaultRateLimits(),
+    startSession: (res, userId, ua) => startSession(res, userId, ua),
+    clearRefreshCookie,
+    readRefreshCookie: (req) => readCookie(req.headers.cookie, REFRESH_COOKIE),
+    authenticate,
+  });
+
   mountGameRoutes(app, env);
 
   app.use(
@@ -249,6 +311,14 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       res: express.Response,
       _next: express.NextFunction,
     ) => {
+      if ((err as { type?: string }).type === "entity.parse.failed") {
+        res.status(400).json({ error: "invalid_request" });
+        return;
+      }
+      if ((err as { type?: string }).type === "entity.too.large") {
+        res.status(413).json({ error: "invalid_request" });
+        return;
+      }
       console.error(err);
       res.status(500).json({ error: "internal" });
     },

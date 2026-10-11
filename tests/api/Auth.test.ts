@@ -23,13 +23,10 @@ import {
   loadSigningKeys,
 } from "../../packages/api/src/keys";
 import { generatePublicId } from "../../packages/api/src/publicId";
-import {
-  pgStore,
-  type SessionRow,
-  type Store,
-} from "../../packages/api/src/store";
+import { pgStore, type Store } from "../../packages/api/src/store";
 import { hashRefreshToken } from "../../packages/api/src/tokens";
 import { buildUserMe, type UserRow } from "../../packages/api/src/userMe";
+import { memoryStore } from "./memoryStore";
 
 const GAME = "http://localhost:5178";
 
@@ -44,47 +41,6 @@ function user(rank: string, name = "u" + randomUUID().slice(0, 6)): UserRow {
     rank,
     disabled_at: null,
   };
-}
-
-function memoryStore(users: UserRow[]) {
-  const sessions: (SessionRow & {
-    token_hash: string;
-    rotated_from?: string;
-  })[] = [];
-  const store: Store = {
-    findUserByUsername: async (n) =>
-      users.find((u) => u.username === n) ?? null,
-    findUserById: async (id) => users.find((u) => u.id === id) ?? null,
-    createSession: async (s) => {
-      const id = randomUUID();
-      sessions.push({
-        id,
-        user_id: s.userId,
-        token_hash: s.tokenHash,
-        expires_at: s.expiresAt,
-        revoked_at: null,
-        rotated_from: s.rotatedFrom,
-      });
-      return id;
-    },
-    findSessionByHash: async (h) =>
-      sessions.find((s) => s.token_hash === h) ?? null,
-    rotateSession: async (id) => {
-      const s = sessions.find((x) => x.id === id)!;
-      if (s.revoked_at) return false;
-      s.revoked_at = new Date();
-      return true;
-    },
-    revokeSession: async (id) => {
-      const s = sessions.find((x) => x.id === id)!;
-      s.revoked_at ??= new Date();
-    },
-    revokeAllForUser: async (uid) => {
-      for (const s of sessions)
-        if (s.user_id === uid) s.revoked_at ??= new Date();
-    },
-  };
-  return { store, sessions };
 }
 
 const baseEnv: ApiEnv = readEnv({
@@ -117,6 +73,7 @@ async function harness(
     keys,
     ctx,
     sessions: mem.sessions,
+    mem,
     close: () => server.close(),
   };
 }
@@ -258,6 +215,8 @@ describe("refresh cookie", () => {
     try {
       const { cookie: c1 } = await devLogin(h.base, u.username);
       const c2 = cookieOf(await refresh(h.base, c1)).value;
+      // Outside the grace window a rotated token is a reuse.
+      h.sessions[0].revoked_at = new Date(Date.now() - 60_000);
       const reuse = await refresh(h.base, c1);
       expect(reuse.status).toBe(401);
       expect(cookieOf(reuse).value).toBeNull();

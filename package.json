@@ -20,6 +20,7 @@
     "api:migrate": "tsx packages/api/src/migrate.ts",
     "api:keygen": "tsx packages/api/src/keys.ts",
     "api:seed": "tsx packages/api/src/seed.ts",
+    "api:admin": "tsx packages/api/src/admin.ts",
     "api:db:up": "docker compose -f docker-compose.dev.yml up -d",
     "api:db:down": "docker compose -f docker-compose.dev.yml down",
     "dev:host": "cross-env GAME_ENV=dev VITE_HOST=lan concurrently \"npm run start:client\" \"npm run start:server-dev\"",
