@@ -67,4 +67,11 @@ magic-link email form, and `TokenLoginModal.ts`), not on new markup.
   field and a "Create reset link" button that shows the link with the existing `CopyButton`.
   The CLI from 2.1 is enough if this slips.
 
+## From Slice 1.5
+
+- When signed in, the in-game and lobby name is still the random "AnonXxxN", not the account username.
+  The home page's name box ("Use verified" plus the TAG clan field) still shows. Signed-in players should
+  play as their username. Find how the client picks the name for verified users (`UsernameInput`,
+  `usernameStatus`) and make it use `users.username`. Hide the TAG field with clans.
+
 **Approval:** run through the exit test live, plus the screenshot pairs.

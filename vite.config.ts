@@ -146,7 +146,10 @@ function steamLinkAliasRedirect(): Plugin {
 // so the worker can mint a self-owned id. Runs as direct middleware (before
 // vite's /api proxy).
 const RANDOM_WORKER_PATHS = ["/api/create_game", "/api/adminbot/create_game"];
-function randomWorkerCreateProxy(numWorkers: number): Plugin {
+function randomWorkerCreateProxy(
+  numWorkers: number,
+  masterPort: number,
+): Plugin {
   return {
     name: "random-worker-create-proxy",
     configureServer(server) {
@@ -154,7 +157,7 @@ function randomWorkerCreateProxy(numWorkers: number): Plugin {
         if (req.method !== "POST") return next();
         const path = (req.url ?? "").split("?")[0];
         if (!RANDOM_WORKER_PATHS.includes(path)) return next();
-        const port = 3001 + Math.floor(Math.random() * numWorkers);
+        const port = masterPort + 1 + Math.floor(Math.random() * numWorkers);
         const proxyReq = http.request(
           {
             host: "localhost",
@@ -374,7 +377,7 @@ export default defineConfig(({ mode }) => {
         ? [
             serveRootPublicDir(getPublicDir(resourcesDir)),
             serveProprietaryDir(proprietaryDir, resourcesDir),
-            randomWorkerCreateProxy(devNumWorkers),
+            randomWorkerCreateProxy(devNumWorkers, masterPort),
             steamLinkAliasRedirect(),
           ]
         : []),

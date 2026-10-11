@@ -81,5 +81,15 @@ friends, news promos, featured stream and the Steam wishlist**. For each one:
 - The quiet ones that only need their entry points hidden: friends, XP polling, player profile progress,
   progression config, the clan leaderboard, and the lobby queue.
 
+### Findings from Slice 1.5
+
+- Third-party requests on every homepage load: Cloudflare Turnstile, the CrazyGames SDK, Google Tag Manager,
+  Analytics and DoubleClick (`G-WQGQQ8RDN4`), Cloudflare Insights (`beacon.min.js`), Intergient ads (`ramp.js`), and
+  `introjava.com` (an ad script after game start). Many are probably hardcoded in `index.html`. All must go.
+- `/streams.json` and `/news.json` return 404 on every homepage load. Streams get hidden (the featured stream).
+  **News stays** (owner decision), so find out why `news.json` 404s in dev (asset path or CDN) and fix it.
+- The software-GL gate ("Hardware acceleration is off") blocks headless Chromium. That's fine for players, but
+  the `run-openfront` skill needs the driver workaround (see Stage 1 notes).
+
 **Approval:** the network log from the exit test, plus before/after screenshots of the homepage,
 account menu, lobby, in-game HUD and win screen.
