@@ -19,6 +19,8 @@ vi.mock("../../../src/client/Api", () => ({
 
 vi.mock("../../../src/client/Auth", () => ({
   clearLocalSession: vi.fn(),
+  userAuth: vi.fn(async () => false),
+  getAuthHeader: vi.fn(),
   linkGoogle: vi.fn(async () => true),
   sendMagicLink: vi.fn(async () => true),
 }));

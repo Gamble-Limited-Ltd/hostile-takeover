@@ -108,6 +108,67 @@ export function changePasswordErrorKey(code: string): string {
   }
 }
 
+export type AdminResetResult =
+  | { ok: true; link: string; expiresAt: string }
+  | { ok: false; status: number; code: string };
+
+/** POST /admin/password-resets (Bearer JWT, root only). The API is the authority. */
+export async function createResetLink(
+  username: string,
+): Promise<AdminResetResult> {
+  const authorization = await getAuthHeader();
+  if (!authorization) return { ok: false, status: 401, code: "unauthorized" };
+  let response: Response;
+  try {
+    response = await fetch(`${getApiBase()}/admin/password-resets`, {
+      method: "POST",
+      credentials: "include",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: authorization,
+      },
+      body: JSON.stringify({ username }),
+    });
+  } catch (e) {
+    console.warn("/admin/password-resets request failed", e);
+    return { ok: false, status: 0, code: "network" };
+  }
+  const parsed = (await response.json().catch(() => null)) as {
+    error?: unknown;
+    link?: unknown;
+    expiresAt?: unknown;
+  } | null;
+  if (
+    response.ok &&
+    typeof parsed?.link === "string" &&
+    typeof parsed.expiresAt === "string"
+  ) {
+    return { ok: true, link: parsed.link, expiresAt: parsed.expiresAt };
+  }
+  const code =
+    typeof parsed?.error === "string"
+      ? parsed.error
+      : response.status === 429
+        ? "rate_limited"
+        : "unknown";
+  return { ok: false, status: response.status, code };
+}
+
+export function adminResetErrorKey(code: string): string {
+  switch (code) {
+    case "no_such_user":
+      return "password_auth.admin_error_no_such_user";
+    case "forbidden":
+      return "password_auth.admin_error_forbidden";
+    case "unauthorized":
+      return "password_auth.error_signed_out_admin";
+    case "network":
+      return "password_auth.error_network";
+    default:
+      return "password_auth.error_generic";
+  }
+}
+
 export type RegisterField =
   | "firstName"
   | "lastName"

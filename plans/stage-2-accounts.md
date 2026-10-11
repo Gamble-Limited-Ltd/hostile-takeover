@@ -98,6 +98,16 @@ magic-link email form, and `TokenLoginModal.ts`), not on new markup.
   field and a "Create reset link" button that shows the link with the existing `CopyButton`.
   The CLI from 2.1 is enough if this slips.
 
+### Slice 2.4 as built
+
+- `src/client/components/account/AdminResetCard.ts` (`<admin-reset-card>`), mounted in `AccountSettingsPanel` before
+  the change-password card. It calls `userAuth()` and renders only when `claims.role === "root"` (cosmetic; the API checks).
+- `createResetLink` / `adminResetErrorKey` in `PasswordAuthApi.ts`: 404 `no_such_user`, 403 `forbidden`, 401 signed-out, else generic.
+- The link shows in a read-only input (selects on focus) plus a compact `CopyButton`. Without `navigator.clipboard`
+  (plain http on a LAN IP) `CopyButton` catches the error and shows its "failed to copy" toast; nothing throws, and the
+  link can still be copied by hand.
+- Strings are `password_auth.admin_*` in `en.json`. Tests: `tests/client/AdminResetCard.test.ts`.
+
 ## From Slice 1.5
 
 - When signed in, the in-game and lobby name is still the random "AnonXxxN", not the account username.
