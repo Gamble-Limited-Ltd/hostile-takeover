@@ -19,6 +19,7 @@ import {
   sendMagicLink,
   steamLogin,
 } from "./Auth";
+import "./components/account/PasswordAuthForm";
 import "./components/baseComponents/stats/DiscordUserHeader";
 import "./components/baseComponents/stats/PlayerGameHistoryView";
 import type { PlayerGameHistoryCache } from "./components/baseComponents/stats/PlayerGameHistoryView";
@@ -45,6 +46,7 @@ import "./GameStatsModal";
 import { showInGameAlert } from "./InGameModal";
 import { consumeLinkResult } from "./LinkResult";
 import { consumeLoginResult, LoginResult } from "./LoginResult";
+import { takeResetToken } from "./PasswordResetHash";
 import "./PlayerProfileModal";
 import { steamSDK } from "./SteamSDK";
 import { playerProfileUrl } from "./utilities/PlayerProfileUrl";
@@ -81,6 +83,8 @@ export class AccountModal extends BaseModal {
   protected routerName = "account";
 
   @state() private email: string = "";
+  // Set when the page opened on a `#reset=<token>` link (Main stashes it).
+  @state() private resetToken: string = "";
   @state() private isLoadingUser: boolean = false;
   // Counts openings, to key the profile card's once-per-open flourish.
   private openCount = 0;
@@ -203,7 +207,7 @@ export class AccountModal extends BaseModal {
         translateText("account_modal.fetching_account"),
       );
     }
-    if (!this.isLinkedAccount()) {
+    if (!this.isLinkedAccount() || this.resetToken) {
       return html`<div class="custom-scrollbar mr-1">
         ${crazyGamesSDK.isOnCrazyGames()
           ? this.renderCrazyGamesSignIn()
@@ -866,7 +870,15 @@ export class AccountModal extends BaseModal {
 
           ${this.renderLoginError()}
 
-          <div class="space-y-6">
+          <!-- Hostile Takeover: password sign-in replaces the provider buttons
+               and the magic-link form, which stay in the markup but hidden. -->
+          <password-auth-form
+            .resetToken=${this.resetToken}
+            @auth-success=${this.handleAuthSuccess}
+            @reset-done=${() => (this.resetToken = "")}
+          ></password-auth-form>
+
+          <div class="space-y-6" hidden>
             <!-- Discord Login Button -->
             <button
               @click="${this.handleDiscordLogin}"
@@ -949,6 +961,13 @@ export class AccountModal extends BaseModal {
       </div>
     `;
   }
+
+  // Same post-login path as TokenLoginModal: the session cookie is set, so
+  // close and reload and the page signs in from it.
+  private handleAuthSuccess = (): void => {
+    this.close();
+    window.location.reload();
+  };
 
   private handleEmailInput(e: Event) {
     const target = e.target as HTMLInputElement;
@@ -1044,6 +1063,7 @@ export class AccountModal extends BaseModal {
     consumeLinkResult(args);
     this.loginError = consumeLoginResult(args);
     this.prefillCreatorCode = this.consumeCreatorCodeArg(args);
+    this.resetToken = takeResetToken() ?? this.resetToken;
 
     this.refreshCrazyGamesUser();
 

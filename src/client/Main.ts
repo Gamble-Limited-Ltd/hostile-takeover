@@ -88,6 +88,7 @@ import { modalRouter } from "./ModalRouter";
 import { updateAccountNavButton } from "./NavAccountButton";
 import { initNavigation } from "./Navigation";
 import { capturePagePin } from "./PagePin";
+import { parseResetHash, stashResetToken } from "./PasswordResetHash";
 import { fallbackPlayerName, LAPSE_NOTICE_KEY } from "./PlayerName";
 import {
   GroupTokenTracker,
@@ -1037,6 +1038,12 @@ class Client {
         void this.openReplayViewer(replayViewerID);
         return;
       }
+      // Read before the join modal closes below, which drops the hash.
+      const resetToken = parseResetHash(window.location.hash);
+      if (resetToken) {
+        this.openPasswordReset(resetToken);
+        return;
+      }
       // Router-managed hash changes (#modal=...) are handled by the router
       // syncing in/out; we don't need to tear down the lobby state for them.
       if (modalRouter.isHashRouted()) {
@@ -1194,6 +1201,22 @@ class Client {
     }
   }
 
+  // Hostile Takeover: opens the account modal on its "set a new password"
+  // form for an admin-issued `#reset=<token>` link.
+  private openPasswordReset(token: string): void {
+    stashResetToken(token);
+    // A link opened while the modal is already showing reopens it afresh.
+    document
+      .querySelector<HTMLElement & { close?(): void }>("account-modal")
+      ?.close?.();
+    history.replaceState(
+      null,
+      "",
+      window.location.pathname + window.location.search + "#modal=account",
+    );
+    modalRouter.routeFromHash();
+  }
+
   private async handleUrl() {
     // Check if CrazyGames SDK is enabled first (no hash needed in CrazyGames)
     if (crazyGamesSDK.isOnCrazyGames()) {
@@ -1264,6 +1287,13 @@ class Client {
         refreshStore: () => this.refreshStore(),
         reload: () => window.location.reload(),
       });
+      return;
+    }
+
+    // Hostile Takeover: an admin-issued password-reset link.
+    const resetToken = parseResetHash(hash);
+    if (resetToken) {
+      this.openPasswordReset(resetToken);
       return;
     }
 
