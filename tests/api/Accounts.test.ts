@@ -692,14 +692,13 @@ describe("refresh grace window", () => {
       );
       expect(r3.status).toBe(200);
       expect((await r3.json()).jwt).toBeTruthy();
-      const c3 = cookieOf(r3);
-      expect(c3).toBeTruthy();
-      expect(c3).not.toBe(c2);
-      // exactly one live session remains, and it is c3's
+      // the grace path rotates nothing and sets no cookie
+      expect(r3.headers.getSetCookie()).toEqual([]);
+      // exactly one live session remains, and it is c2's
       const live = h.mem.sessions.filter((s) => !s.revoked_at);
       expect(live).toHaveLength(1);
-      expect(live[0].token_hash).toBe(hashRefreshToken(c3!));
-      // the browser may end up holding either cookie; both keep working
+      expect(live[0].token_hash).toBe(hashRefreshToken(c2!));
+      // the jar still holds c2, which keeps working
       expect(
         (await h.call("POST", "/auth/refresh", undefined, withCookie(c2)))
           .status,

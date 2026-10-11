@@ -101,3 +101,12 @@ For each one:
 
 **Approval:** the network log from the exit test, plus before/after screenshots of the homepage,
 account menu, lobby, in-game HUD and win screen.
+
+### From Slice 2.5
+
+- **Residual sign-in display glitch (unresolved):** in 1 of 10 baseline UI sign-ins, login, refresh and
+  `/users/@me` all returned 200 yet the nav stayed "Sign in" until a reload. Not reproduced in 110 runs after
+  the 2.5 API fix, and not caused by the Turnstile `querySelector` error (that can't abort boot). Re-check during
+  this stage's exit test once Turnstile is gone; if it shows up, capture the page-event trace.
+- The account modal's "Share Profile" header button still shows when signed in. Hide it with the profile/stats features.
+- Login rate limit is 30/IP/15 min; automated test runs from one IP can hit it (restart the API to reset).

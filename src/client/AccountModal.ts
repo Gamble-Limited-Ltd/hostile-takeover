@@ -189,7 +189,8 @@ export class AccountModal extends BaseModal {
   }
 
   protected modalConfig() {
-    if (this.isLoadingUser || !this.isLinkedAccount()) {
+    // A reset link shows the reset form whoever is signed in, so no tabs.
+    if (this.isLoadingUser || !this.isLinkedAccount() || this.resetToken) {
       return {};
     }
     return {
@@ -897,7 +898,9 @@ export class AccountModal extends BaseModal {
               </svg>
             </div>
             <p class="text-white/50 text-sm font-medium">
-              ${translateText("account_modal.sign_in_desc")}
+              ${this.resetToken
+                ? translateText("account_modal.reset_desc")
+                : translateText("account_modal.sign_in_desc")}
             </p>
             ${viaBrowser
               ? html`<p class="text-white/40 text-xs">

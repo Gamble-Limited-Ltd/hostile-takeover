@@ -228,6 +228,109 @@ describe("refresh cookie", () => {
     }
   });
 
+  test("grace: a rotated token gets a JWT but no cookie and no rotation", async () => {
+    const u = user("PLAYER");
+    const h = await harness([u]);
+    try {
+      const { cookie: c1 } = await devLogin(h.base, u.username);
+      const r2 = await refresh(h.base, c1);
+      const c2 = cookieOf(r2).value;
+      const before = h.sessions.length;
+      const stale = await refresh(h.base, c1);
+      expect(stale.status).toBe(200);
+      expect(stale.headers.getSetCookie()).toEqual([]);
+      const body = await stale.json();
+      expect(decodeJwt(body.jwt).sub).toBe(uuidToBase64url(u.id));
+      expect(body.token).toBe(body.jwt);
+      expect(h.sessions.length).toBe(before);
+      // The successor is untouched and still the live one.
+      const live = h.sessions.filter((s) => !s.revoked_at);
+      expect(live.map((s) => s.token_hash)).toEqual([hashRefreshToken(c2!)]);
+    } finally {
+      h.close();
+    }
+  });
+
+  test.each([
+    ["reply order as sent", false],
+    ["reply order reversed", true],
+  ])(
+    "two concurrent refreshes with one cookie (%s) leave the jar on the live token",
+    async (_name, reversed) => {
+      const u = user("PLAYER");
+      const h = await harness([u]);
+      try {
+        const { cookie: c1 } = await devLogin(h.base, u.username);
+        const replies = await Promise.all([
+          refresh(h.base, c1),
+          refresh(h.base, c1),
+        ]);
+        expect(replies.map((r) => r.status)).toEqual([200, 200]);
+        const withCookie = replies.filter(
+          (r) => r.headers.getSetCookie().length > 0,
+        );
+        expect(withCookie).toHaveLength(1);
+        // Whatever order the replies are applied in, the jar ends on the one
+        // cookie that was set, and it is the only live session.
+        let jar: string | null = c1;
+        for (const r of reversed ? [...replies].reverse() : replies) {
+          if (r.headers.getSetCookie().length > 0) jar = cookieOf(r).value;
+        }
+        const live = h.sessions.filter((s) => !s.revoked_at);
+        expect(live).toHaveLength(1);
+        expect(live[0].token_hash).toBe(hashRefreshToken(jar!));
+        // ...and it still works, long after the grace window.
+        h.sessions.forEach((s) => {
+          if (s.revoked_at) s.revoked_at = new Date(Date.now() - 60_000);
+        });
+        expect((await refresh(h.base, jar)).status).toBe(200);
+      } finally {
+        h.close();
+      }
+    },
+  );
+
+  test("a chain of three rapid refreshes survives stale cookies in any order", async () => {
+    const u = user("PLAYER");
+    const h = await harness([u]);
+    try {
+      const { cookie: c1 } = await devLogin(h.base, u.username);
+      const c2 = cookieOf(await refresh(h.base, c1)).value;
+      const c3 = cookieOf(await refresh(h.base, c2)).value;
+      const c4 = cookieOf(await refresh(h.base, c3)).value;
+      for (const stale of [c2, c1, c3, c1]) {
+        const r = await refresh(h.base, stale);
+        expect(r.status).toBe(200);
+        expect(r.headers.getSetCookie()).toEqual([]);
+      }
+      const live = h.sessions.filter((s) => !s.revoked_at);
+      expect(live.map((s) => s.token_hash)).toEqual([hashRefreshToken(c4!)]);
+    } finally {
+      h.close();
+    }
+  });
+
+  test("an in-flight refresh racing a password change does not undo it", async () => {
+    const u = user("PLAYER");
+    const h = await harness([u]);
+    try {
+      const { cookie: c1 } = await devLogin(h.base, u.username);
+      // Password change: sign out everywhere, then a fresh session.
+      await h.ctx.store.revokeAllForUser(u.id);
+      const fresh = (await (async () => {
+        const { cookie } = await devLogin(h.base, u.username);
+        return cookie;
+      })())!;
+      // The refresh that was already on the wire carries the old cookie.
+      const stale = await refresh(h.base, c1);
+      expect(stale.status).toBe(401);
+      expect(stale.headers.getSetCookie()).toEqual([]);
+      expect((await refresh(h.base, fresh)).status).toBe(200);
+    } finally {
+      h.close();
+    }
+  });
+
   test("missing, unknown, expired and disabled all give 401 and clear the cookie", async () => {
     const u = user("PLAYER");
     const h = await harness([u]);

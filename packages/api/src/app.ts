@@ -197,39 +197,85 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     }
   }
 
+  const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
+
+  /**
+   * The live descendant of a revoked session, for a token that was rotated a
+   * moment ago. The winner of a concurrent rotation revokes first and writes
+   * its successor second, so a missing successor is polled for briefly.
+   */
+  async function graceSuccessor(from: SessionRow): Promise<SessionRow | null> {
+    for (let attempt = 0; attempt < 6; attempt++) {
+      const live = await liveSuccessor(from);
+      if (live) return live;
+      if (!from.revoked_at) return null;
+      if (Date.now() - from.revoked_at.getTime() > REFRESH_GRACE_MS) {
+        return null;
+      }
+      if (await store.findSuccessor(from.id)) return null;
+      await sleep(40);
+    }
+    return null;
+  }
+
+  /**
+   * A revoked token came back. Within the grace window it lost a race with
+   * another tab or request: answer with a fresh JWT for the live successor but
+   * touch no cookie, so the browser keeps the successor's token whatever order
+   * the replies land in. A rotated token outside the window is a reuse and
+   * revokes everything; a session revoked without ever being rotated (sign-out,
+   * password change) is just refused, and its cookie is left alone because the
+   * jar may already hold a newer one.
+   */
+  async function replyForRevoked(
+    found: SessionRow,
+    res: express.Response,
+  ): Promise<void> {
+    const live = await graceSuccessor(found);
+    if (live) {
+      const user = await store.findUserById(live.user_id);
+      if (
+        live.expires_at.getTime() <= Date.now() ||
+        !user ||
+        user.disabled_at
+      ) {
+        return deny(res);
+      }
+      return sendJwt(res, await signJwt(keys, env, user));
+    }
+    const outside = Date.now() - found.revoked_at!.getTime() > REFRESH_GRACE_MS;
+    if (outside && (await store.findSuccessor(found.id))) {
+      await store.revokeAllForUser(found.user_id);
+      return deny(res);
+    }
+    res.status(401).json({ error: "unauthorized" });
+  }
+
+  function sendJwt(res: express.Response, jwt: string) {
+    // The client reads `jwt` and `expiresIn`; RefreshResponseSchema's
+    // `token` is kept too so either shape parses.
+    res.json({ jwt, token: jwt, expiresIn: JWT_TTL_SECONDS });
+  }
+
   app.post("/auth/refresh", async (req, res, next) => {
     try {
       const raw = readCookie(req.headers.cookie, REFRESH_COOKIE);
       if (!raw) return deny(res);
       const found = await store.findSessionByHash(hashRefreshToken(raw));
       if (!found) return deny(res);
-      let session = found;
-      let graced = false;
-      if (found.revoked_at) {
-        // A rotated token came back. Within the grace window it is another tab
-        // that raced us: continue from the live successor. Otherwise assume
-        // the token leaked and revoke everything.
-        const live = await liveSuccessor(found);
-        if (!live) {
-          await store.revokeAllForUser(found.user_id);
-          return deny(res);
-        }
-        session = live;
-        graced = true;
-      }
-      if (session.expires_at.getTime() <= Date.now()) return deny(res);
-      const user = await store.findUserById(session.user_id);
+      if (found.revoked_at) return await replyForRevoked(found, res);
+      if (found.expires_at.getTime() <= Date.now()) return deny(res);
+      const user = await store.findUserById(found.user_id);
       if (!user || user.disabled_at) return deny(res);
-      if (!(await store.rotateSession(session.id))) {
-        // Lost a race to another refresh: only a reuse when not in grace.
-        if (!graced) await store.revokeAllForUser(session.user_id);
+      if (!(await store.rotateSession(found.id))) {
+        // Lost a race to a concurrent refresh, or to a sign-out / password
+        // change. Re-read to tell which; neither is a reuse by itself.
+        const now = await store.findSessionByHash(hashRefreshToken(raw));
+        if (now?.revoked_at) return await replyForRevoked(now, res);
         return deny(res);
       }
-      await startSession(res, user.id, req.headers["user-agent"], session.id);
-      const jwt = await signJwt(keys, env, user);
-      // The client reads `jwt` and `expiresIn`; RefreshResponseSchema's
-      // `token` is kept too so either shape parses.
-      res.json({ jwt, token: jwt, expiresIn: JWT_TTL_SECONDS });
+      await startSession(res, user.id, req.headers["user-agent"], found.id);
+      sendJwt(res, await signJwt(keys, env, user));
     } catch (e) {
       next(e);
     }

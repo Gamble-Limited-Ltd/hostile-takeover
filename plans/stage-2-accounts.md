@@ -115,4 +115,24 @@ magic-link email form, and `TokenLoginModal.ts`), not on new markup.
   play as their username. Find how the client picks the name for verified users (`UsernameInput`,
   `usernameStatus`) and make it use `users.username`. Hide the TAG field with clans.
 
+## 2.5 as built (sign-in reliability)
+
+- **Refresh grace path** (`packages/api/src/app.ts`): a rotated token presented within 30s now gets a fresh JWT for the
+  live successor's user and nothing else: no rotation, no `Set-Cookie`, so the browser's jar keeps the successor's
+  token whatever order concurrent replies land in. Before, each graced call rotated the successor again and set a new
+  cookie, so out-of-order replies could leave the jar on an already-rotated token (reuse >30s later, chain revoked).
+- Two concurrent refreshes with the same live cookie: the loser of `rotateSession` used to revoke the whole chain
+  (it was treated as reuse). It now re-reads the session and takes the grace path. The winner revokes first and
+  writes its successor second, so the grace path polls briefly (6 x 40ms) for the successor.
+- Reuse (chain revoke) now needs a rotated token older than the window. A session revoked without being rotated
+  (sign-out, change-password `revokeAllForUser`) gets a plain 401 that does NOT clear the cookie, so an in-flight
+  refresh carrying the old cookie can neither revoke the new session nor wipe the new cookie.
+- Reset view: shows `account_modal.reset_desc` instead of the sign-in line, and no tabs, whoever is signed in.
+  Known leftover: the modal header's "Share Profile" action still shows on a signed-in tab.
+- Turnstile: `getTurnstileToken()` is async and its prefetch is `.catch`ed, so it cannot abort boot before userMe.
+  The `querySelector` page error comes from Cloudflare's own script (not reachable here); left for Stage 3.
+- Client: no repro of "refresh 200 but nav stays Sign in" in 40 boots, 25 UI sign-ins and 45 CPU-throttled boots after
+  the API fix; one case in the 10-run baseline (all calls 200). `/users/@me` often lands 3s after the refresh in dev,
+  which may account for slow cases. No client change; tests in `tests/api/Auth.test.ts`.
+
 **Approval:** run through the exit test live, plus the screenshot pairs.
