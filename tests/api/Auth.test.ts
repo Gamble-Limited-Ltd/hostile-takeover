@@ -13,6 +13,7 @@ import { describe, expect, test } from "vitest";
 import {
   createApp,
   devLoginEnabled,
+  isLoopbackPeer,
   REFRESH_COOKIE,
   type AppContext,
 } from "../../packages/api/src/app";
@@ -454,6 +455,67 @@ describe.skipIf(process.env.HT_TEST_DB !== "1")("real database flow", () => {
     } finally {
       await pool.query("DELETE FROM users WHERE username = $1", [name]);
       await pool.end();
+    }
+  });
+});
+
+describe("dev login peer check and LAN env", () => {
+  test("isLoopbackPeer accepts only loopback socket addresses", () => {
+    for (const a of ["127.0.0.1", "::1", "::ffff:127.0.0.1"]) {
+      expect(isLoopbackPeer(a)).toBe(true);
+    }
+    for (const a of ["10.1.1.251", "::ffff:10.1.1.251", "", undefined]) {
+      expect(isLoopbackPeer(a)).toBe(false);
+    }
+  });
+
+  test("/dev/login works from loopback even with a spoofed X-Forwarded-For", async () => {
+    const u = user("PLAYER");
+    const h = await harness([u]);
+    try {
+      const res = await fetch(`${h.base}/dev/login`, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "x-forwarded-for": "10.1.1.251",
+        },
+        body: JSON.stringify({ username: u.username }),
+      });
+      expect(res.status).toBe(200);
+    } finally {
+      h.close();
+    }
+  });
+
+  test("readEnv: loopback bind and no extra origins by default", () => {
+    expect(baseEnv.apiHost).toBe("127.0.0.1");
+    expect(baseEnv.extraOrigins).toEqual([]);
+    const lan = readEnv({
+      API_HOST: "0.0.0.0",
+      EXTRA_GAME_ORIGINS: "http://10.1.1.251:5178/, http://b:1",
+    });
+    expect(lan.apiHost).toBe("0.0.0.0");
+    expect(lan.extraOrigins).toEqual(["http://10.1.1.251:5178", "http://b:1"]);
+  });
+
+  test("an extra origin is allowed by CORS, a stranger is not", async () => {
+    const h = await harness([], { extraOrigins: ["http://10.1.1.251:5178"] });
+    try {
+      const ok = await fetch(`${h.base}/auth/refresh`, {
+        method: "POST",
+        headers: { origin: "http://10.1.1.251:5178" },
+      });
+      expect(ok.status).not.toBe(403);
+      expect(ok.headers.get("access-control-allow-origin")).toBe(
+        "http://10.1.1.251:5178",
+      );
+      const bad = await fetch(`${h.base}/auth/refresh`, {
+        method: "POST",
+        headers: { origin: "http://evil.example" },
+      });
+      expect(bad.status).toBe(403);
+    } finally {
+      h.close();
     }
   });
 });

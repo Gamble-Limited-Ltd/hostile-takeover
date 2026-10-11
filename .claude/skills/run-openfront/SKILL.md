@@ -23,7 +23,7 @@ Before any npm command: `export PATH=~/.nvm/versions/node/v24.21.0/bin:$PATH`.
 `setup.sh` installs Playwright **into the cache dir** (`~/.cache/openfront-run/`,
 override `OPENFRONT_RUN_CACHE`; never the repo's package.json/lockfile, never
 `npm -g`), downloads chromium-headless-shell (with the ubuntu24.04 platform
-override), then only *reports* missing system libs and fonts (no apt). The
+override), then only _reports_ missing system libs and fonts (no apt). The
 driver imports `playwright` from the repo's `node_modules` if present, else
 from the cache dir.
 
@@ -40,13 +40,20 @@ Do not use `npm install` in the repo (`npm run inst` = `npm ci --ignore-scripts`
 First time only: `npm run api:db:up && npm run api:migrate && npm run api:keygen && npm run api:seed`.
 
 ```bash
-(npm run dev:all > /tmp/dev.log 2>&1 &)   # game server + Vite + API
+(npm run dev:all > /tmp/dev.log 2>&1 &) # game server + Vite + API
 timeout 90 bash -c 'until curl -sf http://localhost:5178 >/dev/null; do sleep 1; done'
 ```
 
 Stop it by killing the `concurrently` process (`pgrep -af hostile-takeover`,
 then `kill <pid>`) and check ports 5178/8787/3400-3402 are free. Do not
 `pkill -f vite` or `pkill -f tsx`: other projects on this VM run those too.
+
+### Testing from another device (LAN)
+
+`npm run dev:lan` (instead of `dev:all`) serves the stack on the VM's LAN IP (`LAN_HOST=<ip>` overrides detection):
+Vite on the LAN, the API on `0.0.0.0:8787` with `API_URL`/`EXTRA_GAME_ORIGINS` set to the LAN address. Drive it with
+`OPENFRONT_URL=http://<lan-ip>:5178`. `/dev/login` answers 404 unless the TCP peer is loopback, so sign in via
+`/auth/register` or `/auth/login` (cookie `ht_refresh`) when browsing by LAN IP. Plain `dev:all` binds the API to 127.0.0.1 only.
 
 ### Dev sign-in
 
@@ -57,7 +64,11 @@ In a browser context: `fetch(..., {credentials: "include"})` from a page on
 the game origin, then reload. The driver does this:
 
 ```js
-import { launch, gotoHome, devLogin } from "./.claude/skills/run-openfront/driver.mjs";
+import {
+  launch,
+  gotoHome,
+  devLogin,
+} from "./.claude/skills/run-openfront/driver.mjs";
 const { browser, page } = await launch();
 await gotoHome(page);
 await devLogin(page, "tester1"); // POSTs /dev/login with credentials: "include", reloads

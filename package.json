@@ -16,6 +16,7 @@
     "start:server-dev": "cross-env GAME_ENV=dev TURNSTILE_SITE_KEY=1x00000000000000000000AA API_KEY=WARNING_DEV_API_KEY_DO_NOT_USE_IN_PRODUCTION ADMIN_BOT_API_KEY=WARNING_DEV_ADMIN_BOT_KEY_DO_NOT_USE_IN_PRODUCTION DOMAIN=localhost GIT_COMMIT=DEV tsx src/server/Server.ts",
     "dev": "cross-env GAME_ENV=dev concurrently \"npm run start:client\" \"npm run start:server-dev\"",
     "dev:all": "concurrently \"npm run api:dev\" \"npm run dev\"",
+    "dev:lan": "node scripts/dev-lan.mjs",
     "api:dev": "tsx watch packages/api/src/main.ts",
     "api:migrate": "tsx packages/api/src/migrate.ts",
     "api:keygen": "tsx packages/api/src/keys.ts",

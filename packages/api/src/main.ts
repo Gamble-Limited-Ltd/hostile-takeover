@@ -22,8 +22,9 @@ const keys = await loadSigningKeys(env.jwtPrivateKeyFile).catch((err) => {
 
 const server = createApp(pool, { env, keys, store: pgStore(pool) }).listen(
   env.apiPort,
+  env.apiHost,
   () => {
-    console.log(`api listening on :${env.apiPort}`);
+    console.log(`api listening on ${env.apiHost}:${env.apiPort}`);
   },
 );
 

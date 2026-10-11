@@ -35,7 +35,22 @@ export const REFRESH_GRACE_MS = 30_000;
 
 export const REFRESH_COOKIE = "ht_refresh";
 
-/** Dev login exists only off production and only for DOMAIN=localhost. */
+const LOOPBACK_ADDRS = new Set(["127.0.0.1", "::1", "::ffff:127.0.0.1"]);
+
+/**
+ * Whether the TCP peer is this machine. Uses the socket address on purpose,
+ * not req.ip: X-Forwarded-For is client-controlled and a proxied request
+ * would look loopback.
+ */
+export function isLoopbackPeer(remoteAddress: string | undefined): boolean {
+  return remoteAddress !== undefined && LOOPBACK_ADDRS.has(remoteAddress);
+}
+
+/**
+ * Dev login exists only off production and only for DOMAIN=localhost; each
+ * request must also come from a loopback socket (the API may listen on the
+ * LAN in `npm run dev:lan`).
+ */
 export function devLoginEnabled(env: ApiEnv): boolean {
   return env.nodeEnv !== "production" && env.domain === "localhost";
 }
@@ -79,7 +94,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin !== undefined) {
-      if (origin !== env.gameOrigin) {
+      if (origin !== env.gameOrigin && !env.extraOrigins.includes(origin)) {
         if (
           req.method === "OPTIONS" ||
           req.method === "POST" ||
@@ -277,6 +292,9 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   if (devLoginEnabled(env)) {
     app.post("/dev/login", express.json(), async (req, res, next) => {
       try {
+        if (!isLoopbackPeer(req.socket.remoteAddress)) {
+          return void res.status(404).json({ error: "not_found" });
+        }
         const username = req.body?.username;
         const user =
           typeof username === "string"

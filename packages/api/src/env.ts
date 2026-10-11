@@ -25,6 +25,10 @@ export interface ApiEnv {
   domain: string;
   /** The one browser origin allowed by CORS. */
   gameOrigin: string;
+  /** Extra browser origins allowed by CORS (LAN dev mode); empty by default. */
+  extraOrigins: string[];
+  /** Interface the API binds to; loopback unless API_HOST says otherwise. */
+  apiHost: string;
   /** Path to the PKCS8 PEM holding the Ed25519 signing key. */
   jwtPrivateKeyFile: string;
   /** Shared secret the game server sends as x-api-key. */
@@ -74,6 +78,11 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
       /\/+$/,
       "",
     ),
+    extraOrigins: str(source.EXTRA_GAME_ORIGINS, "")
+      .split(",")
+      .map((o) => o.trim().replace(/\/+$/, ""))
+      .filter((o) => o !== ""),
+    apiHost: str(source.API_HOST, "127.0.0.1"),
     jwtPrivateKeyFile: path.resolve(
       REPO_ROOT,
       str(source.HT_JWT_PRIVATE_KEY_FILE, DEFAULT_KEY_FILE),

@@ -37,6 +37,15 @@ Slice 2.1 comes first. Slices 2.2 and 2.3 can run in parallel after it (one is A
   Username changes stay out of v1, so keep it that way.
 - Tests for each route, including the failure cases.
 
+### Slice 2.1b — LAN dev mode
+
+`npm run dev:lan` (`scripts/dev-lan.mjs`) runs `dev:all` for testing from other devices: `VITE_HOST=lan`,
+`API_HOST=0.0.0.0`, `API_URL=http://<lan-ip>:8787`, `EXTRA_GAME_ORIGINS=http://<lan-ip>:5178`,
+`SKIP_BROWSER_OPEN=true`, all inline (`LAN_HOST` overrides the detected IP). New API env: `API_HOST` (default
+`127.0.0.1`) and `EXTRA_GAME_ORIGINS` (default none, extra CORS origins). Security fix: the API used to listen on all
+interfaces, and `/dev/login` ignored who was calling; it now binds loopback by default and answers 404 unless
+`req.socket.remoteAddress` is loopback.
+
 ### Slice 2.1 as built (read this before 2.2 / 2.3 / 2.4)
 
 All JSON. Errors are `{ "error": "<code>" }`. State-changing routes refuse a foreign `Origin` (403).

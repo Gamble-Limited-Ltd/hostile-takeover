@@ -100,7 +100,12 @@ Facts:
   upstream tests that assume the defaults will break.
 - **Dev API:** run `npm run api:db:up` once, then `npm run api:migrate`, `api:keygen` and `api:seed`. After that,
   `npm run dev:all` runs the game plus the API. Seeded users are `thestrongest` (root) and `tester1`. `POST /dev/login`
-  `{username}` signs in without a password, on localhost only.
+  `{username}` signs in without a password, on localhost only (the API binds `127.0.0.1` by default, and
+  `/dev/login` also checks the socket's remote address is loopback, so it answers 404 over the LAN).
+- **Testing from another device (LAN):** `npm run dev:lan` runs `dev:all` with `VITE_HOST=lan`,
+  `API_HOST=0.0.0.0`, `API_URL=http://<lan-ip>:8787` and `EXTRA_GAME_ORIGINS=http://<lan-ip>:5178` set inline
+  (never in `.env`); it detects the IP, or use `LAN_HOST=<ip>`. Open the printed URL on the other device. Sign in
+  with a real account (register/login); `/dev/login` only works from the VM itself. localhost still works on the VM.
 - **Baseline** (2026-10-10): typecheck is clean, and 7980/7982 tests pass. The failures are
   `InventoryModal` tests timing out at random under VM load; they belong to the store UI we're
   removing.
