@@ -3,43 +3,65 @@ name: run-openfront
 description: Build, run, and drive OpenFront locally — including full in-game WebGL testing. Use when asked to run the game, start the dev server, take a screenshot of the UI, verify a client change in the real app, or interact with the running game (lobby, modals, map picker, starting a singleplayer game, spawning, attacking, build menu, reading live sim state).
 ---
 
-OpenFront is a browser game (Lit + WebGL2 client, Node game server).
-Run the dev server with `npm run dev` (serves on **http://localhost:9000**,
-not Vite's default 5173), then drive it with headless Chromium via
+Hostile Takeover (our OpenFront fork) is a browser game (Lit + WebGL2 client,
+Node game server, our own API in `packages/api`). Run the stack with
+`npm run dev:all`, then drive it with headless Chromium via
 `.claude/skills/run-openfront/driver.mjs`. All paths are relative to the
 repo root.
 
+**Ports (this VM is shared; never touch anything else):** game client
+**http://localhost:5178** (Vite), game server 3400-3402, API **8787**, Postgres
+127.0.0.1:5436. Port 9000 is Portainer, and 3000/3001/8080/80 belong to other
+projects. `driver.mjs` defaults to `http://localhost:5178`, honours
+`OPENFRONT_URL`, and throws if the URL (or `HT_API_URL`) uses one of those
+foreign ports.
+
+Before any npm command: `export PATH=~/.nvm/versions/node/v24.21.0/bin:$PATH`.
+
 ## Prerequisites (one-time per machine, no sudo)
 
-On a headless Ubuntu 26.04 host there is no browser, and Playwright doesn't
-support 26.04. `setup.sh` works around both: it installs Playwright
-(`--no-save`), downloads the ubuntu24.04 chromium-headless-shell via
-`PLAYWRIGHT_HOST_PLATFORM_OVERRIDE`, extracts the missing system libraries
-from `.deb` packages into `~/.cache/openfront-run/` (no root needed), and
-builds a local fontconfig (the host has no `/etc/fonts`; Skia FATALs
-without one).
+`setup.sh` installs Playwright **into the cache dir** (`~/.cache/openfront-run/`,
+override `OPENFRONT_RUN_CACHE`; never the repo's package.json/lockfile, never
+`npm -g`), downloads chromium-headless-shell (with the ubuntu24.04 platform
+override), then only *reports* missing system libs and fonts (no apt). The
+driver imports `playwright` from the repo's `node_modules` if present, else
+from the cache dir.
 
 ```bash
 bash .claude/skills/run-openfront/setup.sh
 ```
 
-On other hosts (Windows, macOS) skip `setup.sh`: install Playwright as its
-step 1 does (`--no-save`), then run `npx playwright install chromium`.
-`launch()` only injects the extracted libraries when they exist.
+If it lists missing libraries, install them yourself or extract `.deb`s into
+`~/.cache/openfront-run/extracted/` (the driver adds that to `LD_LIBRARY_PATH`).
+Do not use `npm install` in the repo (`npm run inst` = `npm ci --ignore-scripts`).
 
-Deps were installed with `npm run inst` (`npm ci --ignore-scripts`) — do
-not use `npm install`.
+## Run the stack
 
-## Run the dev server
+First time only: `npm run api:db:up && npm run api:migrate && npm run api:keygen && npm run api:seed`.
 
 ```bash
-(npm run dev > /tmp/dev.log 2>&1 &)
-timeout 60 bash -c 'until curl -sf http://localhost:9000 >/dev/null 2>&1; do sleep 1; done'
+(npm run dev:all > /tmp/dev.log 2>&1 &)   # game server + Vite + API
+timeout 90 bash -c 'until curl -sf http://localhost:5178 >/dev/null; do sleep 1; done'
 ```
 
-Stop it with `pkill -f "tsx src/server/Server.ts"; pkill -f vite`.
-`ECONNREFUSED "Error polling lobby"` lines in `/tmp/dev.log` are normal —
-the closed-source API isn't running in dev.
+Stop it by killing the `concurrently` process (`pgrep -af hostile-takeover`,
+then `kill <pid>`) and check ports 5178/8787/3400-3402 are free. Do not
+`pkill -f vite` or `pkill -f tsx`: other projects on this VM run those too.
+
+### Dev sign-in
+
+Seeded users: `thestrongest` (root) and `tester1`. `POST
+http://localhost:8787/dev/login {"username": "..."}` signs in without a
+password (localhost only) and sets the `ht_refresh` cookie on the API origin.
+In a browser context: `fetch(..., {credentials: "include"})` from a page on
+the game origin, then reload. The driver does this:
+
+```js
+import { launch, gotoHome, devLogin } from "./.claude/skills/run-openfront/driver.mjs";
+const { browser, page } = await launch();
+await gotoHome(page);
+await devLogin(page, "tester1"); // POSTs /dev/login with credentials: "include", reloads
+```
 
 ## Drive it (agent path)
 
@@ -74,7 +96,12 @@ await browser.close();
 
 `game.mjs` drives an actual singleplayer game end-to-end: start, spawn,
 attack/expand, open the radial menu, and read **ground-truth sim state**.
-WebGL works headless via SwiftShader (no extra flags needed), and the
+WebGL works headless via SwiftShader. `launch()` passes
+`--use-angle=swiftshader --enable-unsafe-swiftshader` and `prepContext()` defeats
+the game's software-GL gate ("Hardware acceleration is off", from
+`src/client/render/gl/initGL.ts` + `components/WebGLGate.ts`) with an init
+script: it drops `failIfMajorPerformanceCaveat` and spoofs the
+`WEBGL_debug_renderer_info` renderer string. No game source is touched. The
 screenshots show the real rendered map.
 
 Smoke flow (≈2 min: starts a 50-bot game, spawns, expands, opens the
@@ -95,7 +122,7 @@ import {
   openSoloModal,
 } from "./.claude/skills/run-openfront/driver.mjs";
 import {
-  startSoloGame, // set modal options ({bots, map, difficulty, instantBuild, …}), click Start, wait for sim
+  startSoloGame, // set modal options (clicks `game_settings.start`) ({bots, map, difficulty, instantBuild, …}), click Start, wait for sim
   gameState, // {ticks, inSpawnPhase, numPlayers, myPlayer: {troops, gold, tilesOwned, isAlive}, …}
   findSpawnTile,
   spawn, // pick land + click it; waits until myPlayer owns tiles
@@ -165,7 +192,7 @@ await browser.close();
 
 ## Run (human path)
 
-`npm run dev`, open http://localhost:9000 in a browser. Useless headless.
+`npm run dev:all`, open http://localhost:5178 in a browser. Useless headless.
 
 ## Test
 
@@ -176,15 +203,15 @@ npx vitest tests/MapConsistency.test.ts --run # single file
 
 ## Gotchas
 
-- **Vite serves on port 9000**, not 5173 (configured in vite.config.ts).
-- **Playwright on Ubuntu 26.04**: `npx playwright install chromium` fails
-  with "does not support chromium on ubuntu26.04-x64". Fix:
+- **Vite serves on port 5178** (`.env` `VITE_PORT`), not 9000/5173.
+- **Playwright on unsupported distros**: `playwright install` may fail with
+  "does not support chromium on ...". Fix:
   `PLAYWRIGHT_HOST_PLATFORM_OVERRIDE=ubuntu24.04-x64` (setup.sh does this).
 - **Browser dies at launch / mid-load**: missing host libs
   (`libnspr4.so`, `libatk-1.0.so.0`, …) then a Skia FATAL
   (`SkFontMgr_FontConfigInterface.cpp: Not implemented`) from the absent
   fontconfig. `launch()` in driver.mjs injects `LD_LIBRARY_PATH` and
-  `FONTCONFIG_FILE` pointing at `~/.cache/openfront-run/`; diagnose new
+  `FONTCONFIG_FILE` pointing at `~/.cache/openfront-run/` (only if `extracted/` exists); diagnose new
   missing libs with `DEBUG=pw:browser` and
   `ldd .../chrome-headless-shell | grep "not found"`.
 - **The single-player button is labeled "Solo"** (`main.solo`), and the DOM has more
@@ -195,16 +222,25 @@ npx vitest tests/MapConsistency.test.ts --run # single file
   (or re-`goto`) before judging behavior.
 - **`PAGEERROR: ... reading 'inSpawnPhase'`** on the home page is
   pre-existing background noise, not your breakage.
+- **Start button**: in the solo modal it is
+  `o-button[translationkey="game_settings.start"]` (was `single_modal.start`).
+- **"Hardware acceleration is off" screen / blank canvas**: the WebGL gate is
+  rejecting SwiftShader; make sure you launch through `driver.mjs`' `launch()`
+  (or call `prepContext(context)` on your own context).
+- **Signed-in state not visible**: the account UI may not show the dev session
+  yet; check `ht_refresh` exists for `localhost:8787` and `/users/@me` returns 200.
+- **Multiplayer lobbies**: the lobby list polls `/cluster.json`; if the API
+  doesn't serve it in dev, expect errors there (solo is unaffected).
 - Wait ~3s after `load` before interacting — Lit components render
   client-side (driver's `gotoHome` does this).
 
 ## Troubleshooting
 
-- `Cannot find package 'playwright'` — your script is outside the repo;
-  module resolution starts at the script's path, not cwd. Move it inside
-  the repo (anywhere under the root works).
+- `Cannot find package 'playwright'` — run `setup.sh` (installs it into the
+  cache dir). Scripts that only import `driver.mjs` resolve it for you; a
+  script that imports `playwright` directly must live inside the repo.
 - `Target page, context or browser has been closed` immediately —
   re-run `bash .claude/skills/run-openfront/setup.sh` (the
   `~/.cache/openfront-run` lib cache is missing or was cleared).
-- `EADDRINUSE` on relaunch — a previous dev server is still up:
-  `pkill -f "tsx src/server/Server.ts"; pkill -f vite`.
+- `EADDRINUSE` on relaunch — a previous dev stack is still up: find our
+  `concurrently` process with `pgrep -af hostile-takeover` and kill it.

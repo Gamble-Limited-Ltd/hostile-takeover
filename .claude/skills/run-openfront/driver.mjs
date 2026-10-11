@@ -6,12 +6,37 @@
 import fs from "fs";
 import os from "os";
 import path from "path";
-import { chromium } from "playwright";
+import { createRequire } from "module";
+import { pathToFileURL } from "url";
 
 const CACHE =
   process.env.OPENFRONT_RUN_CACHE ??
   path.join(os.homedir(), ".cache", "openfront-run");
-export const BASE_URL = process.env.OPENFRONT_URL ?? "http://localhost:9000";
+// Hostile Takeover dev client (Vite). NEVER 9000 (Portainer on this VM), 3000,
+// 3001, 8080 or 80 (other projects). OPENFRONT_URL overrides; the check below
+// refuses the known foreign ports so a stale default can't creep back in.
+export const BASE_URL = process.env.OPENFRONT_URL ?? "http://localhost:5178";
+export const API_URL = process.env.HT_API_URL ?? "http://localhost:8787";
+const FORBIDDEN_PORTS = new Set(["80", "3000", "3001", "8080", "9000", "9443"]);
+for (const u of [BASE_URL, API_URL]) {
+  if (FORBIDDEN_PORTS.has(new URL(u).port || "80")) {
+    throw new Error(
+      `Refusing ${u}: that port belongs to another project/service on this VM. ` +
+        `Use http://localhost:5178 (game) and http://localhost:8787 (API).`,
+    );
+  }
+}
+
+// Playwright is not a repo dependency. Resolve it from the repo's node_modules
+// if present, else from the skill cache ($CACHE/node_modules, see setup.sh).
+async function loadPlaywright() {
+  try {
+    return await import("playwright");
+  } catch {}
+  const req = createRequire(path.join(CACHE, "node_modules", "x.js"));
+  return await import(pathToFileURL(req.resolve("playwright")).href);
+}
+const { chromium } = await loadPlaywright();
 
 // Launch chromium with the locally-extracted system libraries and fontconfig
 // (see setup.sh). Without them the headless shell dies on libnspr4.so, and
@@ -34,12 +59,22 @@ export async function launch({ viewport, rafIntervalMs, args } = {}) {
     env.FONTCONFIG_FILE = path.join(CACHE, "fonts.conf");
   }
   const browser = await chromium.launch({
-    args: ["--no-sandbox", "--disable-gpu", ...(args ?? [])],
+    // swiftshader flags: software GL that Chromium 13x+ otherwise refuses
+    // headless. The game's WebGLGate is then defeated by prepContext().
+    args: [
+      "--no-sandbox",
+      "--use-angle=swiftshader",
+      "--use-gl=angle",
+      "--enable-unsafe-swiftshader",
+      "--ignore-gpu-blocklist",
+      ...(args ?? []),
+    ],
     env,
   });
   const context = await browser.newContext({
     viewport: viewport ?? { width: 1400, height: 1000 },
   });
+  await prepContext(context);
   if (rafIntervalMs) {
     await context.addInitScript((interval) => {
       let last = 0;
@@ -60,6 +95,53 @@ export async function launch({ viewport, rafIntervalMs, args } = {}) {
   );
   page.on("crash", () => console.log("PAGE CRASHED"));
   return { browser, page };
+}
+
+// Defeat the game's software-GL gate (src/client/render/gl/initGL.ts,
+// components/WebGLGate.ts) without touching game source. The gate (a) asks for
+// failIfMajorPerformanceCaveat:true and (b) rejects renderers matching
+// /swiftshader|llvmpipe|software/i read via WEBGL_debug_renderer_info.
+// We drop (a) and spoof (b).
+export async function prepContext(context) {
+  await context.addInitScript(() => {
+    const gc = HTMLCanvasElement.prototype.getContext;
+    HTMLCanvasElement.prototype.getContext = function (t, a) {
+      if (a && a.failIfMajorPerformanceCaveat)
+        a = { ...a, failIfMajorPerformanceCaveat: false };
+      return gc.call(this, t, a);
+    };
+    for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) {
+      if (!C) continue;
+      const gp = C.prototype.getParameter;
+      C.prototype.getParameter = function (p) {
+        if (p === 0x9246) return "ANGLE (Hostile Takeover test GPU)"; // UNMASKED_RENDERER_WEBGL
+        if (p === 0x9245) return "Google Inc. (Test)"; // UNMASKED_VENDOR_WEBGL
+        return gp.call(this, p);
+      };
+    }
+  });
+}
+
+// Sign in as a seeded dev user (thestrongest | tester1). Needs the API on
+// :8787 (npm run dev:all). The API sets the `ht_refresh` cookie on its own
+// origin; call this after gotoHome (so we are on the game origin), then
+// reload so the client picks up the session.
+export async function devLogin(page, username = "tester1") {
+  const status = await page.evaluate(
+    async ([api, u]) => {
+      const r = await fetch(`${api}/dev/login`, {
+        method: "POST",
+        credentials: "include",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username: u }),
+      });
+      return r.status;
+    },
+    [API_URL, username],
+  );
+  if (status !== 200) throw new Error(`dev login failed: HTTP ${status}`);
+  await page.reload({ waitUntil: "load" });
+  await page.waitForTimeout(5000);
 }
 
 export async function gotoHome(page) {
