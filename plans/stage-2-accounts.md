@@ -29,6 +29,12 @@ Slice 2.1 comes first. Slices 2.2 and 2.3 can run in parallel after it (one is A
   24 hours. `POST /auth/reset` `{ token, newPassword }` uses it and revokes every session.
   Also add a CLI (`npm run api:admin -- reset <username>`) that prints a reset link.
 - Every admin action is logged (`admin_audit` table: who, what, target, when). Add it as migration `002`.
+- **Refresh grace window (from Slice 1.3):** today two tabs refreshing at the same moment look like
+  token reuse and log the user out everywhere. Accept a just-rotated token for about 30 seconds
+  after its rotation, returning the current successor session's new token instead of revoking the chain.
+  Reuse outside that window still revokes the chain. Add a test.
+- **`usernameStatus`** is left out of `/users/@me` on purpose, which keeps the custom-username UI off.
+  Username changes stay out of v1, so keep it that way.
 - Tests for each route, including the failure cases.
 
 ## Slice 2.2 — Sign-in and sign-up modal (Sonnet, UI)

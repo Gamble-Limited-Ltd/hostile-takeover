@@ -95,6 +95,12 @@ Facts:
   sets `MASTER_PORT=3400` (workers 3401+) and `VITE_PORT=5178`; `example.env` documents them. The
   dev API will use 8787 (the client's built-in dev default), and the dev Postgres 5436. Open the
   game at `http://localhost:5178`.
+- **`.env` leaks into Vitest's `process.env`.** Only put values in `.env` that differ from the
+  code defaults (`API_URL`, `DOMAIN` and `GAME_ORIGIN` already default to the local dev values), or
+  upstream tests that assume the defaults will break.
+- **Dev API:** run `npm run api:db:up` once, then `npm run api:migrate`, `api:keygen` and `api:seed`. After that,
+  `npm run dev:all` runs the game plus the API. Seeded users are `thestrongest` (root) and `tester1`. `POST /dev/login`
+  `{username}` signs in without a password, on localhost only.
 - **Baseline** (2026-10-10): typecheck is clean, and 7980/7982 tests pass. The failures are
   `InventoryModal` tests timing out at random under VM load; they belong to the store UI we're
   removing.

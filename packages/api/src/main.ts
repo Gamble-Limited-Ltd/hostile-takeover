@@ -1,7 +1,9 @@
 import { createApp } from "./app";
 import { createPool } from "./db";
 import { readEnv } from "./env";
+import { loadSigningKeys } from "./keys";
 import { migrate } from "./migrate";
+import { pgStore } from "./store";
 
 const env = readEnv();
 const pool = createPool(env);
@@ -13,9 +15,17 @@ if (env.migrateOnBoot) {
   console.log(`migrations applied: ${applied.length}`);
 }
 
-const server = createApp(pool).listen(env.apiPort, () => {
-  console.log(`api listening on :${env.apiPort}`);
+const keys = await loadSigningKeys(env.jwtPrivateKeyFile).catch((err) => {
+  console.error(err.message);
+  process.exit(1);
 });
+
+const server = createApp(pool, { env, keys, store: pgStore(pool) }).listen(
+  env.apiPort,
+  () => {
+    console.log(`api listening on :${env.apiPort}`);
+  },
+);
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {

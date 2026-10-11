@@ -19,7 +19,28 @@ export interface ApiEnv {
   dbUser: string;
   dbPassword: string;
   migrateOnBoot: boolean;
+  /** This API's own public origin; must equal the game server's jwtIssuer(). */
+  apiUrl: string;
+  /** The JWT audience (the game's DOMAIN). */
+  domain: string;
+  /** The one browser origin allowed by CORS. */
+  gameOrigin: string;
+  /** Path to the PKCS8 PEM holding the Ed25519 signing key. */
+  jwtPrivateKeyFile: string;
+  /** Shared secret the game server sends as x-api-key. */
+  apiKey: string;
+  nodeEnv: string;
 }
+
+/** The repo root, wherever the process was started from. */
+export const REPO_ROOT = path.resolve(
+  path.dirname(fileURLToPath(import.meta.url)),
+  "../../..",
+);
+export const DEFAULT_KEY_FILE = path.join(
+  REPO_ROOT,
+  "packages/api/.keys/jwt-ed25519.pem",
+);
 
 function str(value: string | undefined, fallback: string): string {
   return value === undefined || value === "" ? fallback : value;
@@ -43,5 +64,17 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     dbUser: str(source.HT_DB_USER, "hostile_takeover"),
     dbPassword: source.HT_DB_PASSWORD ?? "",
     migrateOnBoot: source.HT_DB_MIGRATE_ON_BOOT === "true",
+    apiUrl: str(source.API_URL, "http://localhost:8787").replace(/\/+$/, ""),
+    domain: str(source.DOMAIN, "localhost"),
+    gameOrigin: str(source.GAME_ORIGIN, "http://localhost:5178").replace(
+      /\/+$/,
+      "",
+    ),
+    jwtPrivateKeyFile: path.resolve(
+      REPO_ROOT,
+      str(source.HT_JWT_PRIVATE_KEY_FILE, DEFAULT_KEY_FILE),
+    ),
+    apiKey: source.API_KEY ?? "",
+    nodeEnv: source.NODE_ENV ?? "",
   };
 }
