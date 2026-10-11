@@ -1,0 +1,27 @@
+# Dev Postgres for the Hostile Takeover API. Use via `npm run api:db:up`.
+name: hostile_takeover_dev
+
+services:
+  ht-db-dev:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    ports:
+      - "127.0.0.1:5436:5432"
+    environment:
+      POSTGRES_DB: ${HT_DB_NAME:-hostile_takeover}
+      POSTGRES_USER: ${HT_DB_USER:-hostile_takeover}
+      POSTGRES_PASSWORD: ${HT_DB_PASSWORD:-hostile_takeover_dev}
+    volumes:
+      - ht_db_dev_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${HT_DB_USER:-hostile_takeover} -d ${HT_DB_NAME:-hostile_takeover}",
+        ]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+volumes:
+  ht_db_dev_data:

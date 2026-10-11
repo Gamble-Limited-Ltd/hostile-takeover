@@ -21,6 +21,7 @@ type Pkg =
   | "engine-lib"
   | "shared"
   | "zbin"
+  | "api"
   | "client"
   | "server"
   | "resources";
@@ -36,6 +37,8 @@ const ALLOWED: Record<Pkg, Pkg[]> = {
   engine: ["engine", "engine-lib", "engine-api", "zbin", "resources"],
   shared: ["shared", "engine-lib", "engine-api", "zbin", "resources"],
   zbin: ["zbin"],
+  // Hostile Takeover's own API service (a Node app, not engine code).
+  api: ["api", "shared", "engine-lib", "engine-api", "zbin", "resources"],
   client: ["client", "shared", "engine-lib", "engine-api", "zbin", "resources"],
   server: ["server", "shared", "engine-lib", "engine-api", "zbin", "resources"],
   resources: [],
@@ -85,12 +88,33 @@ const HOMEPAGE_RENDER_SETTINGS = new Set([
 /** Known violations, as "<from file> -> <to file>"; never add to it. */
 const ALLOWLIST: string[] = [];
 
+/** The Hostile Takeover API; nothing outside packages/api may import it. */
+const API_NPM_NAME = "@hostile-takeover/api";
+
+/** Whether `from` may import the repo file `file` (in package `to`). */
+function edgeAllowed(from: Pkg, to: Pkg, file: string): boolean {
+  if (ALLOWED[from].includes(to)) return true;
+  if (to === "engine" && from === "client" && file === ENGINE_ENTRY) {
+    return true;
+  }
+  return to === "engine" && from === "server" && file === SERVER_ENGINE_ENTRY;
+}
+
+/** Whether `from` may import the npm package `name`. */
+function npmAllowed(from: Pkg, name: string): boolean {
+  if (name === API_NPM_NAME || name.startsWith(`${API_NPM_NAME}/`)) {
+    return from === "api";
+  }
+  return !ENGINE_SIDE.has(from) || ENGINE_NPM.has(name);
+}
+
 const PACKAGES: Pkg[] = [
   "engine",
   "engine-api",
   "engine-lib",
   "shared",
   "zbin",
+  "api",
 ];
 
 function packageOf(file: string): Pkg | null {
@@ -224,24 +248,14 @@ function violations(): {
     for (const spec of specifiers(file)) {
       const r = resolve(file, spec);
       if ("npm" in r) {
-        if (ENGINE_SIDE.has(from) && !ENGINE_NPM.has(r.npm)) {
+        if (!npmAllowed(from, r.npm)) {
           edges.add(`${file} -> npm:${r.npm}`);
         }
         continue;
       }
       const to = packageOf(r.file);
       if (to === null) continue;
-      if (ALLOWED[from].includes(to)) continue;
-      if (to === "engine" && from === "client" && r.file === ENGINE_ENTRY) {
-        continue;
-      }
-      if (
-        to === "engine" &&
-        from === "server" &&
-        r.file === SERVER_ENGINE_ENTRY
-      ) {
-        continue;
-      }
+      if (edgeAllowed(from, to, r.file)) continue;
       edges.add(`${file} -> ${r.file}`);
     }
     if (ENGINE_SIDE.has(from)) {
@@ -311,6 +325,37 @@ describe("layer boundaries", () => {
     const allowed = new Set(ALLOWLIST);
     const unexpected = [...edges].filter((e) => !allowed.has(e)).sort();
     expect(unexpected).toEqual([]);
+  });
+
+  test("packages/api may import shared and the engine's libraries, never the engine or the apps", () => {
+    const f = "packages/engine/src/GameRunner.ts";
+    for (const to of ["shared", "engine-lib", "engine-api", "api"] as Pkg[]) {
+      expect(edgeAllowed("api", to, ""), to).toBe(true);
+    }
+    for (const to of ["engine", "client", "server"] as Pkg[]) {
+      expect(edgeAllowed("api", to, f), to).toBe(false);
+    }
+    expect(edgeAllowed("api", "engine", ENGINE_ENTRY)).toBe(false);
+    expect(edgeAllowed("api", "engine", SERVER_ENGINE_ENTRY)).toBe(false);
+  });
+
+  test("nothing outside packages/api imports the API", () => {
+    for (const from of PACKAGES.filter((p) => p !== "api").concat(
+      "client",
+      "server",
+    )) {
+      expect(edgeAllowed(from, "api", ""), from).toBe(false);
+      expect(npmAllowed(from, API_NPM_NAME), from).toBe(false);
+      expect(npmAllowed(from, `${API_NPM_NAME}/main`), from).toBe(false);
+    }
+    expect(npmAllowed("api", API_NPM_NAME)).toBe(true);
+  });
+
+  test("the API may use npm packages the engine may not", () => {
+    expect(npmAllowed("api", "pg")).toBe(true);
+    expect(npmAllowed("api", "express")).toBe(true);
+    expect(npmAllowed("engine", "pg")).toBe(false);
+    expect(npmAllowed("engine", "zod")).toBe(true);
   });
 
   test("the allowlist has no stale entries", () => {
