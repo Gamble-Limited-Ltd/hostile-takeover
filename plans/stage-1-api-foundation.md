@@ -108,3 +108,13 @@ Make each endpoint answer in the shape its caller expects. Read the caller befor
   screen. That list feeds Stage 3.
 
 **Approval:** the owner sees screenshots of a signed-in player in a game, and the list of failures.
+
+### Slice 1.6 — dev `cluster.json`
+
+Found in 1.5: with the default `HT_GAME_HOST=localhost:3400`, `/cluster.json` made the client build
+`wss://localhost:3400` / `https://localhost:3400` URLs, which fail with ERR_SSL_PROTOCOL_ERROR in
+local dev (no TLS). Fix (API only): when the game host is a loopback host (`localhost`, `127.0.0.1`,
+`::1`, with or without port), `GET /cluster.json` answers 404. `ServerList.fetchServerList` treats a
+404 as "reachable, no list", so the client falls back to the page's own origin. Production hosts keep
+the JSON response. Helper: `isLoopbackHost` in `packages/api/src/env.ts`; tests in
+`tests/api/Routes.test.ts`.

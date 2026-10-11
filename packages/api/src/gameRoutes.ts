@@ -2,7 +2,7 @@ import express from "express";
 import { z } from "zod";
 import { requireApiKey } from "./apiKey";
 import { censorPlayer } from "./censor";
-import type { ApiEnv } from "./env";
+import { isLoopbackHost, type ApiEnv } from "./env";
 
 const JoinVerifyBodySchema = z.object({
   username: z.string().max(200),
@@ -55,8 +55,14 @@ export function mountGameRoutes(app: express.Express, env: ApiEnv): void {
 
   // Public. Client: src/client/ServerList.ts (ServerListSchema in
   // packages/shared/src/ServerList.ts). One server, letter "a". `latest` is
-  // omitted so no client is redirected to a /v/<commit>/ page.
+  // omitted so no client is redirected to a /v/<commit>/ page. A loopback game
+  // host (local dev) answers 404: the client then falls back to the page's own
+  // origin, since it would otherwise build wss:// URLs to a server with no TLS.
   app.get("/cluster.json", (_req, res) => {
+    if (isLoopbackHost(env.gameHost)) {
+      res.status(404).json({ error: "not_found" });
+      return;
+    }
     res.setHeader("Cache-Control", "public, max-age=5");
     res.json({
       servers: {

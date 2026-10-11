@@ -9,7 +9,7 @@ import type { AddressInfo } from "net";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
 import { createApp } from "../../packages/api/src/app";
 import { censorPlayer as apiCensor } from "../../packages/api/src/censor";
-import { readEnv } from "../../packages/api/src/env";
+import { isLoopbackHost, readEnv } from "../../packages/api/src/env";
 import {
   generatePrivateKeyPem,
   keysFromPem,
@@ -127,6 +127,46 @@ describe("server callers parse the real responses", () => {
     });
     expect(pickServerForBuild(list, "abcdef1234", () => 0)).toBe("a");
     expect(pickServerForBuild(list, "DEV", () => 0)).toBe("a");
+  });
+
+  test("cluster.json is 404 for a loopback game host (default env)", async () => {
+    const dev = readEnv({ API_KEY: KEY });
+    expect(dev.gameHost).toBe("localhost:3400");
+    const keys = await keysFromPem(generatePrivateKeyPem());
+    const server = createApp(
+      { query: async () => ({}) },
+      { env: dev, keys, store: {} as Store },
+    ).listen(0, "127.0.0.1");
+    await new Promise((r) => server.once("listening", r));
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const res = await fetch(`http://127.0.0.1:${port}/cluster.json?site=x`);
+      expect(res.status).toBe(404);
+    } finally {
+      server.close();
+    }
+  });
+
+  test("isLoopbackHost only matches loopback names", () => {
+    for (const h of [
+      "localhost",
+      "LocalHost:3400",
+      "127.0.0.1",
+      "127.0.0.1:3400",
+      "::1",
+      "[::1]",
+      "[::1]:3400",
+    ]) {
+      expect(isLoopbackHost(h), h).toBe(true);
+    }
+    for (const h of [
+      "game.test:3400",
+      "hostile-takeover.taps-holdings.org",
+      "localhost.evil.org",
+      "10.0.0.5:3400",
+    ]) {
+      expect(isLoopbackHost(h), h).toBe(false);
+    }
   });
 });
 

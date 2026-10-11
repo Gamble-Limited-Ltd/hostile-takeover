@@ -79,8 +79,29 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
       str(source.HT_JWT_PRIVATE_KEY_FILE, DEFAULT_KEY_FILE),
     ),
     apiKey: source.API_KEY ?? "",
+    // host[:port] of the one game server, as cluster.json reports it. A
+    // loopback host (localhost, 127.0.0.1, ::1) means local dev: cluster.json
+    // answers 404 there so the client uses the page's own origin (see
+    // isLoopbackHost).
     gameHost: str(source.HT_GAME_HOST, "localhost:3400"),
     gameVersion: str(source.HT_GAME_VERSION, "0000000"),
     nodeEnv: source.NODE_ENV ?? "",
   };
+}
+
+/**
+ * Whether a `host[:port]` string names this machine. The client builds
+ * wss:// and https:// URLs from every cluster.json host, which cannot work
+ * against a local dev server without TLS, so cluster.json is not served for
+ * a loopback game host.
+ */
+export function isLoopbackHost(host: string): boolean {
+  const h = host.trim().toLowerCase();
+  // "[::1]:3400" / "[::1]", a bare "::1", else drop an optional ":port".
+  const name = h.startsWith("[")
+    ? h.slice(1, h.indexOf("]"))
+    : h.includes(":") && h.indexOf(":") === h.lastIndexOf(":")
+      ? h.slice(0, h.indexOf(":"))
+      : h;
+  return name === "localhost" || name === "127.0.0.1" || name === "::1";
 }
