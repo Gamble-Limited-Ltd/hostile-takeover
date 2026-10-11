@@ -1,4 +1,5 @@
 import { getApiBase } from "./ApiBase";
+import { getAuthHeader } from "./Auth";
 
 // Client for the account routes in packages/api/src/accountRoutes.ts. Every
 // call resolves (never throws) with the API's stable error code.
@@ -19,13 +20,18 @@ export interface RegisterFields {
 async function post(
   path: string,
   body: Record<string, unknown>,
+  method: "POST" | "PATCH" = "POST",
+  authorization?: string,
 ): Promise<PasswordAuthResult> {
   let response: Response;
   try {
     response = await fetch(`${getApiBase()}${path}`, {
-      method: "POST",
+      method,
       credentials: "include",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+        ...(authorization ? { Authorization: authorization } : {}),
+      },
       body: JSON.stringify(body),
     });
   } catch (e) {
@@ -63,6 +69,43 @@ export function resetPassword(
   newPassword: string,
 ): Promise<PasswordAuthResult> {
   return post("/auth/reset", { token, newPassword });
+}
+
+/**
+ * PATCH /users/@me/password. Sends the Bearer JWT; credentials: "include"
+ * stores the fresh session cookie the API issues, so the caller stays signed in.
+ */
+export async function changePassword(
+  currentPassword: string,
+  newPassword: string,
+): Promise<PasswordAuthResult> {
+  const authorization = await getAuthHeader();
+  if (!authorization) return { ok: false, status: 401, code: "unauthorized" };
+  return post(
+    "/users/@me/password",
+    { currentPassword, newPassword },
+    "PATCH",
+    authorization,
+  );
+}
+
+export function changePasswordErrorKey(code: string): string {
+  switch (code) {
+    case "wrong_password":
+      return "password_auth.error_wrong_password";
+    case "password_too_short":
+      return "password_auth.error_password_short";
+    case "password_too_long":
+      return "password_auth.error_password_long";
+    case "unauthorized":
+      return "password_auth.error_signed_out";
+    case "rate_limited":
+      return "password_auth.error_rate_limited";
+    case "network":
+      return "password_auth.error_network";
+    default:
+      return "password_auth.error_generic";
+  }
 }
 
 export type RegisterField =

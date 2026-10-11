@@ -4,7 +4,13 @@ vi.mock("../../src/client/ApiBase", () => ({
   getApiBase: () => "http://api.test",
 }));
 
+const { getAuthHeader } = vi.hoisted(() => ({ getAuthHeader: vi.fn() }));
+vi.mock("../../src/client/Auth", () => ({ getAuthHeader }));
+
+import en from "../../resources/lang/en.json";
 import {
+  changePassword,
+  changePasswordErrorKey,
   loginErrorKey,
   loginWithPassword,
   registerAccount,
@@ -153,5 +159,67 @@ describe("PasswordResetHash", () => {
     stashResetToken(TOKEN);
     expect(takeResetToken()).toBe(TOKEN);
     expect(takeResetToken()).toBeNull();
+  });
+});
+
+describe("changePassword", () => {
+  it("PATCHes with the Bearer JWT and the session cookie", async () => {
+    getAuthHeader.mockResolvedValue("Bearer jwt-1");
+    const f = mockFetch(200, { ok: true });
+    expect(await changePassword("old-password-1", "new-password-1")).toEqual({
+      ok: true,
+    });
+    const [url, init] = f.mock.calls[0] as unknown as [string, RequestInit];
+    expect(url).toBe("http://api.test/users/@me/password");
+    expect(init.method).toBe("PATCH");
+    expect(init.credentials).toBe("include");
+    expect((init.headers as Record<string, string>).Authorization).toBe(
+      "Bearer jwt-1",
+    );
+    expect(JSON.parse(init.body as string)).toEqual({
+      currentPassword: "old-password-1",
+      newPassword: "new-password-1",
+    });
+  });
+
+  it("does not call the API when there is no session", async () => {
+    getAuthHeader.mockResolvedValue("");
+    const f = mockFetch(200, { ok: true });
+    expect(await changePassword("a", "b")).toEqual({
+      ok: false,
+      status: 401,
+      code: "unauthorized",
+    });
+    expect(f).not.toHaveBeenCalled();
+  });
+
+  it("returns the API error code", async () => {
+    getAuthHeader.mockResolvedValue("Bearer jwt-1");
+    mockFetch(403, { error: "wrong_password" });
+    expect(await changePassword("x", "y")).toEqual({
+      ok: false,
+      status: 403,
+      code: "wrong_password",
+    });
+  });
+
+  it("maps every code to an en.json key", () => {
+    const keys = [
+      "wrong_password",
+      "password_too_short",
+      "password_too_long",
+      "unauthorized",
+      "rate_limited",
+      "network",
+      "whatever",
+    ].map(changePasswordErrorKey);
+    expect(keys[0]).toBe("password_auth.error_wrong_password");
+    expect(keys[3]).toBe("password_auth.error_signed_out");
+    expect(keys[6]).toBe("password_auth.error_generic");
+    for (const k of keys) {
+      expect(
+        (en.password_auth as Record<string, string>)[k.split(".")[1]],
+      ).toBeTruthy();
+    }
   });
 });

@@ -20,6 +20,7 @@ import {
   steamLogin,
 } from "./Auth";
 import "./components/account/PasswordAuthForm";
+import "./components/AccountSettingsPanel";
 import "./components/baseComponents/stats/DiscordUserHeader";
 import "./components/baseComponents/stats/PlayerGameHistoryView";
 import type { PlayerGameHistoryCache } from "./components/baseComponents/stats/PlayerGameHistoryView";
@@ -284,29 +285,67 @@ export class AccountModal extends BaseModal {
     }
     return html`
       <div class="flex flex-col gap-6">
-        ${this.renderProfileCard("compact")}
-        <div class="bg-white/5 rounded-xl border border-white/10 p-6">
-          <div class="flex flex-col items-center gap-4">
-            <div
-              class="text-xs text-white/40 uppercase tracking-widest font-bold border-b border-white/5 pb-2 px-8"
-            >
-              ${translateText("account_modal.connected_as")}
-            </div>
-            <div class="flex items-center gap-8 justify-center flex-wrap">
-              <discord-user-header
-                .data=${this.userMeResponse?.user?.discord ?? null}
-              ></discord-user-header>
-              ${this.userMeResponse?.user?.steam
-                ? html`<steam-user-header
-                    .data=${this.userMeResponse.user.steam}
-                  ></steam-user-header>`
-                : null}
-              ${this.renderLoggedInAs()}
+        ${this.renderProfileCard("compact")} ${this.renderAccountIdentity()}
+        <account-settings-panel
+          .player=${this.userMeResponse?.player ?? null}
+          .user=${this.userMeResponse?.user ?? null}
+        ></account-settings-panel>
+        <!-- Hostile Takeover: provider linking, Steam, currency, rewards and
+             the creator code stay in the markup but hidden. -->
+        <div hidden>
+          <div class="bg-white/5 rounded-xl border border-white/10 p-6">
+            <div class="flex flex-col items-center gap-4">
+              <div
+                class="text-xs text-white/40 uppercase tracking-widest font-bold border-b border-white/5 pb-2 px-8"
+              >
+                ${translateText("account_modal.connected_as")}
+              </div>
+              <div class="flex items-center gap-8 justify-center flex-wrap">
+                <discord-user-header
+                  .data=${this.userMeResponse?.user?.discord ?? null}
+                ></discord-user-header>
+                ${this.userMeResponse?.user?.steam
+                  ? html`<steam-user-header
+                      .data=${this.userMeResponse.user.steam}
+                    ></steam-user-header>`
+                  : null}
+                ${this.renderLoggedInAs()}
+              </div>
             </div>
           </div>
+          ${this.renderRewardsPanel()} ${this.renderCreatorCodePanel()}
         </div>
-        ${this.renderRewardsPanel()} ${this.renderCreatorCodePanel()}
         ${this.renderDesktopLinkGateAction()}
+      </div>
+    `;
+  }
+
+  // Hostile Takeover: who is signed in, same card as the old "connected as"
+  // block. Slice 2.4 adds a root-only section after this in renderAccountTab.
+  private renderAccountIdentity(): TemplateResult {
+    const username = this.userMeResponse?.player?.username;
+    const email = this.userMeResponse?.user?.email;
+    return html`
+      <div class="bg-white/5 rounded-xl border border-white/10 p-6">
+        <div class="flex flex-col items-center gap-4">
+          <div
+            class="text-xs text-white/40 uppercase tracking-widest font-bold border-b border-white/5 pb-2 px-8"
+          >
+            ${translateText("account_modal.connected_as")}
+          </div>
+          <div class="flex flex-col items-center gap-1 w-full">
+            ${username
+              ? html`<div class="text-white text-lg font-medium">
+                  ${translateText("account_modal.linked_account", {
+                    account_name: username,
+                  })}
+                </div>`
+              : nothing}
+            ${email
+              ? html`<div class="text-white/50 text-sm">${email}</div>`
+              : nothing}
+          </div>
+        </div>
       </div>
     `;
   }

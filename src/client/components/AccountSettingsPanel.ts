@@ -9,6 +9,7 @@ import { isDesktopShell } from "../DesktopShell";
 import { showInGameAlert } from "../InGameModal";
 import { steamSDK } from "../SteamSDK";
 import { translateText } from "../Utils";
+import "./account/ChangePasswordCard";
 import "./baseComponents/Button";
 import "./DeleteAccountDialog";
 import "./IdentityTokenCard";
@@ -63,8 +64,13 @@ export class AccountSettingsPanel extends LitElement {
   render(): TemplateResult {
     return html`
       <div class="flex flex-col gap-6">
-        ${this.renderMarketingCard()}
-        <identity-token-card></identity-token-card>
+        <!-- Hostile Takeover: no marketing emails and no identity tokens;
+             kept in the markup but hidden. -->
+        <div hidden>
+          ${this.renderMarketingCard()}
+          <identity-token-card></identity-token-card>
+        </div>
+        <change-password-card></change-password-card>
         ${this.renderDeleteAccountCard()}
       </div>
     `;

@@ -1,8 +1,9 @@
 import { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { sanitizeClanTag } from "@openfront/shared/SharedUtil";
-import { html, LitElement } from "lit";
+import { html, LitElement, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { translateText } from "../client/Utils";
+import { accountPlayName } from "./AccountName";
 import { getUserMe, invalidateUserMe } from "./Api";
 import { checkClanTagOwnership } from "./ClanApi";
 import { verifiedBadge } from "./components/ui/VerifiedBadge";
@@ -321,6 +322,13 @@ export class UsernameInput extends LitElement {
     return accountVerifiedName(this.userMe);
   }
 
+  // Hostile Takeover: the signed-in account's username. When set, the player
+  // plays under it (read-only name box, no clan tag); the server enforces the
+  // same name at join (src/server/AccountName.ts).
+  private accountName(): string | null {
+    return accountPlayName(this.userMe);
+  }
+
   // Turn the toggle on iff the player has not opted out AND is still eligible;
   // silently off otherwise (logout, lapsed sub, TEMPORARY rename).
   //
@@ -529,6 +537,10 @@ export class UsernameInput extends LitElement {
    * (see applyVerifiedPreference), so it is the opt-in the resolver wants.
    */
   public resolvedName(): ResolvedPlayerName {
+    const account = this.accountName();
+    if (account !== null) {
+      return { name: account, source: "stored", verified: false };
+    }
     return resolvePlayerName({
       verifiedName: this.verifiedName(),
       verifiedOptIn: this.verifiedActive,
@@ -548,6 +560,7 @@ export class UsernameInput extends LitElement {
   }
 
   public getClanTag(): string | null {
+    if (this.accountName() !== null) return null;
     return this.clanTag.length >= MIN_CLAN_TAG_LENGTH &&
       this.clanTag.length <= MAX_CLAN_TAG_LENGTH &&
       validateClanTag(this.clanTag).isValid
@@ -801,7 +814,8 @@ export class UsernameInput extends LitElement {
       <!-- The name field takes whatever the tag picker and trailing button
            leave, so the row always fills the strip. -->
       <div class="flex items-center w-full h-full gap-1.5 sm:gap-2">
-        ${this.renderClanControl()} ${this.renderNameControl()}
+        ${this.accountName() === null ? this.renderClanControl() : nothing}
+        ${this.renderNameControl()}
       </div>
       <!-- One positioned slot, stacked. An error and the reservation reminder
            are not alternatives: the error is transient and self-inflicted
@@ -1015,6 +1029,8 @@ export class UsernameInput extends LitElement {
   // Name field. Verified play swaps the free-text input for a badge-led chip so
   // the state reads as "this is my account name", not "the input broke".
   private renderNameControl() {
+    const account = this.accountName();
+    if (account !== null) return this.renderAccountChip(account);
     return html`
       ${this.verifiedActive
         ? this.renderVerifiedChip()
@@ -1026,6 +1042,16 @@ export class UsernameInput extends LitElement {
         ${this.verifiedActive
           ? this.renderUseCustomButton()
           : this.renderUseVerifiedButton()}
+      </div>
+    `;
+  }
+
+  // Signed in: the account username, read-only, in the same box as the
+  // verified chip but without the check or the toggle button.
+  private renderAccountChip(name: string) {
+    return html`
+      <div class="flex items-center gap-1.5 ${NAME_BOX}">
+        <span class="min-w-0 truncate text-white ${NAME_TEXT}">${name}</span>
       </div>
     `;
   }
@@ -1216,6 +1242,16 @@ export class UsernameInput extends LitElement {
     // through an emptied field to the persona or a generated name, and play
     // must stay blocked until the player puts a name back.
     const trimmedBase = this.baseUsername.trim();
+
+    // Signed in: the account username is server-issued, so there is nothing
+    // to validate; the stored free-form name is left for when they sign out.
+    if (this.accountName() !== null) {
+      this._isValid = true;
+      this.validationError = "";
+      this.clanTagOwnershipError = "";
+      this.emitValidity();
+      return;
+    }
 
     const clanTagResult = validateClanTag(this.clanTag);
     if (!clanTagResult.isValid) {

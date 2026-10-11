@@ -30,6 +30,7 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { WebSocket, WebSocketServer } from "ws";
 import { z } from "zod";
+import { forcedAccountUsername } from "./AccountName";
 import { registerAdminBotRoutes } from "./AdminBotRoutes";
 import { censorPlayer } from "./Censor";
 import { Client } from "./Client";
@@ -692,6 +693,17 @@ export async function startWorker() {
           } else {
             verifySkipped = true;
           }
+        }
+
+        // Hostile Takeover: signed-in players play under their account
+        // username, whatever the client sent, and wear no clan tag.
+        const forcedName = await forcedAccountUsername(
+          clientMsg.token,
+          claims !== null,
+        );
+        if (forcedName !== null) {
+          username = forcedName;
+          clanTag = null;
         }
 
         // Try to reconnect an existing client (e.g., page refresh) with the
