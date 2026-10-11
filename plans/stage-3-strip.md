@@ -68,5 +68,18 @@ friends, news promos, featured stream and the Steam wishlist**. For each one:
   `/matchmaking/*`).
 - Use the 404 list from Stage 1's end-to-end check to catch anything missed.
 
+### Findings from Slice 1.4 (must be handled here)
+
+- **`/matchmaking/checkin`:** `Worker.ts` starts `startRankedCheckinLoops` with no config check, so every
+  worker long-polls 3 modes and logs 404 warnings forever. Add a server-side skip (a flag that defaults to
+  upstream's behaviour, for example `RANKED_ENABLED`, which we leave false).
+- **Prestige** (`PrestigeFlow`) shows an error on 404. Hide it with XP.
+- **Clan screens** (`ClanModal`, `components/clan/*`) show error states. Hide all clan entry points.
+  `UsernameInput`'s clan-tag check is already quiet.
+- `TribeStatsView` (`/public/tribe/*`) and `Matchmaking.ts` (`/matchmaking/join`) weren't checked. Confirm
+  they're unreachable once ranked and stats are hidden.
+- The quiet ones that only need their entry points hidden: friends, XP polling, player profile progress,
+  progression config, the clan leaderboard, and the lobby queue.
+
 **Approval:** the network log from the exit test, plus before/after screenshots of the homepage,
 account menu, lobby, in-game HUD and win screen.

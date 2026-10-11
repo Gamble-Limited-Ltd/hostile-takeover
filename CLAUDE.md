@@ -126,9 +126,11 @@ security or engine fix we want. Check what's waiting with
 4. Check new `resources/news.json` / `changelog.md` entries and strip store, Discord or paid-feature links.
 5. Quickly check the UI against the strict UI rules: new upstream screens may bring back
    store, ad or login entry points, and new `OpenFront` strings may need rebranding in `en.json`.
-6. Check whether the API contract changed: diff `/users/@me` and the JWT, `cosmetics.json` and
+6. If `src/server/Censor.ts` changed, mirror it into `packages/api/src/censor.ts` (the parity test in
+   `tests/api/Routes.test.ts` fails when they drift).
+7. Check whether the API contract changed: diff `/users/@me` and the JWT, `cosmetics.json` and
    `cluster.json` schemas under `packages/shared/src`, and update our API to match.
-7. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
+8. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
 
 **Keeping merges cheap** (every fork change must follow these):
 

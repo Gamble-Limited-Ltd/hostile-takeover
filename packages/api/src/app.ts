@@ -1,7 +1,8 @@
 import { base64urlToUuid, uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
-import { timingSafeEqual } from "node:crypto";
+import { sameSecret } from "./apiKey";
 import type { ApiEnv } from "./env";
+import { mountGameRoutes } from "./gameRoutes";
 import type { SigningKeys } from "./keys";
 import type { Store } from "./store";
 import {
@@ -41,12 +42,6 @@ function readCookie(header: string | undefined, name: string): string | null {
     }
   }
   return null;
-}
-
-function sameSecret(a: string, b: string): boolean {
-  const x = Buffer.from(a);
-  const y = Buffer.from(b);
-  return x.length === y.length && timingSafeEqual(x, y);
 }
 
 export function createApp(pool: Queryable, ctx?: AppContext): express.Express {
@@ -244,6 +239,8 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       }
     });
   }
+
+  mountGameRoutes(app, env);
 
   app.use(
     (

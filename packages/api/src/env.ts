@@ -29,6 +29,10 @@ export interface ApiEnv {
   jwtPrivateKeyFile: string;
   /** Shared secret the game server sends as x-api-key. */
   apiKey: string;
+  /** Public host[:port] of the one game server (no scheme), served as cluster.json's `a`. */
+  gameHost: string;
+  /** The commit-like version cluster.json reports for it; clients on a hex build must match. */
+  gameVersion: string;
   nodeEnv: string;
 }
 
@@ -75,6 +79,8 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
       str(source.HT_JWT_PRIVATE_KEY_FILE, DEFAULT_KEY_FILE),
     ),
     apiKey: source.API_KEY ?? "",
+    gameHost: str(source.HT_GAME_HOST, "localhost:3400"),
+    gameVersion: str(source.HT_GAME_VERSION, "0000000"),
     nodeEnv: source.NODE_ENV ?? "",
   };
 }
