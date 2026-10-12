@@ -11,6 +11,9 @@ type Obj = Record<string, any>;
  */
 export function deepAssign(target: Obj, source: Obj): void {
   for (const key of Object.keys(source)) {
+    if (key === "__proto__" || key === "constructor" || key === "prototype") {
+      continue;
+    }
     if (Array.isArray(source[key])) {
       if (key in target) {
         target[key] = structuredClone(source[key]);
