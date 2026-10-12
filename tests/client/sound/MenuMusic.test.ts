@@ -2,6 +2,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
 const howlInstances: any[] = [];
 
+// Our build ships no music (Features.music is off); these tests cover the
+// player that runs once tracks exist.
+vi.mock("../../../src/client/Features", () => ({ Features: { music: true } }));
+
 vi.mock("howler", () => {
   class MockHowl {
     src: string;

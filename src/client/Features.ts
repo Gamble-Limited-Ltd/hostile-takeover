@@ -12,6 +12,13 @@
  */
 export const Features = Object.freeze({
   /**
+   * Menu and gameplay music. Off: OpenFront's two tracks live in
+   * proprietary/ (all rights reserved) and we ship none, so neither track is
+   * requested. The music volume setting stays and does nothing until we have
+   * tracks of our own.
+   */
+  music: false,
+  /**
    * The store: STORE nav item and its notification dot, `#modal=store`,
    * `#modal=subscription` and `#affiliate=` routes, the subscription menu
    * row, and the purchase promo in the win box. Stripe loads only from the

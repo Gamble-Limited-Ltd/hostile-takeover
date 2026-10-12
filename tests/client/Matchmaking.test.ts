@@ -827,7 +827,7 @@ describe("MatchmakingModal game-start alert", () => {
 
     expect(FakeNotification.requestPermission).toHaveBeenCalledOnce();
     expect(alertMocks.construct).toHaveBeenCalledWith({
-      src: ["/sounds/effects/game-start-alert.mp3"],
+      src: ["/sounds/effects/game-start.mp3"],
     });
     expect(
       modal.querySelector('[aria-label="public_lobby.notify_on"]'),

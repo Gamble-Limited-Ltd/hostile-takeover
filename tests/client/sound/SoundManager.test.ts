@@ -4,6 +4,10 @@ const howlInstances: any[] = [];
 let nextPlayId = 1;
 const { howlerVolume } = vi.hoisted(() => ({ howlerVolume: vi.fn() }));
 
+// Our build ships no music (Features.music is off); these tests cover the
+// player that runs once tracks exist.
+vi.mock("../../../src/client/Features", () => ({ Features: { music: true } }));
+
 vi.mock("howler", () => {
   class MockHowl {
     src: string;

@@ -553,9 +553,11 @@ class Client {
     await customElements.whenDefined("mobile-nav-bar");
     await customElements.whenDefined("desktop-nav-bar");
 
+    // Overpass Bold (OFL, resources/fonts) under the old family name, so
+    // `--font-display` and GameVersion keep working; OpenFront.ttf is proprietary.
     const openFrontFont = new FontFace(
       "OpenFront",
-      `url(${assetUrl("fonts/OpenFront.ttf")})`,
+      `url(${assetUrl("fonts/overpass-bold.woff")})`,
     );
     document.fonts.add(openFrontFont);
     openFrontFont.load().catch(() => {});

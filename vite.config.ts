@@ -13,6 +13,10 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { configDefaults } from "vitest/config";
 import {
+  assetSourceDirs,
+  serveProprietary,
+} from "./src/server/ProprietaryAssets";
+import {
   buildPublicAssetManifest,
   copyRootPublicFiles,
   createHashedPublicAssetFiles,
@@ -213,7 +217,8 @@ export default defineConfig(({ mode }) => {
   });
   const resourcesDir = getResourcesDir(__dirname);
   const proprietaryDir = getProprietaryDir(__dirname);
-  const sourceDirs = [resourcesDir, proprietaryDir];
+  const withProprietary = serveProprietary(env.SERVE_PROPRIETARY);
+  const sourceDirs = assetSourceDirs(resourcesDir, __dirname, withProprietary);
   const assetManifest: AssetManifest = isProduction
     ? buildPublicAssetManifest(sourceDirs)
     : {};
@@ -382,7 +387,9 @@ export default defineConfig(({ mode }) => {
       ...(!isProduction
         ? [
             serveRootPublicDir(getPublicDir(resourcesDir)),
-            serveProprietaryDir(proprietaryDir, resourcesDir),
+            ...(withProprietary
+              ? [serveProprietaryDir(proprietaryDir, resourcesDir)]
+              : []),
             randomWorkerCreateProxy(devNumWorkers, masterPort),
             steamLinkAliasRedirect(),
           ]
