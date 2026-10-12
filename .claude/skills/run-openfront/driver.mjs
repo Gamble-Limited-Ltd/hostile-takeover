@@ -4,9 +4,9 @@
 // script placed inside the repo (so `playwright` resolves from
 // node_modules). Requires setup.sh to have been run once on this machine.
 import fs from "fs";
+import { createRequire } from "module";
 import os from "os";
 import path from "path";
-import { createRequire } from "module";
 import { pathToFileURL } from "url";
 
 const CACHE =
@@ -110,7 +110,10 @@ export async function prepContext(context) {
         a = { ...a, failIfMajorPerformanceCaveat: false };
       return gc.call(this, t, a);
     };
-    for (const C of [window.WebGL2RenderingContext, window.WebGLRenderingContext]) {
+    for (const C of [
+      window.WebGL2RenderingContext,
+      window.WebGLRenderingContext,
+    ]) {
       if (!C) continue;
       const gp = C.prototype.getParameter;
       C.prototype.getParameter = function (p) {

@@ -4,6 +4,8 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 // ─── Mocks (mirrors tests/client/clan/ClanModalTestUtils.ts factories) ──────
 
 vi.mock("../../src/client/Api", () => ({
+  getIdentityTokenAudiences: vi.fn(async () => []),
+  createIdentityToken: vi.fn(async () => null),
   getUserMe: vi.fn(async () => false as const),
   invalidateUserMe: vi.fn(),
   fetchPlayerById: vi.fn(async () => null),
@@ -12,6 +14,8 @@ vi.mock("../../src/client/Api", () => ({
 }));
 
 vi.mock("../../src/client/Auth", () => ({
+  userAuth: vi.fn(async () => false as const),
+  isLoggedIn: vi.fn(async () => false),
   discordLogin: vi.fn(),
   googleLogin: vi.fn(),
   linkGoogle: vi.fn(async () => true),

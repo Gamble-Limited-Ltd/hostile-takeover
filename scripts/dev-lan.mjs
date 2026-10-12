@@ -14,13 +14,20 @@ function detectLanIp() {
   return null;
 }
 
-const host = process.env.LAN_HOST || detectLanIp();
+// Unset or empty falls back (an empty VITE_PORT would break the URL).
+function envOr(key, fallback) {
+  const value = process.env[key];
+  if (value === undefined || value === "") return fallback();
+  return value;
+}
+
+const host = envOr("LAN_HOST", detectLanIp);
 if (!host) {
   console.error("No LAN address found; set LAN_HOST=<ip>.");
   process.exit(1);
 }
-const vitePort = process.env.VITE_PORT || "5178";
-const apiPort = process.env.API_PORT || "8787";
+const vitePort = envOr("VITE_PORT", () => "5178");
+const apiPort = envOr("API_PORT", () => "8787");
 const gameOrigin = `http://${host}:${vitePort}`;
 
 console.log(`\nLAN dev mode: open ${gameOrigin} from another device.`);
