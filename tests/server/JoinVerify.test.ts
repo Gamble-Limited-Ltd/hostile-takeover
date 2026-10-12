@@ -168,6 +168,16 @@ describe("planJoinVerify", () => {
     });
   });
 
+  it("verifies a first join with a null token when Turnstile is off", () => {
+    expect(
+      planJoinVerify({
+        ...firstJoin,
+        turnstileToken: null,
+        turnstileOff: true,
+      }),
+    ).toEqual({ action: "verify", token: null });
+  });
+
   // SECURITY: the skip paths must be unreachable for first joins — a skip
   // here would admit a player who never passed Turnstile.
   it("never skips a first join, whatever the game/identity state", () => {

@@ -645,6 +645,7 @@ export async function startWorker() {
               stored.username === clientMsg.username &&
               stored.clanTag === (clientMsg.clanTag ?? null),
             steamAuthed,
+            turnstileOff: !ServerEnv.turnstileEnabled(),
           });
           if (steamAuthed && !isReadmit) {
             log.info(

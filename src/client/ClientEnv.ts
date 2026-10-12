@@ -236,6 +236,10 @@ export class ClientEnv {
   static turnstileSiteKey(): string {
     return ClientEnv.get().turnstileSiteKey;
   }
+  // Hostile Takeover: an empty site key means Turnstile is off.
+  static turnstileEnabled(): boolean {
+    return ClientEnv.get().turnstileSiteKey.length > 0;
+  }
   static jwtAudience(): string {
     return ClientEnv.get().jwtAudience;
   }

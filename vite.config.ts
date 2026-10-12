@@ -224,9 +224,7 @@ export default defineConfig(({ mode }) => {
     gameEnv: JSON.stringify(env.GAME_ENV ?? "dev"),
     cluster: devClusterJson,
     instanceLetter: JSON.stringify(devInstanceLetter),
-    turnstileSiteKey: JSON.stringify(
-      env.TURNSTILE_SITE_KEY ?? "1x00000000000000000000AA",
-    ),
+    turnstileSiteKey: JSON.stringify(env.TURNSTILE_SITE_KEY ?? ""),
     jwtAudience: JSON.stringify(env.DOMAIN ?? "localhost"),
     // Dev only: set FARO_COLLECTOR_URL in .env to point a local client at a
     // collector; unset drops the guarded line, exactly as in production.
