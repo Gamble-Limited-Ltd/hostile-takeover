@@ -1,4 +1,5 @@
 // @vitest-environment node
+import { NewsItemSchema } from "@openfront/shared/ApiSchemas";
 import { ReservedClanTagsResponseSchema } from "@openfront/shared/ClanApiSchemas";
 import { CosmeticsSchema } from "@openfront/shared/CosmeticSchemas";
 import {
@@ -7,6 +8,7 @@ import {
 } from "@openfront/shared/ServerList";
 import type { AddressInfo } from "net";
 import { afterAll, beforeAll, describe, expect, test, vi } from "vitest";
+import { z } from "zod";
 import { createApp } from "../../packages/api/src/app";
 import { censorPlayer as apiCensor } from "../../packages/api/src/censor";
 import { isLoopbackHost, readEnv } from "../../packages/api/src/env";
@@ -15,6 +17,7 @@ import {
   keysFromPem,
 } from "../../packages/api/src/keys";
 import type { Store } from "../../packages/api/src/store";
+import newsFile from "../../resources/news.json";
 import { censorPlayer as serverCensor } from "../../src/server/Censor";
 import { sendCheckin } from "../../src/server/ClusterCheckin";
 import { fetchCustomTribes } from "../../src/server/CustomTribes";
@@ -115,6 +118,14 @@ describe("server callers parse the real responses", () => {
       await (await fetch(base + "/reserved_clan_tags")).json(),
     );
     expect(tags).toEqual([]);
+  });
+
+  test("news.json is the bundled file and parses as NewsItem[] (getNews)", async () => {
+    const res = await fetch(base + "/news.json");
+    expect(res.status).toBe(200);
+    const items = z.array(NewsItemSchema).parse(await res.json());
+    expect(items.length).toBeGreaterThan(0);
+    expect(items).toEqual(newsFile);
   });
 
   test("cluster.json parses as the client's ServerList and picks server a", async () => {

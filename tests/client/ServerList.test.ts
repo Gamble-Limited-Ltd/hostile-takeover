@@ -457,6 +457,33 @@ describe("startServerListPolling", () => {
     expect(fetchMock).toHaveBeenCalledTimes(7);
   });
 
+  it("backs off when the API answers 404 (no list for this site)", async () => {
+    vi.useFakeTimers();
+    fetchMock.mockImplementation(async () =>
+      jsonResponse({ error: "not_found" }, 404),
+    );
+    startServerListPolling();
+    await vi.advanceTimersByTimeAsync(1);
+    expect(fetchMock).toHaveBeenCalledTimes(1);
+
+    // 10s, then 20s, then 40s between beats, not a flat 10s.
+    await vi.advanceTimersByTimeAsync(RETRY_MS);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(2 * RETRY_MS - 1_000);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(4 * RETRY_MS - 1_000);
+    expect(fetchMock).toHaveBeenCalledTimes(3);
+    await vi.advanceTimersByTimeAsync(1_000);
+    expect(fetchMock).toHaveBeenCalledTimes(4);
+
+    // Capped at five minutes: an hour is at most a dozen more beats.
+    await vi.advanceTimersByTimeAsync(60 * 60_000);
+    expect(fetchMock.mock.calls.length).toBeLessThanOrEqual(4 + 13);
+    stopServerListPolling();
+  });
+
   it("skips beats while the tab is hidden and resumes when it is shown", async () => {
     vi.useFakeTimers();
     let hidden = false;
