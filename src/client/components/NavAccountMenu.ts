@@ -213,7 +213,7 @@ export class NavAccountMenu extends LitElement {
 
     // Nothing to share without a publicId (older backend, or a session whose
     // player record hasn't resolved).
-    if (publicId) {
+    if (publicId && Features.profile) {
       items.push({
         key: "copy-profile-url",
         labelKey: "nav_account_menu.copy_profile_url",
@@ -237,13 +237,17 @@ export class NavAccountMenu extends LitElement {
         icon: iconGear,
         onSelect: () => this.openModal("account-settings"),
       },
-      {
+    );
+
+    // Hostile Takeover: username changes are out of v1 (Features.usernameChange).
+    if (Features.usernameChange) {
+      items.push({
         key: "change-username",
         labelKey: "nav_account_menu.change_username",
         icon: iconTag,
         onSelect: () => this.openModal("change-username"),
-      },
-    );
+      });
+    }
 
     if (Features.store && subscribed) {
       items.push({
@@ -384,6 +388,7 @@ export class NavAccountMenu extends LitElement {
 
   /** The signed-in player's level, or null when there is none to show. */
   private progress(): Progress | null {
+    if (!Features.xp) return null;
     if (!this.isSignedIn() || this.userMeResponse === false) return null;
     return this.userMeResponse.player.progress ?? null;
   }

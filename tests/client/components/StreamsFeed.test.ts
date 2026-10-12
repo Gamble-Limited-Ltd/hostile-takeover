@@ -11,6 +11,26 @@ import {
   streamsFeed,
 } from "../../../src/client/StreamsFeed";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 vi.mock("../../../src/client/Api", () => ({ getStreams: vi.fn() }));
 const getStreamsMock = vi.mocked(getStreams);
 

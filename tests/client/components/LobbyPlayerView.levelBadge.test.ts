@@ -5,10 +5,30 @@ import {
 import type { LevelBadge } from "@openfront/shared/LevelBadgeWire";
 import { packLevelBadge } from "@openfront/shared/LevelBadgeWire";
 import type { ClientInfo } from "@openfront/shared/WireSchemas";
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import "../../../src/client/components/LobbyPlayerView";
 import type { LobbyTeamView } from "../../../src/client/components/LobbyPlayerView";
 import { UserSettings } from "../../../src/client/UserSettings";
+
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
 
 const BADGE: LevelBadge = { level: 42, prestige: 2, legend: false };
 // As the roster carries it.

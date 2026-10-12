@@ -6,8 +6,9 @@
  * modules stay in the tree and stay loadable so upstream merges stay cheap;
  * flipping a switch to `true` brings its entry points back.
  *
- * Add new switches here (Slice 3.5: xp, ranked, clans, friends, ...) rather
- * than scattering ad-hoc `hidden` attributes. Keep every default `false`.
+ * Add new switches here rather than scattering ad-hoc `hidden` attributes.
+ * Keep every default `false`. Turning a feature back on is: implement its
+ * endpoints in packages/api, then flip its switch.
  */
 export const Features = Object.freeze({
   /**
@@ -31,4 +32,63 @@ export const Features = Object.freeze({
    * `adsEnabled` render local that nothing sets.
    */
   ads: false,
+  /**
+   * XP, levels, prestige and achievements: the XP panel and Legend ceremony
+   * in the win box, `PastGameXpCard`, `PrestigeFlow`, the level badge on
+   * player names (lobby roster, player panel) and in the account menu, and
+   * the account modal's level card. Also gates the request layer
+   * (`ProgressionApi`: `/users/@me/xp*`, `/users/@me/prestige`,
+   * `/public/progression/config`, `/public/player/<id>/progress`), so with
+   * this off none of them is ever called.
+   */
+  xp: false,
+  /**
+   * Ranked and matchmaking: the homepage RANKED button, `#modal=ranked`,
+   * the `?requeue=` reopen and the win box's requeue button. With no way in,
+   * `Matchmaking.ts` (`/matchmaking/join`) and `RankedModal` never load.
+   */
+  ranked: false,
+  /**
+   * Leaderboards: the LEADERBOARD item in the desktop and mobile nav and
+   * the `#modal=leaderboard` route (player, clan and tribe boards).
+   */
+  leaderboard: false,
+  /**
+   * Clans: the CLANS nav item (desktop and mobile), `#modal=clan`, and the
+   * clan TAG box in `UsernameInput` (also keeps a stored tag from being
+   * read, so no `/public/clan/<tag>/exists` check runs).
+   */
+  clans: false,
+  /**
+   * Friends: the account modal's FRIENDS tab (`FriendsList`, `/friends*`).
+   */
+  friends: false,
+  /**
+   * Public profiles and stats: the account modal's STATS and GAMES tabs and
+   * "Share Profile" button (and the `/player/<id>` fetch behind them), the
+   * account menu's "Copy profile URL", `#modal=profile` and `#modal=stats`,
+   * and `TribeStatsView` (`/public/tribe/*`).
+   */
+  profile: false,
+  /**
+   * Username changes (out of v1): the account menu's "Change username" row
+   * and `#modal=change-username`.
+   */
+  usernameChange: false,
+  /**
+   * The featured stream panel and "Streaming now" strip. With this off the
+   * shared poller never starts, so `/streams.json` is never fetched.
+   */
+  stream: false,
+  /**
+   * Steam wishlist promos: the footer banner, the mobile play-page widget
+   * and the win box promo (and the Steam iframe behind them).
+   */
+  steam: false,
+  /**
+   * Discord and community promos: the footer Discord icon, the win box's
+   * "Join Discord" promo, and the news box's tournament / Discord items
+   * (the news modal and other news items stay).
+   */
+  discord: false,
 });

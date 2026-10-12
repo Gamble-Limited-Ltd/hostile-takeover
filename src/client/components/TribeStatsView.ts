@@ -2,6 +2,7 @@ import { TribeStatsResponse } from "@openfront/shared/ApiSchemas";
 import { html, LitElement, nothing, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { fetchTribeStats } from "../Api";
+import { Features } from "../Features";
 import { translateText } from "../Utils";
 import { renderLoadingSpinner } from "./BaseModal";
 import { formatWindowDate } from "./leaderboard/LeaderboardTribeTable";
@@ -35,6 +36,8 @@ export class TribeStatsView extends LitElement {
   }
 
   private async load(name: string) {
+    // Hostile Takeover: no /public/tribe request unless Features.profile.
+    if (!Features.profile) return;
     const seq = ++this.loadSeq;
     this.stats = null;
     const stats = await fetchTribeStats(name);
