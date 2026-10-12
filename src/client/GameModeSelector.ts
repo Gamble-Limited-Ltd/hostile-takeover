@@ -692,7 +692,12 @@ export class GameModeSelector extends LitElement {
               </div>`
             : nothing}
         </div>
-        <div class="grid grid-cols-3 gap-4 h-14 sm:col-span-2 sm:row-start-4">
+        <!-- Hostile Takeover: two columns while RANKED is hidden (owner, 2026-10-12). -->
+        <div
+          class="grid ${Features.ranked
+            ? "grid-cols-3"
+            : "grid-cols-2"} gap-4 h-14 sm:col-span-2 sm:row-start-4"
+        >
           ${this.renderSmallActionCard(
             translateText("main.create"),
             this.openHostLobby,
