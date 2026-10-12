@@ -200,11 +200,17 @@
       );
     </script>
 
-    <!-- CrazyGames SDK -->
-    <script
-      src="https://sdk.crazygames.com/crazygames-sdk-v3.js"
-      async
-    ></script>
+    <!-- CrazyGames SDK. Hostile Takeover: only injected when the page is
+         framed (the SDK is useless outside CrazyGames' iframe), so a normal
+         visit never contacts sdk.crazygames.com. -->
+    <script>
+      if (window.self !== window.top) {
+        const sdk = document.createElement("script");
+        sdk.src = "https://sdk.crazygames.com/crazygames-sdk-v3.js";
+        sdk.async = true;
+        document.head.appendChild(sdk);
+      }
+    </script>
 
     <!-- Cloudflare Turnstile -->
     <% if (turnstileSiteKey !== '""') { %>

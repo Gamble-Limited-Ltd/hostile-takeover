@@ -133,9 +133,12 @@ export class Footer extends LitElement {
         <div
           class="hidden lg:flex lg:col-start-3 lg:items-center lg:justify-end lg:pt-2 lg:pr-20"
         >
+          <!-- Hostile Takeover: the Steam wishlist banner is hidden (the
+               element stays mounted so nothing reflows). -->
           <steam-wishlist-button
             campaign="home_desktop"
             class="min-w-0 flex-1 max-w-[544px]"
+            hidden
           ></steam-wishlist-button>
         </div>
 

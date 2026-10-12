@@ -33,7 +33,6 @@ import { MAX_PRESTIGE, reachedLegendThisGame } from "../../Progression";
 import { resolveXpAccount } from "../../ProgressionAccount";
 import { fetchProgressionConfig, pollGameXp } from "../../ProgressionApi";
 import { PlaySoundEffectEvent } from "../../sound/Sounds";
-import { steamSDK } from "../../SteamSDK";
 import { SendWinnerEvent } from "../../Transport";
 import { GameView } from "../../view";
 
@@ -336,7 +335,9 @@ export class WinModal extends LitElement implements Controller {
   innerHtml() {
     // The Steam desktop build has nothing to wishlist — fall through to the
     // other promos so the box is never empty.
-    const canWishlist = !steamSDK.isOnSteam();
+    // Hostile Takeover: the Steam wishlist promo is never offered here, so
+    // the win box falls through to the other promos.
+    const canWishlist = false;
 
     if (isInIframe()) {
       return canWishlist ? this.steamWishlist() : this.discordDisplay();
