@@ -1,0 +1,43 @@
+Hostile Takeover
+================
+
+Hostile Takeover is a modified version of OpenFront
+(https://github.com/openfrontio/openfrontio), Copyright (c) OpenFront and
+Contributors. It is published by Gamble Limited Ltd. It is not affiliated
+with or endorsed by OpenFront.
+
+Source code (AGPL v3): https://github.com/Gamble-Limited-Ltd/hostile-takeover
+
+What belongs to OpenFront
+-------------------------
+
+- Code: OpenFront's code is licensed under the GNU Affero General Public
+  License v3 (AGPL v3). See LICENSE, and LICENSING.md for the history of
+  OpenFront's licensing and its additional attribution terms.
+- resources/: licensed under Creative Commons BY-SA 4.0
+  (http://creativecommons.org/licenses/by-sa/4.0/). See LICENSE-ASSETS.
+  Attribution required: "OpenFront" or "OpenFront Inc."
+- proprietary/: Copyright (c) OpenFront Inc. and Contributors, All Rights
+  Reserved. These files are included unchanged, only as part of the complete
+  OpenFront software package, under proprietary/LICENSE. They are not
+  licensed for use, modification or redistribution outside OpenFront, and
+  Hostile Takeover does not add to, modify or reuse them: our own art lives
+  in resources/ instead. The build still serves the files in this directory
+  (the OpenFront font used for the version line under the logo, and some
+  images and sounds), so they remain in the package.
+
+What belongs to Gamble Limited Ltd.
+-----------------------------------
+
+- packages/api (our account and sign-in API), our sign-up, login and admin
+  screens, and the other changes we made to OpenFront's files (listed in
+  FORK_CHANGES.md): AGPL v3.
+- The Hostile Takeover wordmark and icons (resources/images/HostileTakeover*
+  and resources/icons/ht512_*): Creative Commons BY-SA 4.0, to match
+  resources/. They are set in Overpass Bold, which ships in resources/fonts.
+
+Where the source is
+-------------------
+
+The complete corresponding source of the running game, including our
+changes, is at https://github.com/Gamble-Limited-Ltd/hostile-takeover

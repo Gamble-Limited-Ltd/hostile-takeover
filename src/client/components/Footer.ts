@@ -3,6 +3,12 @@ import { LitElement, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { composeVersionDisplay, desktopVersion } from "../DesktopShell";
 import { Features } from "../Features";
+import {
+  FORK_SOURCE_URL,
+  GAMBLE_LIMITED_URL,
+  UPSTREAM_SOURCE_URL,
+  meridianUrl,
+} from "../ForkLinks";
 import { currentGameVersion } from "../GameVersion";
 import "./SteamWishlistButton";
 
@@ -15,6 +21,8 @@ export class Footer extends LitElement {
 
   // Starts as the game version alone and gains the shell version once the
   // bridge answers, so the line is never blank while that call is in flight.
+  private readonly meridianHref = meridianUrl();
+
   @state() private versionLabel = this.gameVersion;
 
   createRenderRoot() {
@@ -130,6 +138,52 @@ export class Footer extends LitElement {
               target="_blank"
               class="hover:text-white transition-colors"
             ></a>
+          </div>
+          <!-- Hostile Takeover: publisher and fork attribution, and the links
+               to our other games (Meridian only when MERIDIAN_URL is set). -->
+          <div
+            class="text-xs mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-center"
+          >
+            <span data-i18n="main.attribution_publisher"></span>
+            <span>·</span>
+            <a
+              href=${UPSTREAM_SOURCE_URL}
+              data-i18n="main.attribution_based_on"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-white transition-colors"
+            ></a>
+            <span>·</span>
+            <span data-i18n="main.attribution_modified"></span>
+            <span>·</span>
+            <a
+              href=${FORK_SOURCE_URL}
+              data-i18n="main.attribution_source"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-white transition-colors"
+            ></a>
+          </div>
+          <div
+            class="text-xs mt-1 flex flex-wrap items-center justify-center gap-4 px-4"
+          >
+            <span data-i18n="main.more_games"></span>
+            <a
+              href=${GAMBLE_LIMITED_URL}
+              data-i18n="main.gamble_limited"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-white transition-colors"
+            ></a>
+            ${this.meridianHref
+              ? html`<a
+                  href=${this.meridianHref}
+                  data-i18n="main.meridian"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  class="hover:text-white transition-colors"
+                ></a>`
+              : nothing}
           </div>
         </div>
 
