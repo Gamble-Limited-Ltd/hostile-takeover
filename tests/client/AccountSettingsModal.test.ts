@@ -34,16 +34,19 @@ describe("AccountSettingsModal — identity token sites", () => {
     vi.clearAllMocks();
   });
 
-  // The modal is in the page from load; the site list is only fetched once a
-  // player actually opens account settings.
-  it("does not fetch the site list until the modal is opened", async () => {
+  // Upstream fetches the site list once a player opens account settings.
+  // Hostile Takeover keeps the identity-token card in a hidden wrapper
+  // (Slice 2.3) and a hidden card fetches nothing (Slice 3.5b), so the list
+  // is never requested, before or after opening.
+  it("never fetches the site list for the hidden card", async () => {
     expect(getIdentityTokenAudiences).not.toHaveBeenCalled();
 
     modal.open();
 
     await vi.waitFor(() =>
-      expect(modal.querySelector("identity-token-card select")).not.toBeNull(),
+      expect(modal.querySelector("identity-token-card")).not.toBeNull(),
     );
-    expect(getIdentityTokenAudiences).toHaveBeenCalledTimes(1);
+    await new Promise((resolve) => setTimeout(resolve, 50));
+    expect(getIdentityTokenAudiences).not.toHaveBeenCalled();
   });
 });
