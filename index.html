@@ -221,6 +221,8 @@
     ></script>
     <% } %>
 
+    <!-- Hostile Takeover: ad and analytics scripts are never emitted unless a render local `adsEnabled` is set; nothing sets it. -->
+    <% if (typeof adsEnabled !== "undefined" && adsEnabled) { %>
     <script data-cfasync="false">
       window.ramp = window.ramp || {};
       window.ramp.que = window.ramp.que || [];
@@ -263,6 +265,7 @@
 
       gtag("config", "G-WQGQQ8RDN4");
     </script>
+    <% } %>
   </head>
 
   <body
@@ -599,13 +602,16 @@
       });
     </script>
 
+    <% if (typeof adsEnabled !== "undefined" && adsEnabled) { %>
     <!-- Analytics -->
     <script
       defer
       src="https://static.cloudflareinsights.com/beacon.min.js"
       data-cf-beacon='{"token": "03d93e6fefb349c28ee69b408fa25a13"}'
     ></script>
+    <% } %>
     <script type="module" src="/src/client/Main.ts"></script>
+    <% if (typeof adsEnabled !== "undefined" && adsEnabled) { %>
     <footer>
       <script
         data-cfasync="false"
@@ -613,5 +619,6 @@
         src="//cdn.intergient.com/1025558/75940/ramp.js"
       ></script>
     </footer>
+    <% } %>
   </body>
 </html>

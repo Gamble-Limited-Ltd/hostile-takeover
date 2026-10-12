@@ -24,4 +24,11 @@ export const Features = Object.freeze({
    * its Flags category, stay reachable with this off.
    */
   cosmetics: false,
+  /**
+   * Ads: with this off `window.adsEnabled` stays false, so Admiral, the
+   * AdGatekeeper probe and every Playwire/RAMP slot loader never run. The
+   * ad and analytics scripts in index.html are separately guarded by an EJS
+   * `adsEnabled` render local that nothing sets.
+   */
+  ads: false,
 });

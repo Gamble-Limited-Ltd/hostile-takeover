@@ -30,6 +30,11 @@ Slice 5.1 comes first, then 5.2 and 5.3. Mutating cloudflared or DNS needs the o
 - OpenFront's GitHub workflows are already disabled on the fork (2026-10-12); our CI is `ht-ci.yml`.
 - **No framing:** the game's responses send `Content-Security-Policy: frame-ancestors 'none'` (from
   Slice 3.2: the CrazyGames SDK loads only when the page is framed, so this makes sure it never does).
+- **CSP backstop (from Slice 3.4):** extend that policy so `script-src` / `connect-src` allow only our game
+  and API hosts (plus what the game really needs), so a third-party script can't come back unnoticed.
+- **Cloudflare Web Analytics:** if the zone has it on with automatic setup, Cloudflare injects
+  `beacon.min.js` at the edge whatever our HTML says. Check it's off for both hostnames (shown to the owner
+  with the tunnel change in 5.2), and re-run the zero-third-party check against production.
 
 ## Slice 5.2 — Tunnel and DNS (main session with the owner, step by step)
 
