@@ -3,6 +3,7 @@ import { base64urlToUuid } from "@openfront/shared/Base64";
 import { decodeJwt } from "jose";
 import { UserSettings } from "src/client/UserSettings";
 import { z } from "zod";
+import { activeDeadlineSignal } from "./ActiveDeadline";
 import { getApiBase, getAudience } from "./Api";
 import { ClientEnv } from "./ClientEnv";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
@@ -520,7 +521,7 @@ async function doRefreshJwt(): Promise<void> {
     const response = await fetch(getApiBase() + "/auth/refresh", {
       method: "POST",
       credentials: "include",
-      signal: AbortSignal.timeout(10_000),
+      signal: activeDeadlineSignal(10_000),
     });
     if (response.status === 401) {
       // The only answer that means the session is dead: the server has
