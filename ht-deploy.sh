@@ -17,7 +17,10 @@ API_IMAGE=hostile-takeover-api
 WAIT_SECONDS="${HT_WAIT_SECONDS:-240}"
 
 dc() { docker compose -p "$PROJECT" -f "$FILE" "$@"; }
-fail() { echo "ht-deploy: $*" >&2; exit 1; }
+fail() {
+    echo "ht-deploy: $*" >&2
+    exit 1
+}
 trap 'echo "ht-deploy: FAILED (line $LINENO)" >&2' ERR
 
 [ -f .env.prod ] || fail ".env.prod is missing; run ./ht-init-prod.sh first"
@@ -29,36 +32,40 @@ MERIDIAN_URL="$(sed -n 's/^MERIDIAN_URL=//p' .env.prod | tail -n 1)"
 export MERIDIAN_URL
 
 wait_healthy() {
-  local deadline=$((SECONDS + WAIT_SECONDS)) c status all
-  while [ "$SECONDS" -lt "$deadline" ]; do
-    all=healthy
-    for c in "$@"; do
-      status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2>/dev/null || echo missing)"
-      [ "$status" = unhealthy ] && { dc ps; docker logs --tail 40 "$c" >&2 || true; fail "$c is unhealthy"; }
-      [ "$status" = healthy ] || all=waiting
+    local deadline=$((SECONDS + WAIT_SECONDS)) c status all
+    while [ "$SECONDS" -lt "$deadline" ]; do
+        all=healthy
+        for c in "$@"; do
+            status="$(docker inspect -f '{{if .State.Health}}{{.State.Health.Status}}{{else}}{{.State.Status}}{{end}}' "$c" 2> /dev/null || echo missing)"
+            [ "$status" = unhealthy ] && {
+                dc ps
+                docker logs --tail 40 "$c" >&2 || true
+                fail "$c is unhealthy"
+            }
+            [ "$status" = healthy ] || all=waiting
+        done
+        [ "$all" = healthy ] && return 0
+        sleep 3
     done
-    [ "$all" = healthy ] && return 0
-    sleep 3
-  done
-  dc ps
-  fail "timed out after ${WAIT_SECONDS}s waiting for: $*"
+    dc ps
+    fail "timed out after ${WAIT_SECONDS}s waiting for: $*"
 }
 
 if [ $# -ge 1 ]; then
-  HASH="$1"
-  [[ "$HASH" =~ ^[0-9a-f]{7,40}$ ]] || fail "'$HASH' is not a commit hash"
-  for img in "$GAME_IMAGE" "$API_IMAGE"; do
-    docker image inspect "$img:$HASH" >/dev/null 2>&1 || fail "no image $img:$HASH on this machine (images are only kept for commits that were deployed here)"
-  done
-  echo "Rolling back to $HASH"
+    HASH="$1"
+    [[ "$HASH" =~ ^[0-9a-f]{7,40}$ ]] || fail "'$HASH' is not a commit hash"
+    for img in "$GAME_IMAGE" "$API_IMAGE"; do
+        docker image inspect "$img:$HASH" > /dev/null 2>&1 || fail "no image $img:$HASH on this machine (images are only kept for commits that were deployed here)"
+    done
+    echo "Rolling back to $HASH"
 else
-  if [ -z "${HT_ALLOW_DIRTY:-}" ] && ! git diff --quiet HEAD --; then
-    fail "tracked files have uncommitted changes; commit them (or HT_ALLOW_DIRTY=1 for a test build)"
-  fi
-  [ -n "${HT_SKIP_PULL:-}" ] || git pull --ff-only
-  HASH="$(git rev-parse HEAD)"
-  echo "Building $HASH"
-  HT_TAG="$HASH" dc build
+    if [ -z "${HT_ALLOW_DIRTY:-}" ] && ! git diff --quiet HEAD --; then
+        fail "tracked files have uncommitted changes; commit them (or HT_ALLOW_DIRTY=1 for a test build)"
+    fi
+    [ -n "${HT_SKIP_PULL:-}" ] || git pull --ff-only
+    HASH="$(git rev-parse HEAD)"
+    echo "Building $HASH"
+    HT_TAG="$HASH" dc build
 fi
 
 # `latest` always points at what is deployed, so a bare `docker compose up -d` stays consistent.
