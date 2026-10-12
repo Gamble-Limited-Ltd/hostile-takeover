@@ -89,7 +89,10 @@ describe("footer", () => {
       a.getAttribute("href"),
     );
     expect(hrefs.some((h) => h?.includes("discord"))).toBe(false);
-    expect(hrefs.some((h) => h?.includes("openfrontio"))).toBe(false);
+    // The only OpenFront GitHub link is the attribution's "Based on OpenFront".
+    expect(hrefs.filter((h) => h?.includes("openfrontio"))).toEqual([
+      "https://github.com/openfrontio/openfrontio",
+    ]);
     expect(hrefs.some((h) => h?.includes("reddit.com"))).toBe(false);
     expect(hrefs.some((h) => h?.includes("openfront.wiki"))).toBe(true);
     expect(

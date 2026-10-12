@@ -236,7 +236,11 @@ export default defineConfig(({ mode }) => {
       : undefined,
     instanceId: JSON.stringify(env.INSTANCE_ID ?? "DEV_ID"),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
-    faviconHref: buildAssetUrl("images/Favicon.svg", assetManifest, cdnBase),
+    faviconHref: buildAssetUrl(
+      "images/HostileTakeoverFavicon.svg",
+      assetManifest,
+      cdnBase,
+    ),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
       assetManifest,
@@ -248,11 +252,15 @@ export default defineConfig(({ mode }) => {
       cdnBase,
     ),
     desktopLogoImageUrl: buildAssetUrl(
-      "images/OpenFront.png",
+      "images/HostileTakeover.png",
       assetManifest,
       cdnBase,
     ),
-    mobileLogoImageUrl: buildAssetUrl("images/OF.png", assetManifest, cdnBase),
+    mobileLogoImageUrl: buildAssetUrl(
+      "images/HostileTakeoverMark.png",
+      assetManifest,
+      cdnBase,
+    ),
   };
 
   // Vite's HTML transform replaces the source <script src="/src/client/Main.ts">
@@ -411,6 +419,10 @@ export default defineConfig(({ mode }) => {
       // host shell / CI environment.
       "process.env.API_DOMAIN": JSON.stringify(
         mode === "test" ? "" : (env.API_DOMAIN ?? ""),
+      ),
+      // Hostile Takeover: the footer shows a Meridian link only when set.
+      "process.env.MERIDIAN_URL": JSON.stringify(
+        mode === "test" ? "" : (env.MERIDIAN_URL ?? ""),
       ),
       // Add other process.env variables if needed, OR migrate code to import.meta.env
     },
