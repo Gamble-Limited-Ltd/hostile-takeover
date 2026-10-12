@@ -61,7 +61,7 @@ export class PlayPage extends LitElement {
             >
               <img
                 src=${assetUrl("images/OpenFrontLogo.svg")}
-                alt="OpenFront"
+                alt="Hostile Takeover"
                 class="h-full w-auto"
               />
             </div>

@@ -393,6 +393,6 @@ describe("PublicAssetManifest", () => {
     expect(
       index[".well-known/apple-developer-merchantid-domain-association"],
     ).toBe("text/plain; charset=utf-8");
-    expect(index["press/"]).toBe("text/html; charset=utf-8");
+    expect(index["press/"]).toBeUndefined();
   });
 });
