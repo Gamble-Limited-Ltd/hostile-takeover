@@ -23,6 +23,8 @@ COPY --from=prod-deps /usr/src/app/node_modules ./node_modules
 COPY package*.json tsconfig.json tsconfig.base.json ./
 # node_modules/@openfront/* are symlinks into packages/.
 COPY packages ./packages
+# JSON the code imports statically (news.json here; QuickChat.json and tribeNameThemes.json via shared/engine-api).
+COPY resources/*.json ./resources/
 # The API reports this as cluster.json's `version`; a hex client build must match it.
 ARG GIT_COMMIT=unknown
 ENV HT_GAME_VERSION="$GIT_COMMIT"
