@@ -87,3 +87,26 @@ music is silent until we have our own tracks, and the game-start alert uses `res
 - **Wordmark font:** Overpass Bold, not the OpenFront font (that font is under `proprietary/`).
 - **Footer:** the cross-promo row is labelled "More games".
 - **Recommend** a lawyer reads the ToS and privacy policy before anyone outside the friend group plays.
+
+## Stage 4 as built (exit test 2026-10-12)
+
+- **4.1:** title, meta and `en.json` say Hostile Takeover; OpenFront's GitHub/Reddit footer links behind
+  `Features.upstreamSocials` (off); credits link → our `CREDITS.md`; OpenFront's press kit and `ads.txt` deleted;
+  the bell shows our changelog with OpenFront's notes below.
+- **4.2:** attribution row in the footer and loading screen; "More games" → Gamble Limited (Meridian when
+  `MERIDIAN_URL` is set at build time); `NOTICE`; wordmark, favicon and app icons in Overpass Bold.
+- **4.3:** our ToS and privacy policy (GLL format, our wording); already linked from the footer and sign-up checkbox.
+- **4.4:** `proprietary/` not served, bundled or copied unless `SERVE_PROPRIETARY=true`; display font loads
+  Overpass Bold under the old family name; music off behind `Features.music`; the alert plays `game-start.mp3`.
+- **Exit test:** guest home (1440 and 390), legal pages, sign-up, register, solo game, two-player private lobby to
+  the win screen, delete account: all pass. Network: only the game origin and the API; nothing from OpenFront hosts
+  or `proprietary/`. Only expected 4xx (`/cluster.json` 404 in dev, signed-out `/auth/refresh` 401).
+
+### Left for later stages
+
+- **Stage 5:** in the Vite dev server a browser navigation to `/terms-of-service.html` or `/privacy-policy.html`
+  returns the SPA homepage (a plain fetch gets the file). Confirm production serves the real pages from the
+  footer and sign-up links. A Docker build needs `MERIDIAN_URL` as a build arg once Meridian launches.
+- **Stage 6:** add the SIL OFL licence text for Overpass next to `resources/fonts/`; our own music tracks (then
+  turn `Features.music` on); hidden `DiscordLogo.svg`/`GoogleLogo.svg` are still fetched from our origin (harmless).
+  A lawyer should read the ToS and privacy policy before anyone outside the friend group plays.
