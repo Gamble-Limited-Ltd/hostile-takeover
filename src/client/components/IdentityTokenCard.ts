@@ -39,6 +39,9 @@ export class IdentityTokenCard extends LitElement {
   }
 
   private async loadAudiences(): Promise<void> {
+    // Hostile Takeover keeps this card inside a hidden wrapper and has no
+    // identity-token service, so a hidden card makes no request.
+    if (this.closest("[hidden]") !== null) return;
     const audiences = await getIdentityTokenAudiences();
     this.audiences = audiences;
     // Keep the player's pick if it survived a reload of the list.

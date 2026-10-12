@@ -64,6 +64,11 @@ const REFRESH_INTERVAL_MS = 30_000;
 // waiting -- and the Retry button is the escape hatch for anyone who has not.
 const RETRY_BASE_MS = 10_000;
 const RETRY_MAX_MS = 60_000;
+// An API that ANSWERS but has no list for this site (a 404, as local dev gets
+// from our API) is not an outage: re-asking every 10s buys nothing. Each
+// consecutive "answered, no list" beat doubles the wait, up to this cap; a
+// real list or an unanswered attempt resets it.
+const NO_LIST_MAX_MS = 300_000;
 // How many attempts in a row must go unanswered before the UI calls it an
 // outage. One failure is a blip -- a 4s timeout on a flaky connection, a
 // worker restart mid-beat, a proxy hiccup -- and the cached list keeps
@@ -130,6 +135,8 @@ let inGame = false;
 // and was skipped; it runs when the pause lifts. See scheduleNextPoll.
 let beatSkipped = false;
 let reachable: boolean | null = null;
+// Consecutive heartbeat attempts that were answered but carried no list.
+let consecutiveNoList = 0;
 // Consecutive unanswered attempts (a 5xx is one), reset by any other
 // answer. Only this, and not
 // `reachable` alone, decides backendUnreachableConfirmed().
@@ -175,6 +182,7 @@ export function resetServerList(): void {
   inGame = false;
   reachable = null;
   consecutiveFailures = 0;
+  consecutiveNoList = 0;
   manualRetry.reset();
   refresh.reset();
   warnedMalformed = false;
@@ -485,16 +493,30 @@ function runPoll(): void {
 // than it was due, so switching tabs or leaving a match cannot add requests.
 function scheduleNextPoll(gotList: boolean): void {
   if (!polling) return;
-  pollTimer = setTimeout(
-    () => {
-      pollTimer = null;
-      if (heartbeatPaused()) {
-        beatSkipped = true;
-        return;
-      }
-      runPoll();
-    },
-    gotList ? REFRESH_INTERVAL_MS : retryDelayMs(consecutiveFailures),
+  pollTimer = setTimeout(() => {
+    pollTimer = null;
+    if (heartbeatPaused()) {
+      beatSkipped = true;
+      return;
+    }
+    runPoll();
+  }, nextPollDelayMs(gotList));
+}
+
+function nextPollDelayMs(gotList: boolean): number {
+  if (gotList) {
+    consecutiveNoList = 0;
+    return REFRESH_INTERVAL_MS;
+  }
+  if (consecutiveFailures > 0) {
+    consecutiveNoList = 0;
+    return retryDelayMs(consecutiveFailures);
+  }
+  // Answered, no list: back off from the base interval towards the cap.
+  consecutiveNoList++;
+  return Math.min(
+    RETRY_BASE_MS * 2 ** Math.min(consecutiveNoList - 1, 10),
+    NO_LIST_MAX_MS,
   );
 }
 

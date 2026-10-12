@@ -129,4 +129,19 @@ describe("IdentityTokenCard", () => {
     expect(card.querySelector("select")).toBeNull();
     expect(card.textContent?.trim()).toBe("");
   });
+
+  it("makes no request while it sits inside a hidden wrapper", async () => {
+    mockAudiences.mockClear();
+    const wrapper = document.createElement("div");
+    wrapper.hidden = true;
+    const hiddenCard = document.createElement(
+      "identity-token-card",
+    ) as IdentityTokenCard;
+    wrapper.appendChild(hiddenCard);
+    document.body.appendChild(wrapper);
+    await hiddenCard.updateComplete;
+    expect(mockAudiences).not.toHaveBeenCalled();
+    expect(hiddenCard.querySelector("select")).toBeNull();
+    wrapper.remove();
+  });
 });
