@@ -33,7 +33,8 @@ export const Features = Object.freeze({
    */
   ads: false,
   /**
-   * XP, levels, prestige and achievements: the XP panel and Legend ceremony
+   * XP, levels, prestige and achievements: the SOLO modal's achievements
+   * toggle / "sign in for achievements" button, the XP panel and Legend ceremony
    * in the win box, `PastGameXpCard`, `PrestigeFlow`, the level badge on
    * player names (lobby roster, player panel) and in the account menu, and
    * the account modal's level card. Also gates the request layer
@@ -91,4 +92,11 @@ export const Features = Object.freeze({
    * (the news modal and other news items stay).
    */
   discord: false,
+  /**
+   * YouTube embeds (third-party requests to youtube.com, ytimg, gstatic,
+   * doubleclick...): the Help modal's VIDEO TUTORIAL section and the loser's
+   * "Need some help?" win-box tutorial. The desktop shell's local <video>
+   * is unaffected. Plain links to YouTube stay (no request until clicked).
+   */
+  youtube: false,
 });
