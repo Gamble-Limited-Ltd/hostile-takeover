@@ -58,8 +58,9 @@ Slices 4.1 and 4.2 can run in parallel. Slice 4.3 needs the owner to review the 
   - Operator: Gamble Limited Ltd.
   - Players must be 13 or older. The game is for invited @kmlhs.org friends.
   - What we collect: first and last name, email, username, password hash, session cookies,
-    and in-game names and chat during a match. No game records are kept, there's no advertising,
-    and there's no third-party analytics.
+    and in-game names and chat during a match. No game records are kept and there's no advertising.
+  - Analytics: Cloudflare Web Analytics only (owner keeps it on across their platforms). Say what it is:
+    cookieless page-view counts collected by Cloudflare, our host/CDN. No other analytics or trackers.
   - How long we keep it: until the account is deleted, and sessions expire after 30 days.
   - Account deletion: in-game (Delete account) or by asking the owner.
   - The AGPL note: the source is available at the fork. The ToS can't restrict the rights the AGPL gives.

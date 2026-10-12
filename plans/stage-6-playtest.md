@@ -13,6 +13,10 @@ get fixed.
 - Abuse basics: the login and register rate limits work, a non-`@kmlhs.org` email is refused, the 13+ box
   is required, and a deleted account can't refresh.
 - Security pass (the `/security-review` skill) over `packages/api` and the auth changes.
+- **`sec/deps-hardening` is merged into `main`** (owner, 2026-10-12: must land before people play). It bumps
+  vulnerable dependencies (`npm audit fix`: proxy-addr, compression, ip-address, dompurify, undici) and guards
+  `deepAssign` against prototype pollution. Merge `main` into it, get CI green, then merge it. It touches
+  `package-lock.json`, so do it after Stage 3 lands and re-run `npm run inst` locally afterwards.
 
 ## Slice 6.2 — Playtest (owner and friends)
 
