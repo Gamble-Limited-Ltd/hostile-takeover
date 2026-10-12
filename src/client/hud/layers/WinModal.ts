@@ -348,7 +348,8 @@ export class WinModal extends LitElement implements Controller {
       return canWishlist ? this.steamWishlist() : this.discordDisplay();
     }
 
-    if (!this.isWin && getGamesPlayed() < 3) {
+    // Hostile Takeover: the YouTube tutorial is hidden unless Features.youtube.
+    if (Features.youtube && !this.isWin && getGamesPlayed() < 3) {
       return this.renderYoutubeTutorial();
     }
     if (this.rand < 0.25 && canWishlist) {
