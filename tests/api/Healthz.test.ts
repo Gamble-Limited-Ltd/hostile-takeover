@@ -57,3 +57,34 @@ describe("readEnv", () => {
     expect(() => readEnv({ HT_DB_PORT: "x" })).toThrow();
   });
 });
+
+describe("API response headers", () => {
+  test("never framed, never sniffed", async () => {
+    const server = createApp({ query: async () => ({}) }).listen(
+      0,
+      "127.0.0.1",
+    );
+    await new Promise((r) => server.once("listening", r));
+    try {
+      const { port } = server.address() as AddressInfo;
+      const res = await fetch(`http://127.0.0.1:${port}/healthz`);
+      expect(res.headers.get("content-security-policy")).toBe(
+        "default-src 'none'; frame-ancestors 'none'",
+      );
+      expect(res.headers.get("x-frame-options")).toBe("DENY");
+      expect(res.headers.get("x-content-type-options")).toBe("nosniff");
+      expect(res.headers.get("referrer-policy")).toBe(
+        "strict-origin-when-cross-origin",
+      );
+    } finally {
+      server.close();
+    }
+  });
+
+  test("HT_TRUST_PROXY defaults to loopback", () => {
+    expect(readEnv({}).trustProxy).toBe("loopback");
+    expect(
+      readEnv({ HT_TRUST_PROXY: "loopback, uniquelocal" }).trustProxy,
+    ).toBe("loopback, uniquelocal");
+  });
+});

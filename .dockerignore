@@ -16,3 +16,16 @@ coverage*
 tests/
 scripts/replay/
 scripts/split-packages/
+
+# Hostile Takeover: secrets, keys, OpenFront's proprietary assets and backups never enter a build context.
+.env*
+**/.keys
+*.pem
+*.key
+proprietary/
+backups/
+*.sql
+*.dump
+.last-deploy-hash
+.nodeterm/
+plans/

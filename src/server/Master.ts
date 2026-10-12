@@ -25,6 +25,7 @@ import { MasterLobbyService } from "./MasterLobbyService";
 import { setNoStoreHeaders } from "./NoStoreHeaders";
 import { startPolling } from "./PollingLoop";
 import { renderAppShell } from "./RenderHtml";
+import { securityHeaders } from "./SecurityHeaders";
 import { ServerEnv } from "./ServerEnv";
 import { applyStaticAssetCacheControl } from "./StaticAssetCache";
 
@@ -40,6 +41,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 app.use(express.json());
+
+// Hostile Takeover: CSP (no framing, no third-party scripts), nosniff, Referrer-Policy.
+app.use(securityHeaders());
 
 // Serve the shared app shell for the root document.
 app.use(async (req, res, next) => {

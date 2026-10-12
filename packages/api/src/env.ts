@@ -38,6 +38,12 @@ export interface ApiEnv {
   /** The commit-like version cluster.json reports for it; clients on a hex build must match. */
   gameVersion: string;
   nodeEnv: string;
+  /**
+   * Express `trust proxy` setting: which peers may set X-Forwarded-For.
+   * Loopback by default; production behind Docker also trusts the bridge
+   * network's private range (the tunnel reaches us from the bridge gateway).
+   */
+  trustProxy: string;
 }
 
 /** The repo root, wherever the process was started from. */
@@ -95,6 +101,7 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     gameHost: str(source.HT_GAME_HOST, "localhost:3400"),
     gameVersion: str(source.HT_GAME_VERSION, "0000000"),
     nodeEnv: source.NODE_ENV ?? "",
+    trustProxy: str(source.HT_TRUST_PROXY, "loopback"),
   };
 }
 

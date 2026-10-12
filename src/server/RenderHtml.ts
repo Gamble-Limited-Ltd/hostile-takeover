@@ -4,6 +4,7 @@ import type { Response } from "express";
 import fs from "fs/promises";
 import { setNoStoreHeaders } from "./NoStoreHeaders";
 import { getRuntimeAssetManifest } from "./RuntimeAssetManifest";
+import { applyAppShellCsp } from "./SecurityHeaders";
 import { ServerEnv } from "./ServerEnv";
 
 const APP_SHELL_CACHE_CONTROL =
@@ -168,5 +169,6 @@ export async function renderAppShell(
 ): Promise<void> {
   const rendered = await getAppShellContent(htmlPath);
   setAppShellCacheHeaders(res);
+  applyAppShellCsp(res, rendered);
   res.send(rendered);
 }

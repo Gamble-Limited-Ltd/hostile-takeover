@@ -36,3 +36,6 @@ map-generator/map-generator.exe
 .tick-records/
 .tick-baseline/
 packages/api/.keys/
+
+# Hostile Takeover: written by ht-deploy.sh
+.last-deploy-hash

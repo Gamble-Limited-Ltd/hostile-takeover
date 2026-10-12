@@ -14,6 +14,8 @@ COPY packages/engine-api/package.json ./packages/engine-api/
 COPY packages/engine-lib/package.json ./packages/engine-lib/
 COPY packages/shared/package.json ./packages/shared/
 COPY packages/zbin/package.json ./packages/zbin/
+# Hostile Takeover: build-prod's tsc also checks packages/api, so its deps must be installed.
+COPY packages/api/package.json ./packages/api/
 RUN --mount=type=cache,target=/root/.npm \
     npm ci --ignore-scripts
 
@@ -37,6 +39,9 @@ COPY scripts ./scripts
 
 ARG GIT_COMMIT=unknown
 ENV GIT_COMMIT="$GIT_COMMIT"
+# Hostile Takeover: build-time footer link to Meridian (vite.config.ts); empty hides it.
+ARG MERIDIAN_URL=
+ENV MERIDIAN_URL="$MERIDIAN_URL"
 RUN npm run build-prod
 
 # Production dependencies stage - separate from build

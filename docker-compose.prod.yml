@@ -1,0 +1,111 @@
+# Hostile Takeover production stack (this VM): game + API + Postgres.
+# Deploy with ./ht-deploy.sh. Never use `docker compose down -v` here: it deletes the database volume.
+# Always address it as `docker compose -p hostile_takeover -f docker-compose.prod.yml ...`.
+#
+# Secrets live in .env.prod (gitignored, mode 600; created by ./ht-init-prod.sh). The repo's .env is the
+# DEV file and is never read here. Only the non-secret settings are written below.
+name: hostile_takeover
+
+x-logging: &logging
+  driver: json-file
+  options:
+    max-size: "10m"
+    max-file: "3"
+
+services:
+  ht-db:
+    image: postgres:17-alpine
+    container_name: ht-db
+    restart: unless-stopped
+    # No published port: only ht-game / ht-api reach it, over the compose network.
+    env_file: .env.prod # POSTGRES_DB / POSTGRES_USER / POSTGRES_PASSWORD
+    volumes:
+      - ht_db_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", 'pg_isready -U "$$POSTGRES_USER" -d "$$POSTGRES_DB"']
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 10s
+    logging: *logging
+
+  ht-api:
+    image: hostile-takeover-api:${HT_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile.api
+      args:
+        GIT_COMMIT: ${HT_TAG:-0000000} # hex: cluster.json requires a commit-like version
+    container_name: ht-api
+    restart: unless-stopped
+    depends_on:
+      ht-db:
+        condition: service_healthy
+    env_file: .env.prod # HT_DB_*, API_KEY
+    environment:
+      NODE_ENV: production
+      API_PORT: "8787"
+      API_HOST: 0.0.0.0 # inside the container; the host side is published on loopback only
+      HT_DB_HOST: ht-db
+      HT_DB_PORT: "5432"
+      HT_DB_MIGRATE_ON_BOOT: "false" # ht-deploy.sh runs the migrations
+      API_URL: https://hostile-takeover-api.taps-holdings.org
+      DOMAIN: hostile-takeover.taps-holdings.org
+      GAME_ORIGIN: https://hostile-takeover.taps-holdings.org
+      HT_GAME_HOST: hostile-takeover.taps-holdings.org
+      HT_JWT_PRIVATE_KEY_FILE: /run/keys/jwt-ed25519.pem
+      # The tunnel reaches us from the Docker bridge gateway, so trust X-Forwarded-For from
+      # private ranges too; otherwise every player would share one rate-limit bucket.
+      HT_TRUST_PROXY: loopback, uniquelocal
+    volumes:
+      - ${HT_KEYS_DIR:-${HOME}/.config/hostile-takeover/keys}:/run/keys:ro
+    ports:
+      - "127.0.0.1:8287:8787"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:8787/healthz').then((r)=>r.json()).then((j)=>process.exit(j.ok&&j.db?0:1)).catch(()=>process.exit(1))",
+        ]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 20s
+    logging: *logging
+
+  ht-game:
+    image: hostile-takeover-game:${HT_TAG:-latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        GIT_COMMIT: ${HT_TAG:-0000000} # hex: cluster.json requires a commit-like version
+        MERIDIAN_URL: ${MERIDIAN_URL:-}
+    container_name: ht-game
+    restart: unless-stopped
+    depends_on:
+      ht-api:
+        condition: service_healthy
+    env_file: .env.prod # API_KEY
+    environment:
+      GAME_ENV: prod
+      DOMAIN: hostile-takeover.taps-holdings.org
+      API_URL: https://hostile-takeover-api.taps-holdings.org
+      GAME_HOST: hostile-takeover.taps-holdings.org
+      NUM_WORKERS: "2"
+      INSTANCE_LETTER: a
+      CDN_BASE: "" # no CDN: the game serves its own static files, same origin
+    ports:
+      - "127.0.0.1:8280:80"
+    healthcheck:
+      test: ["CMD", "curl", "-fsS", "http://127.0.0.1/api/health"]
+      interval: 15s
+      timeout: 5s
+      retries: 4
+      start_period: 60s
+    logging: *logging
+
+volumes:
+  ht_db_data:
