@@ -16,6 +16,12 @@ import {
 } from "../../src/client/UserSettings";
 import type { CosmeticCard } from "../../src/client/components/CosmeticCard";
 
+// Hostile Takeover: store and paid cosmetics are off by default; these tests
+// cover that UI, so turn the switches on.
+vi.mock("../../src/client/Features", () => ({
+  Features: { store: true, cosmetics: true },
+}));
+
 vi.mock("../../src/client/Api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/client/Api")>()),
   getUserMe: vi.fn(),

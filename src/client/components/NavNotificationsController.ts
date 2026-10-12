@@ -1,6 +1,7 @@
 import { ReactiveController, ReactiveControllerHost } from "lit";
 import version from "resources/version.txt?raw";
 import { getCosmeticsHash } from "../Cosmetics";
+import { Features } from "../Features";
 import { getGamesPlayed } from "../Utils";
 
 const HELP_SEEN_KEY = "helpSeen";
@@ -74,7 +75,7 @@ class NavNotificationsStore {
   }
 
   showStoreDot(): boolean {
-    return this._hasNewCosmetics && !this.showNewsDot();
+    return Features.store && this._hasNewCosmetics && !this.showNewsDot();
   }
 
   showHelpDot(): boolean {

@@ -39,6 +39,7 @@ import {
   ResolvedCosmetic,
   resolvedToPlayerPattern,
 } from "./Cosmetics";
+import { Features } from "./Features";
 import {
   CROWN_KEY,
   EFFECTS_KEY,
@@ -100,12 +101,14 @@ export class InventoryModal extends BaseModal {
   protected modalConfig() {
     return {
       hideTabs: true,
+      // Hostile Takeover: with `Features.cosmetics` off only Flags is offered,
+      // so it is also the default (BaseModal opens on tabs[0]).
       tabs: [
         { key: "skins", label: translateText("store.patterns") },
         { key: "flags", label: translateText("store.flags") },
         { key: "crowns", label: translateText("store.crowns") },
         { key: "effects", label: translateText("store.effects") },
-      ],
+      ].filter((t) => Features.cosmetics || t.key === "flags"),
     };
   }
 
@@ -374,7 +377,7 @@ export class InventoryModal extends BaseModal {
         item: this.equippedCrown(),
       },
     ];
-    return [
+    const all: InventoryLoadoutEntry[] = [
       ...entries.map(({ category, label, item }) => ({
         category,
         label,
@@ -390,6 +393,9 @@ export class InventoryModal extends BaseModal {
         }),
       },
     ];
+    return Features.cosmetics
+      ? all
+      : all.filter((entry) => entry.category === "flags");
   }
 
   /** Slot buttons read as a numbered row, so keep them in slot order. */
@@ -627,6 +633,7 @@ export class InventoryModal extends BaseModal {
           ariaLabel: translateText("common.back"),
           rightContent: html`<o-button
             data-inventory-header-action
+            ?hidden=${isLoggedIn && !Features.store}
             class="no-crazygames"
             variant=${isLoggedIn ? "primary" : "danger"}
             size="sm"
@@ -715,7 +722,7 @@ export class InventoryModal extends BaseModal {
       </div>`;
     }
     let grid: TemplateResult;
-    if (tab === "flags") {
+    if (tab === "flags" || !Features.cosmetics) {
       grid = html`${this.renderUnequip("flags")}${this.renderFlagGrid()}`;
     } else if (tab === "crowns") {
       grid = html`${this.renderUnequip("crowns")}${this.renderCrownGrid()}`;
@@ -734,9 +741,9 @@ export class InventoryModal extends BaseModal {
     } else {
       grid = html`${this.renderUnequip("skins")}${this.renderSkinGrid()}`;
     }
-    const category = tab as InventoryCategory;
+    const category = (Features.cosmetics ? tab : "flags") as InventoryCategory;
     return html`
-      ${this.ownershipState === "guest"
+      ${this.ownershipState === "guest" && Features.cosmetics
         ? html`<div data-inventory-sign-in>
             ${signedOutNotice(
               () => window.showPage?.("page-account"),
@@ -744,7 +751,7 @@ export class InventoryModal extends BaseModal {
             )}
           </div>`
         : nothing}
-      ${this.renderLoadoutMenu()}
+      ${Features.cosmetics ? this.renderLoadoutMenu() : nothing}
       <inventory-loadout-bar
         .entries=${this.loadoutEntries()}
         .activeCategory=${category}

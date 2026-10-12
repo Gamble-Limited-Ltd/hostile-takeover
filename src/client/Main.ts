@@ -55,6 +55,7 @@ import {
   type DesktopUpdateState,
 } from "./DesktopShell";
 import "./FeaturedStream";
+import { Features } from "./Features";
 import { loadGameClient, prefetchGameClient } from "./GameClientLoader";
 import "./GameModeSelector";
 import {
@@ -447,10 +448,13 @@ class Client {
     // Register modals with the URL router. Lobby modals (join/host) and
     // matchmaking are intentionally omitted — they own their own URL state
     // (path-based) or none at all.
-    modalRouter.register("store", {
-      tag: "store-modal",
-      pageId: "page-item-store",
-    });
+    // Hostile Takeover: no store, so #modal=store is an unknown route.
+    if (Features.store) {
+      modalRouter.register("store", {
+        tag: "store-modal",
+        pageId: "page-item-store",
+      });
+    }
     modalRouter.register("settings", {
       tag: "user-setting",
       pageId: "page-settings",
@@ -467,7 +471,9 @@ class Client {
     // Profile-menu modals: popup style, so no pageId.
     modalRouter.register("account-settings", { tag: "account-settings-modal" });
     modalRouter.register("change-username", { tag: "change-username-modal" });
-    modalRouter.register("subscription", { tag: "subscription-modal" });
+    if (Features.store) {
+      modalRouter.register("subscription", { tag: "subscription-modal" });
+    }
     modalRouter.register("stats", {
       tag: "game-stats-modal",
       pageId: "page-stats",
@@ -1436,7 +1442,7 @@ class Client {
     if (decodedHash.startsWith("#affiliate=")) {
       const affiliateCode = decodedHash.replace("#affiliate=", "");
       strip();
-      if (affiliateCode) {
+      if (affiliateCode && Features.store) {
         loadModal("store-modal").then(
           () => this.storeModal?.open({ affiliateCode }),
           (err) => console.error("store-modal failed to load:", err),

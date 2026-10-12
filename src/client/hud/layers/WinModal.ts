@@ -28,6 +28,7 @@ import {
 } from "../../Cosmetics";
 import { crazyGamesSDK } from "../../CrazyGamesSDK";
 import { isDesktopShell } from "../../DesktopShell";
+import { Features } from "../../Features";
 import { Platform } from "../../Platform";
 import { MAX_PRESTIGE, reachedLegendThisGame } from "../../Progression";
 import { resolveXpAccount } from "../../ProgressionAccount";
@@ -350,6 +351,9 @@ export class WinModal extends LitElement implements Controller {
       return this.steamWishlist();
     } else if (this.rand < 0.5) {
       return this.discordDisplay();
+    } else if (!Features.store) {
+      // Hostile Takeover: nothing to buy, so no pattern promo box.
+      return html``;
     } else {
       return this.renderPatternButton();
     }

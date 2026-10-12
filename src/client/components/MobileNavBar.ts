@@ -1,6 +1,7 @@
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { html, LitElement, TemplateResult } from "lit";
 import { customElement } from "lit/decorators.js";
+import { Features } from "../Features";
 import { NavNotificationsController } from "./NavNotificationsController";
 
 const MOBILE_ITEM =
@@ -104,6 +105,7 @@ export class MobileNavBar extends LitElement {
         ></button>
         <div
           class="no-crazygames nav-menu-item flex items-center w-full cursor-pointer"
+          ?hidden=${!Features.store}
           data-page="page-item-store"
           @click=${this._notifications.onStoreClick}
         >

@@ -5,6 +5,7 @@ import { ifDefined } from "lit/directives/if-defined.js";
 import { hasLinkedIdentity } from "../AccountIdentity";
 import { logOut } from "../Auth";
 import { crazyGamesSDK, type CrazyGamesUser } from "../CrazyGamesSDK";
+import { Features } from "../Features";
 import { showInGameConfirm } from "../InGameModal";
 import {
   latestUserMeResponse,
@@ -244,7 +245,7 @@ export class NavAccountMenu extends LitElement {
       },
     );
 
-    if (subscribed) {
+    if (Features.store && subscribed) {
       items.push({
         key: "subscription",
         labelKey: "nav_account_menu.change_subscription",

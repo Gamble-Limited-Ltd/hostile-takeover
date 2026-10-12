@@ -2,6 +2,12 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import "../../src/client/InventoryModal";
 import type { InventoryModal } from "../../src/client/InventoryModal";
 
+// Hostile Takeover: store and paid cosmetics are off by default; these tests
+// cover that UI, so turn the switches on.
+vi.mock("../../src/client/Features", () => ({
+  Features: { store: true, cosmetics: true },
+}));
+
 vi.mock("../../src/client/Auth", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/client/Auth")>()),
   userAuth: vi.fn(async () => false),
