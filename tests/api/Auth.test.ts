@@ -551,7 +551,11 @@ describe.skipIf(process.env.HT_TEST_DB !== "1")("real database flow", () => {
         expect(
           UserMeResponseSchema.parse(await me.json()).player.username,
         ).toBe(name);
-        expect((await refresh(h.base, cookie)).status).toBe(401);
+        // Reusing the rotated cookie inside the grace window (Slice 2.5) gets a
+        // JWT for the live successor and no new cookie.
+        const reuse = await refresh(h.base, cookie);
+        expect(reuse.status).toBe(200);
+        expect(reuse.headers.getSetCookie()).toEqual([]);
       } finally {
         h.close();
       }
