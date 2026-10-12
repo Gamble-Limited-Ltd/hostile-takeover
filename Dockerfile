@@ -24,7 +24,8 @@ COPY eslint.config.js ./
 COPY index.html ./
 COPY client-api.json ./
 COPY resources ./resources
-COPY proprietary ./proprietary
+# Slice 4.4: proprietary/ (OpenFront Inc., all rights reserved) is not shipped; see SERVE_PROPRIETARY.
+# COPY proprietary ./proprietary
 COPY src ./src
 COPY packages ./packages
 # build-prod runs scripts/buildAssetHashes.ts after vite, to emit

@@ -1,6 +1,7 @@
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { EventBus } from "@openfront/shared/EventBus";
 import { Howl } from "howler";
+import { Features } from "../Features";
 import { AudioMixer, PlayableCategory, streamsMusic } from "./AudioMixer";
 import {
   AmbienceTrack,
@@ -57,6 +58,7 @@ export class SoundManager {
    * covers the home page.
    */
   private buildBackgroundMusic(): void {
+    if (!Features.music) return;
     this.safely("initialize background music", () => {
       const music = new Howl({
         src: [assetUrl("sounds/music/gameplay.mp3")],

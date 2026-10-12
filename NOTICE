@@ -18,13 +18,9 @@ What belongs to OpenFront
   (http://creativecommons.org/licenses/by-sa/4.0/). See LICENSE-ASSETS.
   Attribution required: "OpenFront" or "OpenFront Inc."
 - proprietary/: Copyright (c) OpenFront Inc. and Contributors, All Rights
-  Reserved. These files are included unchanged, only as part of the complete
-  OpenFront software package, under proprietary/LICENSE. They are not
-  licensed for use, modification or redistribution outside OpenFront, and
-  Hostile Takeover does not add to, modify or reuse them: our own art lives
-  in resources/ instead. The build still serves the files in this directory
-  (the OpenFront font used for the version line under the logo, and some
-  images and sounds), so they remain in the package.
+  Reserved, under proprietary/LICENSE. Included unchanged only so the tree
+  matches OpenFront's for merges; not served, bundled or used by Hostile
+  Takeover. Our own art lives in resources/ instead.
 
 What belongs to Gamble Limited Ltd.
 -----------------------------------
