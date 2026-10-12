@@ -1,0 +1,42 @@
+# Weekly check for a new OpenFront release we haven't merged. The run fails
+# (GitHub emails whoever last edited the schedule) and the summary lists what's
+# waiting; follow "Syncing with upstream OpenFront" in CLAUDE.md.
+name: 🔭 Upstream release watch
+
+on:
+  schedule:
+    - cron: "0 14 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  watch:
+    name: 🔭 New OpenFront release?
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          ref: main
+          fetch-depth: 0
+      - name: Compare main with upstream
+        run: |
+          git remote add upstream https://github.com/openfrontio/OpenFrontIO.git
+          git fetch --quiet --no-tags upstream main
+          tag=$(git ls-remote --tags --refs upstream 'v0.*' | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -1)
+          git fetch --quiet --no-tags upstream "refs/tags/$tag:refs/tags/$tag"
+          behind=$(git rev-list --count main..upstream/main)
+          {
+            echo "## Upstream OpenFront"
+            echo "- Latest release tag: \`$tag\`"
+            echo "- Commits on upstream/main not in our main: **$behind**"
+          } >> "$GITHUB_STEP_SUMMARY"
+          if git merge-base --is-ancestor "$tag" main; then
+            echo "- \`$tag\` is already merged. Nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "- \`$tag\` is **not merged yet**: run the sync checklist." >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::OpenFront $tag is not merged into main ($behind upstream commits waiting)"
+            exit 1
+          fi

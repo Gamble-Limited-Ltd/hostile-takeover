@@ -109,6 +109,11 @@ Facts:
 - **Baseline** (2026-10-10): typecheck is clean, and 7980/7982 tests pass. The failures are
   `InventoryModal` tests timing out at random under VM load; they belong to the store UI we're
   removing.
+- **CI (GitHub Actions):** `.github/workflows/ht-ci.yml` (ours) runs typecheck, lint, Prettier and the
+  full test suite (4 shards plus `tests/server` alone) on every pushed branch. Upstream's workflows stay
+  in the tree but are disabled on the fork with `gh workflow disable`. Slices land as `slice/<n>` branches:
+  run targeted tests locally (`npx vitest <file> --run`), push, and merge to `main` once CI is green.
+  Never run the full suite on the VM while the dev stack or headless Chromium is up.
 
 ### Syncing with upstream OpenFront
 
@@ -135,7 +140,9 @@ security or engine fix we want. Check what's waiting with
    `tests/api/Routes.test.ts` fails when they drift).
 7. Check whether the API contract changed: diff `/users/@me` and the JWT, `cosmetics.json` and
    `cluster.json` schemas under `packages/shared/src`, and update our API to match.
-8. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
+8. New workflow files under `.github/workflows/` arrive enabled: disable each one on the fork
+   (`gh workflow disable <name> -R Gamble-Limited-Ltd/hostile-takeover`); only `ht-ci.yml` runs.
+9. Merge into `main` with `--no-ff`, push to `origin`, then deploy.
 
 **Keeping merges cheap** (every fork change must follow these):
 
