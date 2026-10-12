@@ -110,3 +110,19 @@ account menu, lobby, in-game HUD and win screen.
   this stage's exit test once Turnstile is gone; if it shows up, capture the page-event trace.
 - The account modal's "Share Profile" header button still shows when signed in. Hide it with the profile/stats features.
 - Login rate limit is 30/IP/15 min; automated test runs from one IP can hit it (restart the API to reset).
+
+### From Slices 3.1 and 3.2 (for 3.3–3.5)
+
+- 3.1: Turnstile is off when the key is unset; the 2.5 sign-in residual did not show in 12 sign-ins. Leftovers:
+  `package.json` `start:server-dev` still sets Cloudflare's test key (harmless; the dev join check is skipped),
+  the empty `#turnstile-container` div, and the unreachable `turnstile_error` string / `TurnstileFailed` reason.
+- 3.2: the CrazyGames SDK loads only when the page is framed; the Steam wishlist promos (footer, mobile play
+  page, win box) are hidden at their entry points. When 3.5 adds `Features.ts`, move those three onto a switch.
+- **Dead entries for 3.5:** the signed-in account menu's **"Copy profile URL"** (profile) and **"Change
+  username"** (username changes are out of v1); the account modal's STATS/GAMES/FRIENDS tabs and "Share
+  Profile"; the homepage RANKED button and CLANS nav item; the signed-out TAG box; the footer Discord icon;
+  the news/tournament banner's "Sign up on Discord" promo (News stays, but strip Discord/paid links); the
+  Firefox warning text says "OpenFront.io" (rebrand is Stage 4).
+- **For 3.3:** the nav still shows STORE (with a red dot) and INVENTORY.
+- **For 3.4:** still loaded: googletagmanager, analytics.google.com, www.google.com, the doubleclick hosts,
+  cdn.intergient.com (ramp), introjava.com, static.cloudflareinsights.com.

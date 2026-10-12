@@ -27,8 +27,9 @@ Slice 5.1 comes first, then 5.2 and 5.3. Mutating cloudflared or DNS needs the o
 - Replace `deploy.sh` / `update.sh` with a single `ht-deploy.sh`: `git pull`, build, run migrations,
   `docker compose up -d`, check health, and write `.last-deploy-hash`. Keep the old scripts in the tree
   (upstream files) but don't use them.
-- Disable OpenFront's GitHub workflows that deploy or touch their infrastructure (`deploy.yml`,
-  `release.yml`, the issue/PR bots) **in the fork's settings**, and keep `ci.yml`.
+- OpenFront's GitHub workflows are already disabled on the fork (2026-10-12); our CI is `ht-ci.yml`.
+- **No framing:** the game's responses send `Content-Security-Policy: frame-ancestors 'none'` (from
+  Slice 3.2: the CrazyGames SDK loads only when the page is framed, so this makes sure it never does).
 
 ## Slice 5.2 — Tunnel and DNS (main session with the owner, step by step)
 
