@@ -6,6 +6,8 @@ Three containers in the compose project `hostile_takeover` (`docker-compose.prod
 port). Host ports, loopback only: game `127.0.0.1:8280`, API `127.0.0.1:8287`. The tunnel (Slice 5.2)
 points `hostile-takeover.taps-holdings.org` at 8280 and `hostile-takeover-api.taps-holdings.org` at 8287.
 
+Day-to-day operations (deploy, rollback, admins, backups, logs): [HT-RUNBOOK.md](HT-RUNBOOK.md).
+
 ## First time
 
 ```bash
