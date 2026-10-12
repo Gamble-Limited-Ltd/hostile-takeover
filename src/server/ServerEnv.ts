@@ -63,12 +63,14 @@ export class ServerEnv {
     }
     return n;
   }
-  static turnstileSiteKey(): string {
+  // Hostile Takeover: optional. Unset or empty means Turnstile is off.
+  static turnstileSiteKey(): string | undefined {
     const v = process.env.TURNSTILE_SITE_KEY;
-    if (!v) {
-      throw new Error("TURNSTILE_SITE_KEY not set");
-    }
+    if (!v) return undefined;
     return v;
+  }
+  static turnstileEnabled(): boolean {
+    return ServerEnv.turnstileSiteKey() !== undefined;
   }
   // Optional, unlike turnstileSiteKey: a deployment without a key just keeps
   // the inline Stripe flow off (the store falls back to redirect checkout).

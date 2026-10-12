@@ -319,6 +319,15 @@ describe("RenderHtml environment-only render", () => {
   // The point of the mode. This page is uploaded once per version and served
   // to every player on it, so naming one server in it would pin the whole
   // version to that server.
+  it("loads the Turnstile script only when a site key is set", async () => {
+    const script = "challenges.cloudflare.com/turnstile";
+    expect(await renderHtmlContent(REAL_TEMPLATE)).toContain(script);
+    vi.stubEnv("TURNSTILE_SITE_KEY", "");
+    const off = await renderHtmlContent(REAL_TEMPLATE);
+    expect(off).not.toContain(script);
+    expect(bootstrapConfig(off).turnstileSiteKey).toBe("");
+  });
+
   it.each([
     ["cluster"],
     ["instanceLetter"],

@@ -57,6 +57,9 @@ export function planJoinVerify(args: {
   turnstileToken: string | null;
   identityUnchanged: boolean;
   steamAuthed: boolean;
+  // Hostile Takeover: Turnstile is off (no site key); first joins verify with
+  // a null token, like Steam, so the name check still runs.
+  turnstileOff?: boolean;
 }): JoinVerifyPlan {
   if (!args.isReadmit) {
     // Steam-authenticated first joins skip the Turnstile siteverify — Steam
@@ -64,7 +67,7 @@ export function planJoinVerify(args: {
     // verifySteamTicket()) is the anti-abuse signal. A null token still runs
     // the API's name check, so banned/slur names are censored: the join is
     // VERIFIED (never skipped), it just omits the bot challenge.
-    if (args.steamAuthed) {
+    if (args.steamAuthed || args.turnstileOff) {
       return { action: "verify", token: null };
     }
     if (!args.turnstileToken) {

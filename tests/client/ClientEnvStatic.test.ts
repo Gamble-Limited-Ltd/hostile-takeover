@@ -75,6 +75,13 @@ describe("a page carrying only environment values", () => {
     expect(ClientEnv.jwtIssuer()).toBe("https://api.openfront.io");
   });
 
+  it("reports Turnstile on with a site key and off with an empty one", () => {
+    expect(ClientEnv.turnstileEnabled()).toBe(true);
+    ClientEnv.reset();
+    (window as any).BOOTSTRAP_CONFIG.turnstileSiteKey = "";
+    expect(ClientEnv.turnstileEnabled()).toBe(false);
+  });
+
   it("reports no instance id rather than throwing", () => {
     // Only a server that renders the page knows its own instance id. A
     // static page has none, and the API ignores the value anyway
