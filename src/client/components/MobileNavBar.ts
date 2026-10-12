@@ -122,11 +122,13 @@ export class MobileNavBar extends LitElement {
           data-i18n="main.inventory"
         ></button>
         <button
+          ?hidden=${!Features.leaderboard}
           class="${MOBILE_ITEM}"
           data-page="page-leaderboard"
           data-i18n="main.leaderboard"
         ></button>
         <button
+          ?hidden=${!Features.clans}
           class="no-crazygames ${MOBILE_ITEM}"
           data-page="page-clan"
           data-i18n="main.clans"

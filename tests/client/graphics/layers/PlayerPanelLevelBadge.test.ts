@@ -53,6 +53,26 @@ import { rememberLobbyRoster } from "../../../../src/client/LobbyRosterLevels";
 import { UserSettings } from "../../../../src/client/UserSettings";
 import { PlayerView } from "../../../../src/client/view";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 // With lit mocked, html`` yields { strings, values }: flatten one back into
 // markup so the identity row can be checked as text.
 function flatten(value: unknown): string {

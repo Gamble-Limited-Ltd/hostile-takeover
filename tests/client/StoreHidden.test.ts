@@ -55,7 +55,6 @@ describe("store entry points are hidden", () => {
       expect(isHidden(page("page-item-store"))).toBe(true);
       expect(isHidden(page("page-inventory"))).toBe(false);
       expect(isHidden(page("page-play"))).toBe(false);
-      expect(isHidden(page("page-leaderboard"))).toBe(false);
     });
   }
 

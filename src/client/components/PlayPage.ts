@@ -1,6 +1,7 @@
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
+import { Features } from "../Features";
 import "./CosmeticBackground";
 import "./NavAccountMenu";
 import "./NavUtilityIcons";
@@ -120,13 +121,14 @@ export class PlayPage extends LitElement {
         <game-mode-selector></game-mode-selector>
 
         <!-- Desktop gets the compact footer button instead. -->
-        <!-- Hostile Takeover: Steam wishlist widget hidden, and with it the
-             Steam iframe (see SteamWishlist.active). -->
-        <div hidden>
+        <!-- Hostile Takeover: Steam wishlist widget hidden unless
+             Features.steam, and with it the Steam iframe (see
+             SteamWishlist.active). -->
+        <div ?hidden=${!Features.steam}>
           <steam-wishlist
             campaign="home_mobile"
             class="block px-2 pb-4 lg:hidden"
-            .active=${false}
+            .active=${Features.steam}
           ></steam-wishlist>
         </div>
       </div>

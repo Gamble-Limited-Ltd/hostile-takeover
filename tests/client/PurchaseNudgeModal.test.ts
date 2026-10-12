@@ -18,7 +18,21 @@ import { PurchaseNudgeModal } from "../../src/client/components/PurchaseNudgeMod
 // Hostile Takeover: the store entry points are off by default; these tests
 // cover the store UI itself, so turn the switch on.
 vi.mock("../../src/client/Features", () => ({
-  Features: { store: true, cosmetics: true },
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
 }));
 
 function fireUserMe(adfree: boolean | null) {

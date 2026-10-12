@@ -459,29 +459,40 @@ class Client {
       tag: "user-setting",
       pageId: "page-settings",
     });
-    modalRouter.register("leaderboard", {
-      tag: "leaderboard-modal",
-      pageId: "page-leaderboard",
-    });
-    modalRouter.register("clan", { tag: "clan-modal", pageId: "page-clan" });
+    // Slice 3.5: hidden features are unknown routes (see Features.ts).
+    if (Features.leaderboard) {
+      modalRouter.register("leaderboard", {
+        tag: "leaderboard-modal",
+        pageId: "page-leaderboard",
+      });
+    }
+    if (Features.clans) {
+      modalRouter.register("clan", { tag: "clan-modal", pageId: "page-clan" });
+    }
     modalRouter.register("account", {
       tag: "account-modal",
       pageId: "page-account",
     });
     // Profile-menu modals: popup style, so no pageId.
     modalRouter.register("account-settings", { tag: "account-settings-modal" });
-    modalRouter.register("change-username", { tag: "change-username-modal" });
+    if (Features.usernameChange) {
+      modalRouter.register("change-username", {
+        tag: "change-username-modal",
+      });
+    }
     if (Features.store) {
       modalRouter.register("subscription", { tag: "subscription-modal" });
     }
-    modalRouter.register("stats", {
-      tag: "game-stats-modal",
-      pageId: "page-stats",
-    });
-    modalRouter.register("profile", {
-      tag: "player-profile-modal",
-      pageId: "page-profile",
-    });
+    if (Features.profile) {
+      modalRouter.register("stats", {
+        tag: "game-stats-modal",
+        pageId: "page-stats",
+      });
+      modalRouter.register("profile", {
+        tag: "player-profile-modal",
+        pageId: "page-profile",
+      });
+    }
     modalRouter.register("help", { tag: "help-modal", pageId: "page-help" });
     modalRouter.register("news", { tag: "news-modal", pageId: "page-news" });
     modalRouter.register("language", {
@@ -492,10 +503,12 @@ class Client {
       tag: "single-player-modal",
       pageId: "page-single-player",
     });
-    modalRouter.register("ranked", {
-      tag: "ranked-modal",
-      pageId: "page-ranked",
-    });
+    if (Features.ranked) {
+      modalRouter.register("ranked", {
+        tag: "ranked-modal",
+        pageId: "page-ranked",
+      });
+    }
     modalRouter.register("detailed-view", {
       tag: "detailed-view-modal",
       pageId: "page-detailed-view",
@@ -1458,7 +1471,7 @@ class Client {
     }
 
     const requeueMode = this.consumeRequeueUrl();
-    if (requeueMode !== null) {
+    if (requeueMode !== null && Features.ranked) {
       document.dispatchEvent(
         new CustomEvent("open-matchmaking", {
           detail: { mode: requeueMode },

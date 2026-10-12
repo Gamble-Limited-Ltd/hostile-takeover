@@ -59,6 +59,26 @@ import { STEAM_GRANT_NOTICE_KEY } from "../src/client/SteamGrantNotices";
 import "../src/client/UsernameInput";
 import type { UsernameInput as UsernameInputEl } from "../src/client/UsernameInput";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 function premiumUser(
   clans: { tag: string; name: string }[] = [],
 ): UserMeResponse {

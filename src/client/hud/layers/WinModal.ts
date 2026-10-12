@@ -3,7 +3,7 @@ import { GameUpdateType } from "@openfront/engine-api/game/GameUpdates";
 import type { GameXpEligible } from "@openfront/shared/ApiSchemas";
 import { Pattern } from "@openfront/shared/CosmeticSchemas";
 import { EventBus } from "@openfront/shared/EventBus";
-import { html, LitElement, TemplateResult } from "lit";
+import { html, LitElement, nothing, TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import {
   DESKTOP_TUTORIAL_VIDEO_URL,
@@ -113,12 +113,14 @@ export class WinModal extends LitElement implements Controller {
           ${this._title || ""}
         </h2>
         <div class="min-h-0 flex-1 overflow-y-auto pr-0.5">
-          <game-xp-panel
-            .view=${this.xpView}
-            .onScreen=${this.isVisible}
-            .gameType=${this.game?.config().gameConfig().gameType ?? null}
-            @xp-legend=${this.onXpLegend}
-          ></game-xp-panel>
+          ${Features.xp
+            ? html`<game-xp-panel
+                .view=${this.xpView}
+                .onScreen=${this.isVisible}
+                .gameType=${this.game?.config().gameConfig().gameType ?? null}
+                @xp-legend=${this.onXpLegend}
+              ></game-xp-panel>`
+            : nothing}
           ${this.innerHtml()}
         </div>
         <!-- Leaving is the quieter action, on the left; staying in the game
@@ -130,7 +132,7 @@ export class WinModal extends LitElement implements Controller {
             () => this._handleExit(),
             "exit",
           )}
-          ${this.isRankedGame
+          ${this.isRankedGame && Features.ranked
             ? this.actionButton(
                 "main",
                 translateText("win_modal.requeue"),
@@ -149,9 +151,11 @@ export class WinModal extends LitElement implements Controller {
         </div>
         ${this.renderActionStyles()}
       </div>
-      <legend-ceremony
-        @legend-ceremony-closed=${this.onLegendCeremonyClosed}
-      ></legend-ceremony>
+      ${Features.xp
+        ? html`<legend-ceremony
+            @legend-ceremony-closed=${this.onLegendCeremonyClosed}
+          ></legend-ceremony>`
+        : nothing}
     `;
   }
 
@@ -336,9 +340,9 @@ export class WinModal extends LitElement implements Controller {
   innerHtml() {
     // The Steam desktop build has nothing to wishlist — fall through to the
     // other promos so the box is never empty.
-    // Hostile Takeover: the Steam wishlist promo is never offered here, so
-    // the win box falls through to the other promos.
-    const canWishlist = false;
+    // Hostile Takeover: the Steam wishlist promo is hidden unless
+    // Features.steam, so the win box falls through to the other promos.
+    const canWishlist = Features.steam;
 
     if (isInIframe()) {
       return canWishlist ? this.steamWishlist() : this.discordDisplay();
@@ -469,6 +473,8 @@ export class WinModal extends LitElement implements Controller {
   }
 
   discordDisplay(): TemplateResult {
+    // Hostile Takeover: the Discord promo is hidden unless Features.discord.
+    if (!Features.discord) return html``;
     return html`
       <div class="text-center mb-6 bg-black/30 p-2.5 rounded-sm">
         <h3 class="text-xl font-semibold text-white mb-3">
@@ -520,6 +526,8 @@ export class WinModal extends LitElement implements Controller {
    * that just says so, and the poll starts when the game really ends.
    */
   private async updateXp(gameOver: boolean): Promise<void> {
+    // Hostile Takeover: no XP section, and no XP request, unless Features.xp.
+    if (!Features.xp) return;
     if (this.xpPolling) return;
     // Normally here since the game started; tried again should that fetch
     // have failed.
@@ -599,7 +607,7 @@ export class WinModal extends LitElement implements Controller {
   }
 
   init() {
-    if (!this.game.config().isReplay()) loadGameXpPanel();
+    if (Features.xp && !this.game.config().isReplay()) loadGameXpPanel();
   }
 
   tick() {
