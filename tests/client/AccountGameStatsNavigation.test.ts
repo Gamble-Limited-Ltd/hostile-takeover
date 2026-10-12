@@ -10,6 +10,8 @@ import {
 } from "vitest";
 
 vi.mock("../../src/client/Api", () => ({
+  getIdentityTokenAudiences: vi.fn(async () => []),
+  createIdentityToken: vi.fn(async () => null),
   fetchPlayerById: vi.fn(async () => ({ stats: {} })),
   fetchPublicPlayerGames: vi.fn(async () => ({
     results: [
@@ -45,6 +47,8 @@ vi.mock("../../src/client/Api", () => ({
 }));
 
 vi.mock("../../src/client/Auth", () => ({
+  userAuth: vi.fn(async () => false as const),
+  isLoggedIn: vi.fn(async () => false),
   discordLogin: vi.fn(),
   googleLogin: vi.fn(),
   linkGoogle: vi.fn(),
