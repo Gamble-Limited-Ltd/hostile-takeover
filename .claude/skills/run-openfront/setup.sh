@@ -12,7 +12,10 @@ mkdir -p "$CACHE/fonts" "$CACHE/fc-cache"
 # 1. Playwright into the cache dir (outside the repo).
 if [ ! -d "$CACHE/node_modules/playwright" ]; then
     [ -f "$CACHE/package.json" ] || echo '{"name":"openfront-run-cache","private":true}' > "$CACHE/package.json"
-    (cd "$CACHE" && npm install --no-audit --no-fund playwright) || { echo "playwright install failed"; exit 1; }
+    (cd "$CACHE" && npm install --no-audit --no-fund playwright) || {
+        echo "playwright install failed"
+        exit 1
+    }
 fi
 
 # 2. Chromium headless shell. Playwright may refuse unknown distros; the
@@ -21,9 +24,9 @@ fi
     || echo "WARNING: chromium download failed"
 
 # 3. Detect missing shared libs (no apt here: just report them).
-SHELL_BIN="$(ls -d "$HOME"/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell 2>/dev/null | tail -1)"
+SHELL_BIN="$(ls -d "$HOME"/.cache/ms-playwright/chromium_headless_shell-*/chrome-headless-shell-linux64/chrome-headless-shell 2> /dev/null | tail -1)"
 if [ -n "$SHELL_BIN" ]; then
-    MISSING="$(LD_LIBRARY_PATH="$CACHE/extracted/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" ldd "$SHELL_BIN" 2>/dev/null | grep 'not found' || true)"
+    MISSING="$(LD_LIBRARY_PATH="$CACHE/extracted/usr/lib/x86_64-linux-gnu:${LD_LIBRARY_PATH:-}" ldd "$SHELL_BIN" 2> /dev/null | grep 'not found' || true)"
     if [ -n "$MISSING" ]; then
         echo "MISSING system libraries (install them, or extract .debs into $CACHE/extracted):"
         echo "$MISSING"
@@ -32,9 +35,9 @@ fi
 
 # 4. Fonts: Skia FATALs without a fontconfig. Only needed if /etc/fonts is absent.
 if [ ! -d /etc/fonts ]; then
-    FONT="$(ls /usr/share/fonts/truetype/*/*.ttf 2>/dev/null | head -1 || true)"
+    FONT="$(ls /usr/share/fonts/truetype/*/*.ttf 2> /dev/null | head -1 || true)"
     if [ -n "$FONT" ]; then
-        cp /usr/share/fonts/truetype/*/*.ttf "$CACHE/fonts/" 2>/dev/null || true
+        cp /usr/share/fonts/truetype/*/*.ttf "$CACHE/fonts/" 2> /dev/null || true
     else
         echo "WARNING: no /etc/fonts and no system TTF found; put a .ttf in $CACHE/fonts"
     fi

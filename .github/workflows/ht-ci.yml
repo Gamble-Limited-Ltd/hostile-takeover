@@ -1,0 +1,68 @@
+# Hostile Takeover CI. Runs the full checks on GitHub's runners so the shared
+# VM doesn't have to. Upstream's workflows are disabled on the fork
+# (`gh workflow disable`); see "Syncing with upstream OpenFront" in CLAUDE.md.
+name: 🧪 HT CI
+
+on:
+  push:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ht-ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  check:
+    name: 🔍 Typecheck, lint, format
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Setup npm
+        run: npm install --global --ignore-scripts npm@12.1.0
+      - run: npm run inst
+      - run: npm run typecheck
+      - run: npm run lint:github
+      - run: npx prettier --check .
+
+  test:
+    name: 🔬 Test (${{ matrix.shard }}/4)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        shard: [1, 2, 3, 4]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Setup npm
+        run: npm install --global --ignore-scripts npm@12.1.0
+      - run: npm run inst
+      - run: npx vitest run --shard=${{ matrix.shard }}/4
+
+  # `npm test` runs tests/server a second time on its own; mirror that.
+  test-server:
+    name: 🔬 Test (tests/server alone)
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+      - name: Setup npm
+        run: npm install --global --ignore-scripts npm@12.1.0
+      - run: npm run inst
+      - run: npx vitest run tests/server
