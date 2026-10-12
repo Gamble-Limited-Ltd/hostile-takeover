@@ -1,6 +1,8 @@
-# Weekly check for a new OpenFront release we haven't merged. The run fails
-# (GitHub emails whoever last edited the schedule) and the summary lists what's
-# waiting; follow "Syncing with upstream OpenFront" in CLAUDE.md.
+# Weekly check for OpenFront changes we haven't merged. We follow upstream/main
+# (release tags live on release branches like v34, never on main, so a tag can't
+# be "merged" here). The run fails when upstream/main has commits our main
+# doesn't; the summary lists them and names the newest release tag for context.
+# Follow "Syncing with upstream OpenFront" in CLAUDE.md.
 name: 🔭 Upstream release watch
 
 on:
@@ -26,17 +28,21 @@ jobs:
           git remote add upstream https://github.com/openfrontio/OpenFrontIO.git
           git fetch --quiet --no-tags upstream main
           tag=$(git ls-remote --tags --refs upstream 'v0.*' | awk '{print $2}' | sed 's#refs/tags/##' | sort -V | tail -1)
-          git fetch --quiet --no-tags upstream "refs/tags/$tag:refs/tags/$tag"
           behind=$(git rev-list --count main..upstream/main)
           {
             echo "## Upstream OpenFront"
-            echo "- Latest release tag: \`$tag\`"
+            echo "- Newest release tag (for context): \`$tag\`"
             echo "- Commits on upstream/main not in our main: **$behind**"
           } >> "$GITHUB_STEP_SUMMARY"
-          if git merge-base --is-ancestor "$tag" main; then
-            echo "- \`$tag\` is already merged. Nothing to do." >> "$GITHUB_STEP_SUMMARY"
+          if [ "$behind" -eq 0 ]; then
+            echo "- Up to date with upstream/main. Nothing to do." >> "$GITHUB_STEP_SUMMARY"
           else
-            echo "- \`$tag\` is **not merged yet**: run the sync checklist." >> "$GITHUB_STEP_SUMMARY"
-            echo "::warning::OpenFront $tag is not merged into main ($behind upstream commits waiting)"
+            {
+              echo "- Run the sync checklist in CLAUDE.md. Waiting:"
+              echo '```'
+              git log --oneline --no-decorate main..upstream/main | head -50
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::warning::$behind upstream OpenFront commits are not merged into main (newest release $tag)"
             exit 1
           fi
