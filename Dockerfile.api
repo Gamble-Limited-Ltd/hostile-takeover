@@ -1,0 +1,31 @@
+# Hostile Takeover account API (packages/api). Ours, AGPL v3. Runs the TypeScript
+# source with tsx, as the dev stack does, so there is no separate build to drift.
+FROM node:24-slim AS base
+WORKDIR /usr/src/app
+RUN npm install --global --ignore-scripts npm@12.1.0
+
+FROM base AS prod-deps
+ENV HUSKY=0
+ENV NPM_CONFIG_IGNORE_SCRIPTS=1
+COPY package*.json .npmrc ./
+COPY packages/api/package.json ./packages/api/
+COPY packages/engine/package.json ./packages/engine/
+COPY packages/engine-api/package.json ./packages/engine-api/
+COPY packages/engine-lib/package.json ./packages/engine-lib/
+COPY packages/shared/package.json ./packages/shared/
+COPY packages/zbin/package.json ./packages/zbin/
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci --omit=dev --ignore-scripts
+
+FROM base
+ENV NODE_ENV=production
+COPY --from=prod-deps /usr/src/app/node_modules ./node_modules
+COPY package*.json tsconfig.json tsconfig.base.json ./
+# node_modules/@openfront/* are symlinks into packages/.
+COPY packages ./packages
+# The API reports this as cluster.json's `version`; a hex client build must match it.
+ARG GIT_COMMIT=unknown
+ENV HT_GAME_VERSION="$GIT_COMMIT"
+USER node
+EXPOSE 8787
+CMD ["node_modules/.bin/tsx", "packages/api/src/main.ts"]

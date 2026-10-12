@@ -66,11 +66,26 @@ function readCookie(header: string | undefined, name: string): string | null {
   return null;
 }
 
+/** Headers on every API response: it serves JSON only and is never framed. */
+export const API_SECURITY_HEADERS: Record<string, string> = {
+  "Content-Security-Policy": "default-src 'none'; frame-ancestors 'none'",
+  "X-Content-Type-Options": "nosniff",
+  "X-Frame-Options": "DENY",
+  "Referrer-Policy": "strict-origin-when-cross-origin",
+};
+
 export function createApp(pool: Queryable, ctx?: AppContext): express.Express {
   const app = express();
   app.disable("x-powered-by");
-  // nginx on this host sets X-Forwarded-For; trust it from loopback only.
-  app.set("trust proxy", "loopback");
+  // Behind the tunnel, X-Forwarded-For comes from a trusted proxy only
+  // (HT_TRUST_PROXY; loopback unless the deployment says otherwise).
+  app.set("trust proxy", ctx?.env.trustProxy ?? "loopback");
+  app.use((_req, res, next) => {
+    for (const [name, value] of Object.entries(API_SECURITY_HEADERS)) {
+      res.setHeader(name, value);
+    }
+    next();
+  });
 
   app.get("/healthz", async (_req, res) => {
     const db = await pool.query("SELECT 1").then(

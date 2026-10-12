@@ -37,6 +37,9 @@ COPY scripts ./scripts
 
 ARG GIT_COMMIT=unknown
 ENV GIT_COMMIT="$GIT_COMMIT"
+# Hostile Takeover: build-time footer link to Meridian (vite.config.ts); empty hides it.
+ARG MERIDIAN_URL=
+ENV MERIDIAN_URL="$MERIDIAN_URL"
 RUN npm run build-prod
 
 # Production dependencies stage - separate from build
