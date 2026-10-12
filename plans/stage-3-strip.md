@@ -108,6 +108,8 @@ account menu, lobby, in-game HUD and win screen.
   `/users/@me` all returned 200 yet the nav stayed "Sign in" until a reload. Not reproduced in 110 runs after
   the 2.5 API fix, and not caused by the Turnstile `querySelector` error (that can't abort boot). Re-check during
   this stage's exit test once Turnstile is gone; if it shows up, capture the page-event trace.
+  **Lead (Slice 3.3):** reloading while on the inventory page (`#modal=inventory`) after first opening it as a
+  guest showed "Sign in" plus "Couldn't load your inventory"; a reload from the home page was fine. Try that path first.
 - The account modal's "Share Profile" header button still shows when signed in. Hide it with the profile/stats features.
 - Login rate limit is 30/IP/15 min; automated test runs from one IP can hit it (restart the API to reset).
 

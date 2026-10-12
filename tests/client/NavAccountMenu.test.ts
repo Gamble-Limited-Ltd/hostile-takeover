@@ -35,6 +35,12 @@ import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { NavAccountMenu } from "../../src/client/components/NavAccountMenu";
 import { updateAccountNavButton } from "../../src/client/NavAccountButton";
 
+// Hostile Takeover: the store entry points are off by default; these tests
+// cover the store UI itself, so turn the switch on.
+vi.mock("../../src/client/Features", () => ({
+  Features: { store: true, cosmetics: true },
+}));
+
 function userMe(subscribed = false, publicId = "p"): UserMeResponse {
   return {
     user: { email: "player@example.com" },

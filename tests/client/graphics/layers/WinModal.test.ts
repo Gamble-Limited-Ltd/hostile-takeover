@@ -9,6 +9,12 @@ import type { PurchaseButton } from "../../../../src/client/components/PurchaseB
 import "../../../../src/client/hud/layers/WinModal";
 import type { WinModal } from "../../../../src/client/hud/layers/WinModal";
 
+// Hostile Takeover: the store entry points are off by default; these tests
+// cover the store UI itself, so turn the switch on.
+vi.mock("../../../../src/client/Features", () => ({
+  Features: { store: true, cosmetics: true },
+}));
+
 vi.mock("../../../../src/client/Utils", () => ({
   translateText: vi.fn((key: string) => {
     const translations: Record<string, string> = {
