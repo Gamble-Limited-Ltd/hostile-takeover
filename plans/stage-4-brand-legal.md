@@ -68,3 +68,22 @@ Slices 4.1 and 4.2 can run in parallel. Slice 4.3 needs the owner to review the 
 - Keep the same page layout and styling as the existing pages. Link them from the sign-up checkbox and the footer.
 
 **Approval:** screenshots of the footer, loading screen and homepage, plus the owner's sign-off on the legal text.
+
+## Slice 4.4 — Stop serving OpenFront's proprietary assets (Sonnet; added 2026-10-12)
+
+Found in 4.2: the build serves `proprietary/` (OpenFront's font, logos, favicon, menu and gameplay music, the
+game-start alert). Its license allows use only "as part of the complete OpenFront software package". Owner's call:
+keep the files in the tree untouched (clean merges) but stop serving and bundling them, behind one switch that
+defaults off. The font becomes Overpass Bold (OFL, already in `resources/fonts`), images point at our 4.2 art,
+music is silent until we have our own tracks, and the game-start alert uses `resources/sounds/effects/game-start.mp3`.
+
+## Stage 4 decisions made while building
+
+- **Legal text (owner, 2026-10-12):** Opus writes the ToS and privacy policy directly, in GLL's format
+  (`§ N — Title` sections, "Gamble Limited Ltd." / Effective Date header, data table, 30-day responses, Wisconsin
+  law and courts, USD $0 liability cap, the note that Gamble Limited Ltd. isn't incorporated and who runs it).
+  Wording is our own. GLL's anti-reverse-engineering, exclusive-IP and non-compete clauses are left out because
+  they conflict with the AGPL. Contact: the admin in person, else `gamblelimitedsupport@taps-holdings.org`.
+- **Wordmark font:** Overpass Bold, not the OpenFront font (that font is under `proprietary/`).
+- **Footer:** the cross-promo row is labelled "More games".
+- **Recommend** a lawyer reads the ToS and privacy policy before anyone outside the friend group plays.
