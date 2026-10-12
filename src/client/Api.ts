@@ -52,6 +52,7 @@ import {
 import newsItemsFallback from "resources/news.json";
 import streamsFallback from "resources/streams.json";
 import { z } from "zod";
+import { activeDeadlineSignal } from "./ActiveDeadline";
 import { getApiBase, getAudience } from "./ApiBase";
 import {
   getAuthHeader,
@@ -236,7 +237,7 @@ async function requestUserMe(): Promise<{
       headers: {
         authorization: `Bearer ${jwt}`,
       },
-      signal: AbortSignal.timeout(10_000),
+      signal: activeDeadlineSignal(10_000),
     });
     if (response.status === 401) {
       // Only when the session that issued this request is still the current
