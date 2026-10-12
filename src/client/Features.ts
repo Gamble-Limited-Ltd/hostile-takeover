@@ -93,6 +93,12 @@ export const Features = Object.freeze({
    */
   discord: false,
   /**
+   * OpenFront's own social links in the footer (their GitHub repo and
+   * subreddit). The wiki link stays on regardless: it teaches new players the
+   * game. Our Source link goes to the fork (Slice 4.2).
+   */
+  upstreamSocials: false,
+  /**
    * YouTube embeds (third-party requests to youtube.com, ytimg, gstatic,
    * doubleclick...): the Help modal's VIDEO TUTORIAL section and the loser's
    * "Need some help?" win-box tutorial. The desktop shell's local <video>

@@ -42,6 +42,7 @@ const SWITCHES = [
   "stream",
   "steam",
   "discord",
+  "upstreamSocials",
 ] as const;
 
 type Mountable = HTMLElement & { updateComplete: Promise<unknown> };
@@ -88,6 +89,9 @@ describe("footer", () => {
       a.getAttribute("href"),
     );
     expect(hrefs.some((h) => h?.includes("discord"))).toBe(false);
+    expect(hrefs.some((h) => h?.includes("openfrontio"))).toBe(false);
+    expect(hrefs.some((h) => h?.includes("reddit.com"))).toBe(false);
+    expect(hrefs.some((h) => h?.includes("openfront.wiki"))).toBe(true);
     expect(
       footer.querySelector("steam-wishlist-button")?.hasAttribute("hidden"),
     ).toBe(true);
