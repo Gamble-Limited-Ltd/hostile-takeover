@@ -1,5 +1,6 @@
 import { LiveStream, StreamsFeed } from "@openfront/shared/ApiSchemas";
 import { getStreams } from "./Api";
+import { Features } from "./Features";
 
 // One poller for both homepage streaming features.
 //
@@ -59,6 +60,9 @@ class StreamsFeedPoller {
   // Components subscribe on connect and call the returned function on disconnect.
   // Polling runs only while at least one component wants the data.
   subscribe(fn: Listener): () => void {
+    // Hostile Takeover: no stream feed, and so no /streams.json request,
+    // unless Features.stream. Subscribers just never hear anything.
+    if (!Features.stream) return () => {};
     this.wire();
     this.listeners.add(fn);
     // Hand over the cached feed immediately so a newly mounted component renders without

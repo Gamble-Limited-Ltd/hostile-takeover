@@ -1,5 +1,6 @@
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { Howl } from "howler";
+import { Features } from "../Features";
 import { AudioMixer, streamsMusic } from "./AudioMixer";
 
 // Long enough not to sound like a cut, short enough that the lobby is not
@@ -200,6 +201,7 @@ export function startMenuMusic(
 
   const start = () => {
     if (theme !== null) return;
+    if (!Features.music) return;
     // Nothing to hear on a channel the player has turned off, and on the Web
     // Audio path starting means holding the whole theme decoded. The mixer
     // subscription below starts it if music is turned on later, so declining

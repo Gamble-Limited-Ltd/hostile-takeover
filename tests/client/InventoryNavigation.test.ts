@@ -12,6 +12,12 @@ import { DesktopNavBar } from "../../src/client/components/DesktopNavBar";
 import { MobileNavBar } from "../../src/client/components/MobileNavBar";
 import { PlayPage } from "../../src/client/components/PlayPage";
 
+// Hostile Takeover: store and paid cosmetics are off by default; these tests
+// cover that UI, so turn the switches on.
+vi.mock("../../src/client/Features", () => ({
+  Features: { store: true, cosmetics: true },
+}));
+
 if (!("ResizeObserver" in globalThis)) {
   class ResizeObserverStub {
     observe() {}

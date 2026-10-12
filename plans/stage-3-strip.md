@@ -104,9 +104,55 @@ account menu, lobby, in-game HUD and win screen.
 
 ### From Slice 2.5
 
-- **Residual sign-in display glitch (unresolved):** in 1 of 10 baseline UI sign-ins, login, refresh and
+- **Residual sign-in display glitch (fixed in 3.6b, see below):** in 1 of 10 baseline UI sign-ins, login, refresh and
   `/users/@me` all returned 200 yet the nav stayed "Sign in" until a reload. Not reproduced in 110 runs after
   the 2.5 API fix, and not caused by the Turnstile `querySelector` error (that can't abort boot). Re-check during
   this stage's exit test once Turnstile is gone; if it shows up, capture the page-event trace.
+  **Lead (Slice 3.3):** reloading while on the inventory page (`#modal=inventory`) after first opening it as a
+  guest showed "Sign in" plus "Couldn't load your inventory"; a reload from the home page was fine. Try that path first.
 - The account modal's "Share Profile" header button still shows when signed in. Hide it with the profile/stats features.
 - Login rate limit is 30/IP/15 min; automated test runs from one IP can hit it (restart the API to reset).
+
+### From Slices 3.1 and 3.2 (for 3.3–3.5)
+
+- 3.1: Turnstile is off when the key is unset; the 2.5 sign-in residual did not show in 12 sign-ins. Leftovers:
+  `package.json` `start:server-dev` still sets Cloudflare's test key (harmless; the dev join check is skipped),
+  the empty `#turnstile-container` div, and the unreachable `turnstile_error` string / `TurnstileFailed` reason.
+- 3.2: the CrazyGames SDK loads only when the page is framed; the Steam wishlist promos (footer, mobile play
+  page, win box) are hidden at their entry points. When 3.5 adds `Features.ts`, move those three onto a switch.
+- **Dead entries for 3.5:** the signed-in account menu's **"Copy profile URL"** (profile) and **"Change
+  username"** (username changes are out of v1); the account modal's STATS/GAMES/FRIENDS tabs and "Share
+  Profile"; the homepage RANKED button and CLANS nav item; the signed-out TAG box; the footer Discord icon;
+  the news/tournament banner's "Sign up on Discord" promo (News stays, but strip Discord/paid links); the
+  Firefox warning text says "OpenFront.io" (rebrand is Stage 4).
+- **For 3.3:** the nav still shows STORE (with a red dot) and INVENTORY.
+- **For 3.4:** still loaded: googletagmanager, analytics.google.com, www.google.com, the doubleclick hosts,
+  cdn.intergient.com (ramp), introjava.com, static.cloudflareinsights.com.
+
+## Stage 3 as built (exit test 2026-10-12)
+
+- **Switches** (`src/client/Features.ts`, all off): `store`, `cosmetics`, `ads`, `xp`, `ranked`, `leaderboard`,
+  `clans`, `friends`, `profile`, `usernameChange`, `stream`, `steam`, `discord`, `youtube`. Server: Turnstile off
+  without `TURNSTILE_SITE_KEY`; ranked check-in loops off unless `RANKED_ENABLED=true`; ad/analytics scripts in
+  `index.html` behind an `adsEnabled` render local that nothing sets.
+- **Nav:** PLAY · INVENTORY (flags only). Account menu: view account, account settings, log out. Homepage lobby
+  row is two columns while ranked is off (owner's call).
+- **Network:** a full session (home, sign-in, solo, private lobby, game to the win screen, back home) requests
+  only our game and API. Remaining 4xx are expected: dev `/cluster.json` 404 (loopback host, now backed off to
+  5 min) and `/auth/refresh` 401 on signed-out boots.
+- **3.6a:** the exit test found the YouTube embeds (Help "video tutorial", loser's "Need some help?") still
+  making third-party requests; `youtube` switch added. The SOLO achievements toggle moved under `xp`.
+- **3.6b (the 2.5 residual):** `AbortSignal.timeout(10s)` on `/auth/refresh` and `/users/@me` is wall-clock; a
+  starved main thread (~20 s of software-GL boot on this VM) delivered good 200s late and the overdue timer
+  aborted them, so the page showed signed out. `ActiveDeadline.ts` counts only time the page could run.
+  Repro (sign in, wait 25 s, reload): 0/9 before, 16/16 after.
+- **Win screen in tests:** host options, timer 1 minute, bots 0, nations 0: the largest player wins after 60 s.
+
+### Left for later stages
+
+- **Stage 4:** footer GitHub/Reddit/wiki links and the credits link point at OpenFront; ToS/privacy pages titled
+  "OpenFront"; the bell opens OpenFront's sample changelog; Firefox warning and logo alt text say OpenFront.
+- **Stage 6:** click-to-spawn in multiplayer is unconfirmed headless (clients load too slowly for the spawn
+  phase); random spawn works. Check it with real devices. The same wall-clock timeout pattern remains in
+  `doSteamLogin`, `ClanApi`, `ProgressionApi`, `Cosmetics` and `ServerList` (mostly behind hidden features);
+  there's no retry if a boot `userAuth`/`getUserMe` really fails.

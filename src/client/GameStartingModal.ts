@@ -1,5 +1,6 @@
 import { LitElement, html } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import { FORK_SOURCE_URL, UPSTREAM_SOURCE_URL } from "./ForkLinks";
 import { translateText } from "./Utils";
 
 @customElement("game-starting-modal")
@@ -30,7 +31,7 @@ export class GameStartingModal extends LitElement {
           ${translateText("main.copyright")}
         </div>
         <a
-          href="https://github.com/openfrontio/OpenFrontIO/blob/main/CREDITS.md"
+          href="https://github.com/Gamble-Limited-Ltd/hostile-takeover/blob/main/CREDITS.md"
           target="_blank"
           rel="noopener noreferrer"
           class="block mb-4 text-lg font-medium tracking-wider uppercase text-malibu-blue no-underline transition-colors duration-200 hover:text-aquarius"
@@ -38,6 +39,24 @@ export class GameStartingModal extends LitElement {
         >
         <p class="text-base text-white/40 mb-4">
           ${translateText("game_starting_modal.code_license")}
+        </p>
+        <p class="text-base text-white/40 mb-4">
+          ${translateText("main.attribution_publisher")} ·
+          <a
+            href=${UPSTREAM_SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="transition-colors duration-200 hover:text-white"
+            >${translateText("main.attribution_based_on")}</a
+          >
+          · ${translateText("main.attribution_modified")} ·
+          <a
+            href=${FORK_SOURCE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            class="transition-colors duration-200 hover:text-white"
+            >${translateText("main.attribution_source")}</a
+          >
         </p>
         <p
           class="text-xl font-medium tracking-wider text-white bg-white/5 border border-white/10 px-4 py-3 rounded-xl"

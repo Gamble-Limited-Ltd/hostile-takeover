@@ -3,6 +3,26 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { formatViewers } from "../../../src/client/components/StreamingNow";
 import { streamsFeed, watchUrl } from "../../../src/client/StreamsFeed";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 const getStreams = vi.fn<() => Promise<StreamsFeed>>();
 vi.mock("../../../src/client/Api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../../src/client/Api")>()),

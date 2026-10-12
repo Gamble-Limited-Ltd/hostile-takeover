@@ -26,6 +26,12 @@ import type { CosmeticCard } from "../../src/client/components/CosmeticCard";
 import type { EffectsGrid } from "../../src/client/components/EffectsGrid";
 import type { InventoryLoadoutBar } from "../../src/client/components/InventoryLoadoutBar";
 
+// Hostile Takeover: store and paid cosmetics are off by default; these tests
+// cover that UI, so turn the switches on.
+vi.mock("../../src/client/Features", () => ({
+  Features: { store: true, cosmetics: true },
+}));
+
 vi.mock("../../src/client/Api", async (importOriginal) => ({
   ...(await importOriginal<typeof import("../../src/client/Api")>()),
   getUserMe: vi.fn(),

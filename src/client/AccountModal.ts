@@ -43,6 +43,7 @@ import { modalHeader } from "./components/ui/ModalHeader";
 import { steamGlyph, steamLinkButton } from "./components/ui/SteamLinkButton";
 import { crazyGamesSDK, type CrazyGamesUser } from "./CrazyGamesSDK";
 import { desktopLinkGate, isDesktopShell } from "./DesktopShell";
+import { Features } from "./Features";
 import "./GameStatsModal";
 import { showInGameAlert } from "./InGameModal";
 import { consumeLinkResult } from "./LinkResult";
@@ -165,7 +166,7 @@ export class AccountModal extends BaseModal {
       onBack: () => this.close(),
       ariaLabel: translateText("common.back"),
       rightContent:
-        isLoggedIn && !this.isLoadingUser && publicId
+        isLoggedIn && !this.isLoadingUser && publicId && Features.profile
           ? html`
               <copy-button
                 class="shrink-0"
@@ -193,14 +194,25 @@ export class AccountModal extends BaseModal {
     if (this.isLoadingUser || !this.isLinkedAccount() || this.resetToken) {
       return {};
     }
-    return {
-      tabs: [
-        { key: "account", label: translateText("account_modal.tab_account") },
+    // Hostile Takeover: the Stats and Games tabs need Features.profile and
+    // Friends needs Features.friends. With none of them there is only the
+    // Account tab, so no tab bar at all.
+    const tabs = [
+      { key: "account", label: translateText("account_modal.tab_account") },
+    ];
+    if (Features.profile) {
+      tabs.push(
         { key: "stats", label: translateText("account_modal.tab_stats") },
         { key: "games", label: translateText("account_modal.tab_games") },
-        { key: "friends", label: translateText("account_modal.tab_friends") },
-      ],
-    };
+      );
+    }
+    if (Features.friends) {
+      tabs.push({
+        key: "friends",
+        label: translateText("account_modal.tab_friends"),
+      });
+    }
+    return tabs.length > 1 ? { tabs } : {};
   }
 
   protected renderBody(tab: string) {
@@ -220,21 +232,26 @@ export class AccountModal extends BaseModal {
       <div class="custom-scrollbar mr-1">
         <div class="p-6">${this.renderTab(tab)}</div>
       </div>
-      <prestige-flow
-        @prestiged=${this.handlePrestiged}
-        @prestige-stale=${this.handlePrestigeStale}
-      ></prestige-flow>
+      ${Features.xp
+        ? html`<prestige-flow
+            @prestiged=${this.handlePrestiged}
+            @prestige-stale=${this.handlePrestigeStale}
+          ></prestige-flow>`
+        : nothing}
     `;
   }
 
   private renderTab(tab: string): TemplateResult {
     switch (tab) {
       case "stats":
-        return this.renderStatsTab();
+        if (Features.profile) return this.renderStatsTab();
+        return this.renderAccountTab();
       case "games":
-        return this.renderGamesTab();
+        if (Features.profile) return this.renderGamesTab();
+        return this.renderAccountTab();
       case "friends":
-        return this.renderFriendsTab();
+        if (Features.friends) return this.renderFriendsTab();
+        return this.renderAccountTab();
       default:
         return this.renderAccountTab();
     }
@@ -540,7 +557,7 @@ export class AccountModal extends BaseModal {
     variant: "full" | "compact",
   ): TemplateResult | typeof nothing {
     const player = this.userMeResponse?.player;
-    if (!player?.publicId || !player.progress) return nothing;
+    if (!Features.xp || !player?.publicId || !player.progress) return nothing;
     return html`<profile-card
       class=${variant === "full" ? "mb-4 block" : "block"}
       .variant=${variant}
@@ -556,6 +573,7 @@ export class AccountModal extends BaseModal {
   // Fetches the prestige flow when /users/@me says the card will offer
   // Prestige, so it's there by the press.
   private prefetchPrestigeFlow(): void {
+    if (!Features.xp) return;
     if (!this.userMeResponse?.player?.progress?.canPrestige) return;
     this.loadPrestigeFlow().catch((err: unknown) =>
       console.warn("AccountModal: prestige flow failed to load", err),
@@ -1114,7 +1132,7 @@ export class AccountModal extends BaseModal {
         if (userMe) {
           this.userMeResponse = userMe;
           this.prefetchPrestigeFlow();
-          if (this.userMeResponse?.player?.publicId) {
+          if (Features.profile && this.userMeResponse?.player?.publicId) {
             this.loadPlayerProfile(this.userMeResponse.player.publicId);
           }
         }

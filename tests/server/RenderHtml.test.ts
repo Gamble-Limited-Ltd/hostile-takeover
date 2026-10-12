@@ -428,4 +428,24 @@ describe("RenderHtml environment-only render", () => {
     expect(config.instanceLetter).toBe("a");
     expect(config.serverHost).toBe("blue.openfront.io");
   });
+  // Hostile Takeover (Slice 3.4): the page names no ad or analytics host unless
+  // a render local `adsEnabled` is passed, which nothing in the server does.
+  it("emits no ad or analytics script host by default", async () => {
+    const hosts = [
+      "googletagmanager.com",
+      "analytics.google.com",
+      "google.com",
+      "doubleclick.net",
+      "intergient.com",
+      "introjava.com",
+      "cloudflareinsights.com",
+      "gtag(",
+      "googletag",
+      "window.ramp",
+    ];
+    for (const perServer of [true, false]) {
+      const html = await renderHtmlContent(REAL_TEMPLATE, { perServer });
+      for (const host of hosts) expect(html).not.toContain(host);
+    }
+  });
 });

@@ -25,6 +25,7 @@ import "../../components/LevelBadge";
 import { actionButton } from "../../components/ui/ActionButton";
 import "../../components/ui/Divider";
 import { Controller } from "../../Controller";
+import { Features } from "../../Features";
 import {
   CloseViewEvent,
   MouseUpEvent,
@@ -602,6 +603,8 @@ export class PlayerPanel extends LitElement implements Controller {
   // anonymized then (PlayerView.displayName), and the badge belongs to the
   // real one.
   private levelBadgeFor(other: PlayerView): LevelBadge | undefined {
+    // Hostile Takeover: no level badges unless Features.xp.
+    if (!Features.xp) return undefined;
     if (other.type() !== PlayerType.Human) return undefined;
     const clientID = other.clientID();
     const isSelf = clientID !== null && clientID === this.g.myClientID();

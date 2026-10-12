@@ -1,6 +1,7 @@
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { LitElement, html } from "lit";
 import { customElement } from "lit/decorators.js";
+import { Features } from "../Features";
 import "./NavAccountMenu";
 import { NavNotificationsController } from "./NavNotificationsController";
 import "./NavUtilityIcons";
@@ -58,8 +59,8 @@ export class DesktopNavBar extends LitElement {
           <div class="h-8">
             <img
               class="block h-full aspect-[1364/259]"
-              src=${assetUrl("images/OpenFrontLogo.svg")}
-              alt="OpenFront"
+              src=${assetUrl("images/HostileTakeoverLogo.svg")}
+              alt="Hostile Takeover"
             />
           </div>
           <div
@@ -75,7 +76,7 @@ export class DesktopNavBar extends LitElement {
           data-i18n="main.play"
         ></button>
         <!-- Desktop Navigation Menu Items -->
-        <div class="relative no-crazygames">
+        <div class="relative no-crazygames" ?hidden=${!Features.store}>
           <button
             class="nav-menu-item ${currentPage === "page-item-store"
               ? "active"
@@ -103,11 +104,13 @@ export class DesktopNavBar extends LitElement {
           data-i18n="main.inventory"
         ></button>
         <button
+          ?hidden=${!Features.leaderboard}
           class="nav-menu-item text-white/70 hover:text-malibu-blue  font-medium tracking-wider uppercase cursor-pointer transition-colors [&.active]:text-malibu-blue "
           data-page="page-leaderboard"
           data-i18n="main.leaderboard"
         ></button>
         <button
+          ?hidden=${!Features.clans}
           class="no-crazygames nav-menu-item text-white/70 hover:text-blue-500 font-medium tracking-wider uppercase cursor-pointer transition-colors [&.active]:text-blue-500"
           data-page="page-clan"
           data-i18n="main.clans"

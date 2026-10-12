@@ -55,6 +55,7 @@ import {
   type DesktopUpdateState,
 } from "./DesktopShell";
 import "./FeaturedStream";
+import { Features } from "./Features";
 import { loadGameClient, prefetchGameClient } from "./GameClientLoader";
 import "./GameModeSelector";
 import {
@@ -447,35 +448,51 @@ class Client {
     // Register modals with the URL router. Lobby modals (join/host) and
     // matchmaking are intentionally omitted — they own their own URL state
     // (path-based) or none at all.
-    modalRouter.register("store", {
-      tag: "store-modal",
-      pageId: "page-item-store",
-    });
+    // Hostile Takeover: no store, so #modal=store is an unknown route.
+    if (Features.store) {
+      modalRouter.register("store", {
+        tag: "store-modal",
+        pageId: "page-item-store",
+      });
+    }
     modalRouter.register("settings", {
       tag: "user-setting",
       pageId: "page-settings",
     });
-    modalRouter.register("leaderboard", {
-      tag: "leaderboard-modal",
-      pageId: "page-leaderboard",
-    });
-    modalRouter.register("clan", { tag: "clan-modal", pageId: "page-clan" });
+    // Slice 3.5: hidden features are unknown routes (see Features.ts).
+    if (Features.leaderboard) {
+      modalRouter.register("leaderboard", {
+        tag: "leaderboard-modal",
+        pageId: "page-leaderboard",
+      });
+    }
+    if (Features.clans) {
+      modalRouter.register("clan", { tag: "clan-modal", pageId: "page-clan" });
+    }
     modalRouter.register("account", {
       tag: "account-modal",
       pageId: "page-account",
     });
     // Profile-menu modals: popup style, so no pageId.
     modalRouter.register("account-settings", { tag: "account-settings-modal" });
-    modalRouter.register("change-username", { tag: "change-username-modal" });
-    modalRouter.register("subscription", { tag: "subscription-modal" });
-    modalRouter.register("stats", {
-      tag: "game-stats-modal",
-      pageId: "page-stats",
-    });
-    modalRouter.register("profile", {
-      tag: "player-profile-modal",
-      pageId: "page-profile",
-    });
+    if (Features.usernameChange) {
+      modalRouter.register("change-username", {
+        tag: "change-username-modal",
+      });
+    }
+    if (Features.store) {
+      modalRouter.register("subscription", { tag: "subscription-modal" });
+    }
+    if (Features.profile) {
+      modalRouter.register("stats", {
+        tag: "game-stats-modal",
+        pageId: "page-stats",
+      });
+      modalRouter.register("profile", {
+        tag: "player-profile-modal",
+        pageId: "page-profile",
+      });
+    }
     modalRouter.register("help", { tag: "help-modal", pageId: "page-help" });
     modalRouter.register("news", { tag: "news-modal", pageId: "page-news" });
     modalRouter.register("language", {
@@ -486,10 +503,12 @@ class Client {
       tag: "single-player-modal",
       pageId: "page-single-player",
     });
-    modalRouter.register("ranked", {
-      tag: "ranked-modal",
-      pageId: "page-ranked",
-    });
+    if (Features.ranked) {
+      modalRouter.register("ranked", {
+        tag: "ranked-modal",
+        pageId: "page-ranked",
+      });
+    }
     modalRouter.register("detailed-view", {
       tag: "detailed-view-modal",
       pageId: "page-detailed-view",
@@ -534,9 +553,11 @@ class Client {
     await customElements.whenDefined("mobile-nav-bar");
     await customElements.whenDefined("desktop-nav-bar");
 
+    // Overpass Bold (OFL, resources/fonts) under the old family name, so
+    // `--font-display` and GameVersion keep working; OpenFront.ttf is proprietary.
     const openFrontFont = new FontFace(
       "OpenFront",
-      `url(${assetUrl("fonts/OpenFront.ttf")})`,
+      `url(${assetUrl("fonts/overpass-bold.woff")})`,
     );
     document.fonts.add(openFrontFont);
     openFrontFont.load().catch(() => {});
@@ -733,8 +754,12 @@ class Client {
       }
       const isAdFree =
         userMeResponse !== false && userMeResponse.player?.adfree === true;
+      // Hostile Takeover: ads are permanently off (Features.ads).
       window.adsEnabled =
-        !isAdFree && !crazyGamesSDK.isOnCrazyGames() && !isDesktopShell();
+        Features.ads &&
+        !isAdFree &&
+        !crazyGamesSDK.isOnCrazyGames() &&
+        !isDesktopShell();
       // Ad-eligible users only: paid/adfree users must never load Admiral (its
       // adblock popup fires autonomously once the payload runs). Start watching
       // adblock state; once a blocker is ever detected the in-game ad is
@@ -1436,7 +1461,7 @@ class Client {
     if (decodedHash.startsWith("#affiliate=")) {
       const affiliateCode = decodedHash.replace("#affiliate=", "");
       strip();
-      if (affiliateCode) {
+      if (affiliateCode && Features.store) {
         loadModal("store-modal").then(
           () => this.storeModal?.open({ affiliateCode }),
           (err) => console.error("store-modal failed to load:", err),
@@ -1448,7 +1473,7 @@ class Client {
     }
 
     const requeueMode = this.consumeRequeueUrl();
-    if (requeueMode !== null) {
+    if (requeueMode !== null && Features.ranked) {
       document.dispatchEvent(
         new CustomEvent("open-matchmaking", {
           detail: { mode: requeueMode },

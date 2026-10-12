@@ -13,6 +13,26 @@ import {
   navNotifications,
 } from "../../src/client/components/NavNotificationsController";
 
+// Hostile Takeover: the store entry points are off by default; these tests
+// cover the store UI itself, so turn the switch on.
+vi.mock("../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 // Two components with their own controller — the bell lives in
 // <nav-utility-icons>, the store dot in the nav bars.
 function host() {

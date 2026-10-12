@@ -21,6 +21,7 @@ import { ClientInfo } from "@openfront/shared/WireSchemas";
 import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
+import { Features } from "../Features";
 import { Theme, themeProvider } from "../theme/ThemeProvider";
 import { UserSettings } from "../UserSettings";
 import {
@@ -613,6 +614,8 @@ export class LobbyTeamView extends LitElement {
   // players while the viewer has anonymous names on — the badge belongs to
   // the real name, like the verified check above.
   private visibleLevelBadge(client: ClientInfo): LevelBadge | undefined {
+    // Hostile Takeover: no level badges unless Features.xp.
+    if (!Features.xp) return undefined;
     const anonymized =
       this.userSettings.anonymousNames() && !this.isCurrentPlayer(client);
     return anonymized ? undefined : unpackLevelBadge(client.levelBadge);

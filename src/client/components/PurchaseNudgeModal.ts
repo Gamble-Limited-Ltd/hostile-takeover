@@ -3,6 +3,7 @@ import { html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { crazyGamesSDK } from "../CrazyGamesSDK";
 import { isDesktopShell } from "../DesktopShell";
+import { Features } from "../Features";
 import { getGamesPlayed, translateText } from "../Utils";
 
 const SHOWN_KEY = "purchaseNudgeShown";
@@ -69,7 +70,8 @@ export class PurchaseNudgeModal extends LitElement {
   }
 
   render() {
-    if (!this.isVisible) return nothing;
+    // Hostile Takeover: nothing to visit, so the nudge never renders.
+    if (!this.isVisible || !Features.store) return nothing;
 
     return html`
       <div

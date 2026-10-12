@@ -20,6 +20,26 @@ vi.mock("../../src/client/UserMeBroadcast", () => ({
 // Registers <game-mode-selector> as a side effect.
 import "../../src/client/GameModeSelector";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 type Selector = HTMLElement & { updateComplete: Promise<unknown> };
 
 function me(trustTier: "trusted" | "untrusted"): UserMeResponse {

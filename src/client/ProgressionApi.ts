@@ -12,6 +12,7 @@ import {
 // whose tests stub Api wholesale.
 import { getApiBase } from "./ApiBase";
 import { getAuthHeader } from "./Auth";
+import { Features } from "./Features";
 
 // Player levels / XP. Every helper here fails closed: progression is purely
 // cosmetic, so any error hides the UI rather than surfacing a failure.
@@ -40,6 +41,8 @@ export async function fetchMyGameXp(
   gameId: string,
   signal?: AbortSignal,
 ): Promise<GameXpFetchResult> {
+  // Hostile Takeover: no XP endpoints are called unless Features.xp.
+  if (!Features.xp) return { status: "unavailable" };
   try {
     const authorization = await getAuthHeader();
     if (authorization === "") return { status: "unavailable" };
@@ -125,6 +128,7 @@ export async function pollGameXp(
 export async function fetchPublicPlayerProgress(
   publicId: string,
 ): Promise<PublicProgress | false> {
+  if (!Features.xp) return false;
   try {
     const res = await fetch(
       `${getApiBase()}/public/player/${encodeURIComponent(publicId)}/progress`,
@@ -171,6 +175,7 @@ export type PrestigeResult =
 export async function prestigeMe(
   idempotencyKey: string,
 ): Promise<PrestigeResult> {
+  if (!Features.xp) return { ok: false, reason: "failed" };
   try {
     const authorization = await getAuthHeader();
     if (authorization === "") return { ok: false, reason: "signed_out" };
@@ -216,6 +221,7 @@ let progressionConfig: {
 // on at all (404 when it is off). Memoised for as long as the server says it
 // stays fresh; a failure is not, so a later caller can try again.
 export function fetchProgressionConfig(): Promise<ProgressionConfig | false> {
+  if (!Features.xp) return Promise.resolve(false);
   if (
     progressionConfig !== null &&
     Date.now() - progressionConfig.at < PROGRESSION_CONFIG_TTL_MS

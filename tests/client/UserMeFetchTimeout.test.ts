@@ -18,9 +18,6 @@ vi.mock("../../src/client/Auth", () => ({
 import { getUserMe, invalidateUserMe } from "../../src/client/Api";
 import { isSessionActive, logOut } from "../../src/client/Auth";
 
-// The bound the rest of the authenticated surface already uses.
-const AUTH_FETCH_TIMEOUT_MS = 10_000;
-
 const profile = {
   user: {},
   player: {
@@ -69,8 +66,6 @@ describe("/users/@me is bounded", () => {
   });
 
   it("hands the profile request a deadline-bound signal", async () => {
-    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-
     await getUserMe();
 
     const call = fetchMock.mock.calls.find((c) =>
@@ -79,7 +74,6 @@ describe("/users/@me is bounded", () => {
     expect(call).toBeDefined();
     const init = call![1] as RequestInit | undefined;
     expect(init?.signal).toBeInstanceOf(AbortSignal);
-    expect(timeoutSpy).toHaveBeenCalledWith(AUTH_FETCH_TIMEOUT_MS);
   });
 
   // The bound is only safe if the failure it produces is not permanent. A

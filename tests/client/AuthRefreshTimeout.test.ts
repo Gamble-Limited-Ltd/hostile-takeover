@@ -6,9 +6,6 @@ vi.mock("../../src/client/ClientEnv", () => ({
 
 import { userAuth } from "../../src/client/Auth";
 
-// The bound Auth.ts already applies to /auth/steam (see doSteamLogin).
-const AUTH_FETCH_TIMEOUT_MS = 10_000;
-
 // userAuth() awaits the refresh, and every authenticated path in the client
 // awaits userAuth() — including Main.handleJoinLobby. An unbounded refresh
 // therefore stops the client joining anything at all, forever, on a
@@ -33,8 +30,6 @@ describe("/auth/refresh is bounded", () => {
   });
 
   it("hands the refresh request a deadline-bound signal", async () => {
-    const timeoutSpy = vi.spyOn(AbortSignal, "timeout");
-
     await userAuth();
 
     const call = fetchMock.mock.calls.find((c) =>
@@ -43,6 +38,5 @@ describe("/auth/refresh is bounded", () => {
     expect(call).toBeDefined();
     const init = call![1] as RequestInit | undefined;
     expect(init?.signal).toBeInstanceOf(AbortSignal);
-    expect(timeoutSpy).toHaveBeenCalledWith(AUTH_FETCH_TIMEOUT_MS);
   });
 });

@@ -13,6 +13,10 @@ import { defineConfig, loadEnv, type Plugin } from "vite";
 import { createHtmlPlugin } from "vite-plugin-html";
 import { configDefaults } from "vitest/config";
 import {
+  assetSourceDirs,
+  serveProprietary,
+} from "./src/server/ProprietaryAssets";
+import {
   buildPublicAssetManifest,
   copyRootPublicFiles,
   createHashedPublicAssetFiles,
@@ -213,7 +217,8 @@ export default defineConfig(({ mode }) => {
   });
   const resourcesDir = getResourcesDir(__dirname);
   const proprietaryDir = getProprietaryDir(__dirname);
-  const sourceDirs = [resourcesDir, proprietaryDir];
+  const withProprietary = serveProprietary(env.SERVE_PROPRIETARY);
+  const sourceDirs = assetSourceDirs(resourcesDir, __dirname, withProprietary);
   const assetManifest: AssetManifest = isProduction
     ? buildPublicAssetManifest(sourceDirs)
     : {};
@@ -236,7 +241,11 @@ export default defineConfig(({ mode }) => {
       : undefined,
     instanceId: JSON.stringify(env.INSTANCE_ID ?? "DEV_ID"),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
-    faviconHref: buildAssetUrl("images/Favicon.svg", assetManifest, cdnBase),
+    faviconHref: buildAssetUrl(
+      "images/HostileTakeoverFavicon.svg",
+      assetManifest,
+      cdnBase,
+    ),
     gameplayScreenshotUrl: buildAssetUrl(
       "images/GameplayScreenshot.png",
       assetManifest,
@@ -248,11 +257,15 @@ export default defineConfig(({ mode }) => {
       cdnBase,
     ),
     desktopLogoImageUrl: buildAssetUrl(
-      "images/OpenFront.png",
+      "images/HostileTakeover.png",
       assetManifest,
       cdnBase,
     ),
-    mobileLogoImageUrl: buildAssetUrl("images/OF.png", assetManifest, cdnBase),
+    mobileLogoImageUrl: buildAssetUrl(
+      "images/HostileTakeoverMark.png",
+      assetManifest,
+      cdnBase,
+    ),
   };
 
   // Vite's HTML transform replaces the source <script src="/src/client/Main.ts">
@@ -374,7 +387,9 @@ export default defineConfig(({ mode }) => {
       ...(!isProduction
         ? [
             serveRootPublicDir(getPublicDir(resourcesDir)),
-            serveProprietaryDir(proprietaryDir, resourcesDir),
+            ...(withProprietary
+              ? [serveProprietaryDir(proprietaryDir, resourcesDir)]
+              : []),
             randomWorkerCreateProxy(devNumWorkers, masterPort),
             steamLinkAliasRedirect(),
           ]
@@ -411,6 +426,10 @@ export default defineConfig(({ mode }) => {
       // host shell / CI environment.
       "process.env.API_DOMAIN": JSON.stringify(
         mode === "test" ? "" : (env.API_DOMAIN ?? ""),
+      ),
+      // Hostile Takeover: the footer shows a Meridian link only when set.
+      "process.env.MERIDIAN_URL": JSON.stringify(
+        mode === "test" ? "" : (env.MERIDIAN_URL ?? ""),
       ),
       // Add other process.env variables if needed, OR migrate code to import.meta.env
     },

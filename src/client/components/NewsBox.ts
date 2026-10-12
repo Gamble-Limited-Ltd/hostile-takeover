@@ -4,6 +4,7 @@ import { LitElement, html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { getNews } from "../Api";
 import { clientPlatform } from "../ClientPlatform";
+import { Features } from "../Features";
 import { translateText } from "../Utils";
 
 export type { NewsItem };
@@ -32,6 +33,17 @@ export function filterNewsByPlatform(
 ): NewsItem[] {
   return items.filter(
     (item) => !item.platforms?.length || item.platforms.includes(platform),
+  );
+}
+
+// Hostile Takeover: with Features.discord off, the clan-tournament and other
+// Discord promo items are dropped; announcements, tutorials and warnings stay.
+export function filterNewsByFeatures(items: NewsItem[]): NewsItem[] {
+  if (Features.discord) return items;
+  return items.filter(
+    (item) =>
+      item.type !== "tournament" &&
+      !/discord\.(gg|com)\//i.test(item.url ?? ""),
   );
 }
 
@@ -74,7 +86,9 @@ export class NewsBox extends LitElement {
         import("../Markdown"),
       ]);
       this.renderMarkdown = renderMarkdown;
-      const allItems = filterNewsByPlatform(news, clientPlatform());
+      const allItems = filterNewsByFeatures(
+        filterNewsByPlatform(news, clientPlatform()),
+      );
       // Reset stale dismissed list when all items would be hidden
       const visible = getVisibleNewsItems(allItems);
       if (visible.length === 0 && allItems.length > 0) {

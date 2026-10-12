@@ -7,7 +7,7 @@ written as a set of **slices**: self-contained briefs a Sonnet agent can pick up
 | --- | ------------------------------------------- | ------------------------------------------------------------------------------------------------- | ----------------- |
 | 1   | [API foundation](stage-1-api-foundation.md) | Our own API package, Postgres on 5436, real JWTs. A seeded dev user can play a game               | Done              |
 | 2   | [Accounts](stage-2-accounts.md)             | Sign-up, login, logout, admin password reset, delete account, using the existing UI               | Done              |
-| 3   | [Strip](stage-3-strip.md)                   | Remove Turnstile, other logins, store/Stripe, ads, telemetry; hide XP and other API-only features | Awaiting approval |
+| 3   | [Strip](stage-3-strip.md)                   | Remove Turnstile, other logins, store/Stripe, ads, telemetry; hide XP and other API-only features | Done              |
 | 4   | [Brand and legal](stage-4-brand-legal.md)   | Rebrand, NOTICE, attribution, our ToS and privacy policy                                          | Awaiting approval |
 | 5   | [Deploy](stage-5-deploy.md)                 | Compose stack on this VM behind cloudflared, backups                                              | Awaiting approval |
 | 6   | [Playtest and harden](stage-6-playtest.md)  | Real friends in real games; fix what breaks                                                       | Awaiting approval |

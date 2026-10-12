@@ -58,8 +58,9 @@ Slices 4.1 and 4.2 can run in parallel. Slice 4.3 needs the owner to review the 
   - Operator: Gamble Limited Ltd.
   - Players must be 13 or older. The game is for invited @kmlhs.org friends.
   - What we collect: first and last name, email, username, password hash, session cookies,
-    and in-game names and chat during a match. No game records are kept, there's no advertising,
-    and there's no third-party analytics.
+    and in-game names and chat during a match. No game records are kept and there's no advertising.
+  - Analytics: Cloudflare Web Analytics only (owner keeps it on across their platforms). Say what it is:
+    cookieless page-view counts collected by Cloudflare, our host/CDN. No other analytics or trackers.
   - How long we keep it: until the account is deleted, and sessions expire after 30 days.
   - Account deletion: in-game (Delete account) or by asking the owner.
   - The AGPL note: the source is available at the fork. The ToS can't restrict the rights the AGPL gives.
@@ -67,3 +68,45 @@ Slices 4.1 and 4.2 can run in parallel. Slice 4.3 needs the owner to review the 
 - Keep the same page layout and styling as the existing pages. Link them from the sign-up checkbox and the footer.
 
 **Approval:** screenshots of the footer, loading screen and homepage, plus the owner's sign-off on the legal text.
+
+## Slice 4.4 — Stop serving OpenFront's proprietary assets (Sonnet; added 2026-10-12)
+
+Found in 4.2: the build serves `proprietary/` (OpenFront's font, logos, favicon, menu and gameplay music, the
+game-start alert). Its license allows use only "as part of the complete OpenFront software package". Owner's call:
+keep the files in the tree untouched (clean merges) but stop serving and bundling them, behind one switch that
+defaults off. The font becomes Overpass Bold (OFL, already in `resources/fonts`), images point at our 4.2 art,
+music is silent until we have our own tracks, and the game-start alert uses `resources/sounds/effects/game-start.mp3`.
+
+## Stage 4 decisions made while building
+
+- **Legal text (owner, 2026-10-12):** Opus writes the ToS and privacy policy directly, in GLL's format
+  (`§ N — Title` sections, "Gamble Limited Ltd." / Effective Date header, data table, 30-day responses, Wisconsin
+  law and courts, USD $0 liability cap, the note that Gamble Limited Ltd. isn't incorporated and who runs it).
+  Wording is our own. GLL's anti-reverse-engineering, exclusive-IP and non-compete clauses are left out because
+  they conflict with the AGPL. Contact: the admin in person, else `gamblelimitedsupport@taps-holdings.org`.
+- **Wordmark font:** Overpass Bold, not the OpenFront font (that font is under `proprietary/`).
+- **Footer:** the cross-promo row is labelled "More games".
+- **Recommend** a lawyer reads the ToS and privacy policy before anyone outside the friend group plays.
+
+## Stage 4 as built (exit test 2026-10-12)
+
+- **4.1:** title, meta and `en.json` say Hostile Takeover; OpenFront's GitHub/Reddit footer links behind
+  `Features.upstreamSocials` (off); credits link → our `CREDITS.md`; OpenFront's press kit and `ads.txt` deleted;
+  the bell shows our changelog with OpenFront's notes below.
+- **4.2:** attribution row in the footer and loading screen; "More games" → Gamble Limited (Meridian when
+  `MERIDIAN_URL` is set at build time); `NOTICE`; wordmark, favicon and app icons in Overpass Bold.
+- **4.3:** our ToS and privacy policy (GLL format, our wording); already linked from the footer and sign-up checkbox.
+- **4.4:** `proprietary/` not served, bundled or copied unless `SERVE_PROPRIETARY=true`; display font loads
+  Overpass Bold under the old family name; music off behind `Features.music`; the alert plays `game-start.mp3`.
+- **Exit test:** guest home (1440 and 390), legal pages, sign-up, register, solo game, two-player private lobby to
+  the win screen, delete account: all pass. Network: only the game origin and the API; nothing from OpenFront hosts
+  or `proprietary/`. Only expected 4xx (`/cluster.json` 404 in dev, signed-out `/auth/refresh` 401).
+
+### Left for later stages
+
+- **Stage 5:** in the Vite dev server a browser navigation to `/terms-of-service.html` or `/privacy-policy.html`
+  returns the SPA homepage (a plain fetch gets the file). Confirm production serves the real pages from the
+  footer and sign-up links. A Docker build needs `MERIDIAN_URL` as a build arg once Meridian launches.
+- **Stage 6:** add the SIL OFL licence text for Overpass next to `resources/fonts/`; our own music tracks (then
+  turn `Features.music` on); hidden `DiscordLogo.svg`/`GoogleLogo.svg` are still fetched from our origin (harmless).
+  A lawyer should read the ToS and privacy policy before anyone outside the friend group plays.

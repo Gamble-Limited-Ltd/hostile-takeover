@@ -1,6 +1,7 @@
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { html, LitElement, TemplateResult } from "lit";
 import { customElement } from "lit/decorators.js";
+import { Features } from "../Features";
 import { NavNotificationsController } from "./NavNotificationsController";
 
 const MOBILE_ITEM =
@@ -86,8 +87,8 @@ export class MobileNavBar extends LitElement {
         >
           <div class="flex flex-col items-center gap-1">
             <img
-              src=${assetUrl("images/OpenFrontLogo.svg")}
-              alt="OpenFront"
+              src=${assetUrl("images/HostileTakeoverLogo.svg")}
+              alt="Hostile Takeover"
               class="w-auto h-auto max-w-[220px] max-h-[4.5rem]"
             />
             <div
@@ -104,6 +105,7 @@ export class MobileNavBar extends LitElement {
         ></button>
         <div
           class="no-crazygames nav-menu-item flex items-center w-full cursor-pointer"
+          ?hidden=${!Features.store}
           data-page="page-item-store"
           @click=${this._notifications.onStoreClick}
         >
@@ -120,11 +122,13 @@ export class MobileNavBar extends LitElement {
           data-i18n="main.inventory"
         ></button>
         <button
+          ?hidden=${!Features.leaderboard}
           class="${MOBILE_ITEM}"
           data-page="page-leaderboard"
           data-i18n="main.leaderboard"
         ></button>
         <button
+          ?hidden=${!Features.clans}
           class="no-crazygames ${MOBILE_ITEM}"
           data-page="page-clan"
           data-i18n="main.clans"

@@ -8,6 +8,7 @@ import { getUserMe, invalidateUserMe } from "./Api";
 import { checkClanTagOwnership } from "./ClanApi";
 import { verifiedBadge } from "./components/ui/VerifiedBadge";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
+import { Features } from "./Features";
 import { showInGameAlert, showInGameConfirm } from "./InGameModal";
 import {
   accountNameHeld,
@@ -776,7 +777,10 @@ export class UsernameInput extends LitElement {
       ? null
       : localStorage.getItem(usernameKey);
     if (storedUsername) {
-      this.clanTag = localStorage.getItem(clanTagKey) ?? "";
+      // Hostile Takeover: no clan tag (and so no tag check) unless Features.clans.
+      this.clanTag = Features.clans
+        ? (localStorage.getItem(clanTagKey) ?? "")
+        : "";
     }
     // No persona yet — it arrives asynchronously and reseeds in
     // connectedCallback, so this settles on the stored or generated name.
@@ -814,7 +818,9 @@ export class UsernameInput extends LitElement {
       <!-- The name field takes whatever the tag picker and trailing button
            leave, so the row always fills the strip. -->
       <div class="flex items-center w-full h-full gap-1.5 sm:gap-2">
-        ${this.accountName() === null ? this.renderClanControl() : nothing}
+        ${this.accountName() === null && Features.clans
+          ? this.renderClanControl()
+          : nothing}
         ${this.renderNameControl()}
       </div>
       <!-- One positioned slot, stacked. An error and the reservation reminder

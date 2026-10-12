@@ -1,5 +1,6 @@
 import express from "express";
 import { z } from "zod";
+import newsItems from "../../../resources/news.json";
 import { requireApiKey } from "./apiKey";
 import { censorPlayer } from "./censor";
 import { isLoopbackHost, type ApiEnv } from "./env";
@@ -39,6 +40,14 @@ export function mountGameRoutes(app: express.Express, env: ApiEnv): void {
   // that parses: no patterns, flags or store items.
   app.get("/cosmetics.json", (_req, res) => {
     res.json({ patterns: {}, flags: {} });
+  });
+
+  // Public. Client: src/client/Api.ts getNews() (z.array(NewsItemSchema)),
+  // which falls back to the same bundled file on any non-200. Serving it here
+  // means the homepage load is not a 404 in the network log (Slice 3.5b).
+  app.get("/news.json", (_req, res) => {
+    res.setHeader("Cache-Control", "public, max-age=60");
+    res.json(newsItems);
   });
 
   // Server: src/server/PrivilegeRefresher.ts (ReservedClanTagsResponseSchema,

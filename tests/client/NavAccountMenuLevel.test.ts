@@ -22,6 +22,26 @@ vi.mock("../../src/client/Utils", () => ({
 import type { Progress, UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { NavAccountMenu } from "../../src/client/components/NavAccountMenu";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 const progress: Progress = {
   prestige: 1,
   level: 23,

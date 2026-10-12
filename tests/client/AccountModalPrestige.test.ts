@@ -69,6 +69,26 @@ import { getUserMe, invalidateUserMe } from "../../src/client/Api";
 import type { PrestigeFlow } from "../../src/client/components/PrestigeFlow";
 import { showInGameAlert } from "../../src/client/InGameModal";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 const AT_100 = {
   prestige: 3,
   level: 100,

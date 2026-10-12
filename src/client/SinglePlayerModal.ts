@@ -26,6 +26,7 @@ import "./components/ToggleInputCard";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { getPlayerCosmetics, prewarmCosmetics } from "./Cosmetics";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
+import { Features } from "./Features";
 import { GameStartingModal } from "./GameStartingModal";
 import { showInGameAlert } from "./InGameModal";
 import { JoinLobbyEvent } from "./Main";
@@ -335,26 +336,31 @@ export class SinglePlayerModal extends BaseModal {
       title: translateText("main.solo") || "Solo",
       onBack: () => this.close(),
       ariaLabel: translateText("common.back"),
-      rightContent: responseHasLinkedIdentity(this.userMeResponse)
-        ? html`<button
-              @click=${this.toggleAchievements}
-              class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all shrink-0 ${this
-                .showAchievements
-                ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
-                : "text-white/60"}"
-            >
-              <img
-                src=${assetUrl("images/MedalIconWhite.svg")}
-                class="w-4 h-4 opacity-80 shrink-0"
-                style="${this.showAchievements ? "" : "filter: grayscale(1);"}"
-              />
-              <span
-                class="text-xs font-bold uppercase tracking-wider whitespace-nowrap"
-                >${translateText("single_modal.toggle_achievements")}</span
+      // Hostile Takeover: achievements belong to Features.xp.
+      rightContent: !Features.xp
+        ? undefined
+        : responseHasLinkedIdentity(this.userMeResponse)
+          ? html`<button
+                @click=${this.toggleAchievements}
+                class="flex items-center gap-2 px-3 py-2 rounded-xl border border-white/10 bg-white/5 hover:bg-white/10 transition-all shrink-0 ${this
+                  .showAchievements
+                  ? "bg-yellow-500/10 border-yellow-500/30 text-yellow-400"
+                  : "text-white/60"}"
               >
-            </button>
-            ${this.showAchievements ? this.renderMedalOverview() : null}`
-        : this.renderNotLoggedInBanner(),
+                <img
+                  src=${assetUrl("images/MedalIconWhite.svg")}
+                  class="w-4 h-4 opacity-80 shrink-0"
+                  style="${this.showAchievements
+                    ? ""
+                    : "filter: grayscale(1);"}"
+                />
+                <span
+                  class="text-xs font-bold uppercase tracking-wider whitespace-nowrap"
+                  >${translateText("single_modal.toggle_achievements")}</span
+                >
+              </button>
+              ${this.showAchievements ? this.renderMedalOverview() : null}`
+          : this.renderNotLoggedInBanner(),
     });
   }
 

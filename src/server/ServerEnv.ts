@@ -335,6 +335,11 @@ export class ServerEnv {
     }
     return ServerEnv.cachedMachine;
   }
+  // Ranked matchmaking check-in loops (Worker.ts). Hostile Takeover has no
+  // ranked queue, so they stay off unless RANKED_ENABLED is exactly "true".
+  static rankedEnabled(): boolean {
+    return process.env.RANKED_ENABLED === "true";
+  }
   static otelEnabled(): boolean {
     return (
       ServerEnv.gameEnv !== GameEnv.Dev &&

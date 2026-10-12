@@ -1,6 +1,12 @@
-- This is a sample changelog based off of v0.24.0.
-- This file will be replaced with real release notes during the release build process.
-  - Indented bullets look like this
+📦 **Hostile Takeover Changelog**
+
+🆕 **What's new**
+
+- Hostile Takeover is a private fork of OpenFront for a group of friends, with its own accounts and servers.
+  → Sign up with your kmlhs.org email, pick a username and play.
+- Store, ads and third-party logins have been removed.
+
+📜 **Earlier OpenFront release notes**
 
 📦 **OpenFront v24 Changelog**
 

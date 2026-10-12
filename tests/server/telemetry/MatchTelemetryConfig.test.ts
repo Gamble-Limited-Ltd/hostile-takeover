@@ -12,6 +12,15 @@ describe("loadMatchTelemetryConfig", () => {
     expect(loadMatchTelemetryConfig({})).toEqual({ enabled: false });
   });
 
+  it("stays off for an empty or false TELEMETRY_ENABLED", () => {
+    expect(loadMatchTelemetryConfig({ TELEMETRY_ENABLED: "" })).toEqual({
+      enabled: false,
+    });
+    expect(
+      loadMatchTelemetryConfig({ ...validEnv, TELEMETRY_ENABLED: "false" }),
+    ).toEqual({ enabled: false });
+  });
+
   it("loads finite defaults when explicitly enabled", () => {
     expect(loadMatchTelemetryConfig(validEnv)).toEqual({
       enabled: true,

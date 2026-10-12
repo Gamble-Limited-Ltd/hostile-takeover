@@ -2,6 +2,26 @@ import type { LiveStream, StreamsFeed } from "@openfront/shared/ApiSchemas";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { streamsFeed } from "../../../src/client/StreamsFeed";
 
+// Hostile Takeover: the features under test are hidden by default; turn
+// the switches on so this keeps covering the real UI.
+vi.mock("../../../src/client/Features", () => ({
+  Features: {
+    store: true,
+    cosmetics: true,
+    ads: false,
+    xp: true,
+    ranked: true,
+    leaderboard: true,
+    clans: true,
+    friends: true,
+    profile: true,
+    usernameChange: true,
+    stream: true,
+    steam: false,
+    discord: true,
+  },
+}));
+
 // Mounting behaviour of the <featured-stream> panel. The point of these tests is the
 // request cost: liveness used to be detected in the browser by constructing a real
 // autoplaying Twitch.Player for each configured channel and reading its ONLINE/OFFLINE

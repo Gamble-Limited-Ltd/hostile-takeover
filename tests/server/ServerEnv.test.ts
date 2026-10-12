@@ -289,3 +289,23 @@ describe("ServerEnv.siteHost", () => {
     expect(ServerEnv.siteHost()).toBeUndefined();
   });
 });
+
+describe("ServerEnv.rankedEnabled", () => {
+  afterEach(() => {
+    vi.unstubAllEnvs();
+  });
+
+  test("is off when RANKED_ENABLED is missing, empty or not exactly true", () => {
+    vi.stubEnv("RANKED_ENABLED", undefined);
+    expect(ServerEnv.rankedEnabled()).toBe(false);
+    for (const v of ["", "false", "1", "TRUE", "yes"]) {
+      vi.stubEnv("RANKED_ENABLED", v);
+      expect(ServerEnv.rankedEnabled()).toBe(false);
+    }
+  });
+
+  test("is on only for the exact value true", () => {
+    vi.stubEnv("RANKED_ENABLED", "true");
+    expect(ServerEnv.rankedEnabled()).toBe(true);
+  });
+});
