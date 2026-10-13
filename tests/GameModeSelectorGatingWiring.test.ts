@@ -35,6 +35,11 @@ vi.mock("../src/client/LazyModals", async (importOriginal) => ({
   whenModalLoaded: (_tag: string, open: () => void) => open(),
 }));
 
+// Sign-in gating (SignInJoinGate) is covered on its own; here the player is in.
+vi.mock("../src/client/SignInJoinGate", () => ({
+  refuseIfSignedOut: async () => false,
+}));
+
 // Registers <game-mode-selector> as a side effect.
 import "../src/client/GameModeSelector";
 
@@ -168,7 +173,7 @@ describe("the multiplayer gate at its real call sites", () => {
     // Establishes the control: these are genuinely reachable, so the
     // assertions below are about the gate and not about a broken mount.
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
     expect(wiggle).not.toHaveBeenCalled();
   });
 
@@ -208,7 +213,7 @@ describe("the multiplayer gate at its real call sites", () => {
     clickEveryButton();
 
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
   });
 
   it("does refuse on a network failure, where Retry is a real remedy", async () => {
@@ -254,7 +259,7 @@ describe("the multiplayer gate at its real call sites", () => {
     clickEveryButton();
 
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
   });
 
   it("never gates the single-player card", async () => {

@@ -103,6 +103,7 @@ import {
   setServerListInGame,
   startServerListPolling,
 } from "./ServerList";
+import { refuseIfSignedOut } from "./SignInJoinGate";
 import type { SinglePlayerModal } from "./SinglePlayerModal";
 import {
   parseSteamGrantStore,
@@ -831,8 +832,9 @@ class Client {
         //
         // The response is passed in rather than the check being made here:
         // the enclosing `userMeResponse !== false` is NOT that confirmation,
-        // because a guest account satisfies it (POST /auth/refresh mints one
-        // for any visitor). resumePendingSteamLink owns the real predicate,
+        // because a guest account satisfies it (upstream's POST /auth/refresh
+        // mints one for any visitor; this fork's API answers 401 instead).
+        // resumePendingSteamLink owns the real predicate,
         // next to the consumption it protects — see its comment.
         if (resumePendingSteamLink(userMeResponse, this.steamLink)) {
           return;
@@ -1577,6 +1579,15 @@ class Client {
     ) {
       return false;
     }
+    this.closeJoinUi(lobby);
+    // false: the web never refuses here any more, so the only feedback left
+    // is the desktop status bar's wiggle -- the bar is already showing the
+    // update or session reason that refused this join.
+    reportMultiplayerRefusal(false);
+    return true;
+  }
+
+  private closeJoinUi(lobby: JoinLobbyEvent) {
     // The dispatcher may already have told the player they are in a lobby:
     // JoinLobbyModal dispatches only after it has joined and rendered
     // "joined, waiting", and HostLobbyModal after the server lobby exists.
@@ -1598,11 +1609,6 @@ class Client {
     ) {
       this.matchmakingModal.close();
     }
-    // false: the web never refuses here any more, so the only feedback left
-    // is the desktop status bar's wiggle -- the bar is already showing the
-    // update or session reason that refused this join.
-    reportMultiplayerRefusal(false);
-    return true;
   }
 
   private async handleJoinLobby(event: CustomEvent<JoinLobbyEvent>) {
@@ -1617,6 +1623,14 @@ class Client {
       return;
     }
     if (this.blockedJoin(lobby)) {
+      return;
+    }
+    // No guest play: a signed-out web player is sent to sign in, not left to
+    // retry a join the server will refuse.
+    if (
+      joinIsGateable(lobby) &&
+      (await refuseIfSignedOut(() => this.closeJoinUi(lobby)))
+    ) {
       return;
     }
     // Only once the join is actually going ahead: a refused dispatch that

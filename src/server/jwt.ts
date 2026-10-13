@@ -17,7 +17,7 @@ type TokenVerificationResult =
       persistentId: string;
       claims: TokenPayload | null;
     }
-  | { type: "error"; message: string };
+  | { type: "error"; reason?: "persistent_id" | "invalid"; message: string };
 
 export async function verifyClientToken(
   token: string,
@@ -28,6 +28,7 @@ export async function verifyClientToken(
     } else {
       return {
         type: "error",
+        reason: "persistent_id",
         message: "persistent ID not allowed in production",
       };
     }
@@ -45,6 +46,7 @@ export async function verifyClientToken(
     if (!result.success) {
       return {
         type: "error",
+        reason: "invalid",
         message: z.prettifyError(result.error),
       };
     }
@@ -59,7 +61,7 @@ export async function verifyClientToken(
           ? e
           : "An unknown error occurred";
 
-    return { type: "error", message };
+    return { type: "error", reason: "invalid", message };
   }
 }
 
@@ -76,6 +78,7 @@ export async function getUserMe(
         authorization: `Bearer ${token}`,
         "x-api-key": ServerEnv.apiKey(),
       },
+      signal: AbortSignal.timeout(5000),
     });
     if (response.status !== 200) {
       return {

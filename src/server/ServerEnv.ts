@@ -130,7 +130,9 @@ export class ServerEnv {
     if (ServerEnv.publicKey) return ServerEnv.publicKey;
     const jwksUrl = ServerEnv.jwtIssuer() + "/.well-known/jwks.json";
     console.log(`Fetching JWKS from ${jwksUrl}`);
-    const response = await fetch(jwksUrl);
+    const response = await fetch(jwksUrl, {
+      signal: AbortSignal.timeout(5000),
+    });
     if (!response.ok) {
       const body = await response.text();
       throw new Error(`JWKS fetch failed: ${response.status} ${body}`);

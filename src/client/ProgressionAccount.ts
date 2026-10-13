@@ -10,8 +10,9 @@ export type XpAccount =
   // A real account: a linked identity, or a CrazyGames profile whose token
   // exchange produced a session. Same rule as the account modal.
   | { kind: "signed_in"; me: UserMeResponse }
-  // No session, or only a guest one (POST /auth/refresh with no cookie mints
-  // a guest account, so a session alone is not a sign-in).
+  // No session, or only a guest one (upstream's POST /auth/refresh with no
+  // cookie mints a guest account, so a session alone is not a sign-in; this
+  // fork's API answers 401 instead).
   | { kind: "signed_out" }
   // There is a session but /users/@me failed (5xx, timeout, unreadable): this
   // says nothing about the account, so it is neither of the above.
