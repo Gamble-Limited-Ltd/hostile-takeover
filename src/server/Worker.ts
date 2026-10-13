@@ -577,7 +577,13 @@ export async function startWorker() {
           log.warn(`Invalid token: ${result.message}`, {
             gameID: clientMsg.gameID,
           });
-          ws.close(CloseCode.InternalError, CloseReason.InvalidToken);
+          // A raw persistent ID can never be accepted in production: close
+          // terminally so the client asks the player to sign in, not retry.
+          if (result.reason === "persistent_id") {
+            ws.close(CloseCode.Unauthorized, CloseReason.LoginRequired);
+          } else {
+            ws.close(CloseCode.InternalError, CloseReason.InvalidToken);
+          }
           return;
         }
         const { persistentId, claims } = result;

@@ -38,6 +38,11 @@ vi.mock("../../src/client/Auth", async (importOriginal) => {
   };
 });
 
+// Sign-in gating (SignInJoinGate) has its own tests; these joins assume a session.
+vi.mock("../../src/client/SignInJoinGate", () => ({
+  refuseIfSignedOut: async () => false,
+}));
+
 // Same story for Api: <username-input> calls getUserMe from
 // connectedCallback, which runs while Main's import is still executing.
 vi.mock("../../src/client/Api", async (importOriginal) => {

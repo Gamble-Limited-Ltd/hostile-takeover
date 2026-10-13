@@ -41,6 +41,11 @@ vi.mock("../src/client/LazyModals", async (importOriginal) => ({
   whenModalLoaded: (_tag: string, open: () => void) => open(),
 }));
 
+// Sign-in gating (SignInJoinGate) is covered on its own; here the player is in.
+vi.mock("../src/client/SignInJoinGate", () => ({
+  refuseIfSignedOut: async () => false,
+}));
+
 // Registers <game-mode-selector> as a side effect.
 import "../src/client/GameModeSelector";
 
@@ -212,7 +217,7 @@ describe("the multiplayer entry points while the backend is unreachable", () => 
     expect(clickEveryButton()).toBeGreaterThan(0);
 
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
     expect(
       selector.querySelectorAll('button[aria-disabled="true"]').length,
     ).toBe(0);
@@ -232,7 +237,7 @@ describe("the multiplayer entry points while the backend is unreachable", () => 
     ).toBe(0);
     expect(clickEveryButton()).toBeGreaterThan(0);
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
     expect(messages).toEqual([]);
   });
 
@@ -312,7 +317,7 @@ describe("the multiplayer entry points while the backend is unreachable", () => 
     ).toBe(0);
     expect(clickEveryButton()).toBeGreaterThan(0);
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
   });
 
   it("leaves single-player alone", async () => {
@@ -363,7 +368,7 @@ describe("the multiplayer entry points while the backend is unreachable", () => 
 
     expect(clickEveryButton()).toBeGreaterThan(0);
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
   });
 });
 
@@ -464,7 +469,7 @@ describe("a refused multiplayer click on the web", () => {
       selector.querySelectorAll('button[aria-disabled="true"]').length,
     ).toBe(0);
     expect(clickEveryButton()).toBeGreaterThan(0);
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
     expect(joinOpen).toHaveBeenCalled();
   });
 

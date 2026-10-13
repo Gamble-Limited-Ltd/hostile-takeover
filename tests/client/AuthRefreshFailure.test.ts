@@ -54,6 +54,45 @@ describe("/auth/refresh failure handling", () => {
     expect(localStorage.getItem(PERSISTENT_ID_KEY)).toBe("persistent-id");
   });
 
+  it("retries a transient failure once, and the retry's answer counts", async () => {
+    // 503 then 401: proves the second attempt ran and was handled normally.
+    let calls = 0;
+    fetchMock = vi.fn(async () => {
+      calls++;
+      const status = calls === 1 ? 503 : 401;
+      return { status, ok: false, json: async () => ({}) };
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await userAuth()).toBe(false);
+    expect(
+      fetchMock.mock.calls.filter((c) =>
+        String(c[0]).includes("/auth/refresh"),
+      ),
+    ).toHaveLength(2);
+    expect(logoutCalls()).toHaveLength(1);
+  });
+
+  it("retries once after a network error, then gives up", async () => {
+    fetchMock = vi.fn(async () => {
+      throw new Error("offline");
+    });
+    vi.stubGlobal("fetch", fetchMock);
+
+    expect(await userAuth()).toBe(false);
+    expect(fetchMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("never retries a 401", async () => {
+    answerRefreshWith(401);
+
+    expect(await userAuth()).toBe(false);
+    const refreshes = fetchMock.mock.calls.filter((c) =>
+      String(c[0]).includes("/auth/refresh"),
+    );
+    expect(refreshes).toHaveLength(1);
+  });
+
   it("logs out on a 401", async () => {
     answerRefreshWith(401);
 

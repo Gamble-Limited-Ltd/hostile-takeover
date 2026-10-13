@@ -49,6 +49,12 @@ vi.mock("../src/client/LazyModals", async (importOriginal) => ({
 // whole reason the bug exists.
 import { DesktopStatusBar } from "../src/client/components/DesktopStatusBar";
 import { DetailedGameViewModal } from "../src/client/components/DetailedGameViewModal";
+
+// Sign-in gating (SignInJoinGate) is covered on its own; here the player is in.
+vi.mock("../src/client/SignInJoinGate", () => ({
+  refuseIfSignedOut: async () => false,
+}));
+
 import "../src/client/GameModeSelector";
 
 /**
@@ -226,7 +232,7 @@ describe("a consumer mounting AFTER the update state was published", () => {
     expect(clickEveryButton(selector)).toBeGreaterThan(0);
 
     expect(joinOpen).toHaveBeenCalled();
-    expect(hostOpen).toHaveBeenCalled();
+    await vi.waitFor(() => expect(hostOpen).toHaveBeenCalled());
     expect(wiggle).not.toHaveBeenCalled();
   });
 

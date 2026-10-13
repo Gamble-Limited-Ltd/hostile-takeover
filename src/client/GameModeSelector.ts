@@ -40,6 +40,7 @@ import {
   retryServerList,
   type BackendReachabilityDetail,
 } from "./ServerList";
+import { refuseIfSignedOut } from "./SignInJoinGate";
 import type { SinglePlayerModal } from "./SinglePlayerModal";
 import { lastUserMeResponse } from "./UserMeBroadcast";
 import { UsernameInput } from "./UsernameInput";
@@ -860,9 +861,11 @@ export class GameModeSelector extends LitElement {
     document.dispatchEvent(new CustomEvent("start-tutorial"));
   };
 
-  private openHostLobby = () => {
+  private openHostLobby = async () => {
     if (this.blockedFromApiAction()) return;
     if (!this.validateUsername()) return;
+    // Creating a lobby needs a session (POST /api/create_game 401s without).
+    if (await refuseIfSignedOut()) return;
     whenModalLoaded("host-lobby-modal", () =>
       (document.querySelector("host-lobby-modal") as HostLobbyModal)?.open(),
     );

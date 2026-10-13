@@ -511,44 +511,49 @@ async function doRefreshJwt(): Promise<void> {
       return doCrazyGamesLogin(token);
     }
   }
-  try {
-    console.log("Refreshing jwt");
-    // Bounded like doSteamLogin below: userAuth() awaits this, and every
-    // authenticated path awaits userAuth(), so a response that never settles
-    // stops the client joining anything at all. An abort lands in the catch
-    // below, which already treats an unreachable server as "clear the jwt" —
-    // the same outcome, now reached in bounded time.
-    const response = await fetch(getApiBase() + "/auth/refresh", {
-      method: "POST",
-      credentials: "include",
-      signal: activeDeadlineSignal(10_000),
-    });
-    if (response.status === 401) {
-      // The only answer that means the session is dead: the server has
-      // already cleared the refresh cookie.
-      console.warn("Refresh rejected", response);
-      logOut();
-      return;
+  // One retry after a short pause for transient failures (5xx, 429, network,
+  // abort), so a blip does not drop the player to the signed-out join path.
+  // Never for 401: that is the server saying the session is dead.
+  for (let attempt = 0; attempt < 2; attempt++) {
+    try {
+      console.log("Refreshing jwt");
+      // Bounded like doSteamLogin below: userAuth() awaits this, and every
+      // authenticated path awaits userAuth(), so a response that never settles
+      // stops the client joining anything at all. An abort lands in the catch
+      // below and is treated like an unreachable server.
+      const response = await fetch(getApiBase() + "/auth/refresh", {
+        method: "POST",
+        credentials: "include",
+        signal: activeDeadlineSignal(10_000),
+      });
+      if (response.status === 401) {
+        // The only answer that means the session is dead: the server has
+        // already cleared the refresh cookie.
+        console.warn("Refresh rejected", response);
+        logOut();
+        return;
+      }
+      if (response.status !== 200) {
+        // A 5xx (database/Hyperdrive), 429 or edge block is transient. Logging
+        // out here would drop the player mid-session and, if /auth/logout
+        // reached a healthy connection, delete a still-valid session.
+        console.warn("Refresh failed", response);
+      } else {
+        const json = await response.json();
+        const { jwt, expiresIn } = json;
+        __expiresAt = Date.now() + expiresIn * 1000;
+        console.log("Refresh succeeded");
+        __jwt = jwt;
+        return;
+      }
+    } catch (e) {
+      console.warn("Refresh failed", e);
     }
-    if (response.status !== 200) {
-      // A 5xx (database/Hyperdrive), 429 or edge block is transient. Logging
-      // out here would drop the player mid-session and, if /auth/logout
-      // reached a healthy connection, delete a still-valid session. Treat it
-      // like an unreachable server: keep the cookie, retry on next userAuth().
-      console.warn("Refresh failed", response);
-      __jwt = null;
-      return;
-    }
-    const json = await response.json();
-    const { jwt, expiresIn } = json;
-    __expiresAt = Date.now() + expiresIn * 1000;
-    console.log("Refresh succeeded");
-    __jwt = jwt;
-  } catch (e) {
-    console.warn("Refresh failed", e);
-    // if server unreachable, just clear jwt
+    // Transient failure: clear the jwt (the next userAuth() tries again).
     __jwt = null;
-    return;
+    if (attempt === 0) {
+      await new Promise((resolve) => setTimeout(resolve, 1000));
+    }
   }
 }
 
