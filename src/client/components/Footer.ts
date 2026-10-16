@@ -4,6 +4,7 @@ import { customElement, state } from "lit/decorators.js";
 import { composeVersionDisplay, desktopVersion } from "../DesktopShell";
 import { Features } from "../Features";
 import {
+  COMPANY_SITE_URL,
   FORK_SOURCE_URL,
   GAMBLE_LIMITED_URL,
   UPSTREAM_SOURCE_URL,
@@ -145,6 +146,14 @@ export class Footer extends LitElement {
             class="text-xs mt-1 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 px-4 text-center"
           >
             <span data-i18n="main.attribution_publisher"></span>
+            <span>·</span>
+            <a
+              href=${COMPANY_SITE_URL}
+              data-i18n="main.company_site"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="hover:text-white transition-colors"
+            ></a>
             <span>·</span>
             <a
               href=${UPSTREAM_SOURCE_URL}
