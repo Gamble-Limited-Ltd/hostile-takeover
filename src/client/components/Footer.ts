@@ -194,6 +194,24 @@ export class Footer extends LitElement {
                 ></a>`
               : nothing}
           </div>
+          <!-- Gamble Limited Ltd.'s Portfolio Stamp (Boss, 2026-10-16). Company
+               art, all rights reserved, not CC BY-SA: see NOTICE. A second way to
+               the company site link above, so it is hidden from screen readers. -->
+          <a
+            href=${COMPANY_SITE_URL}
+            target="_blank"
+            rel="noopener noreferrer"
+            aria-hidden="true"
+            tabindex="-1"
+            class="mt-2 opacity-60 hover:opacity-100 transition-all"
+          >
+            <img
+              src=${assetUrl("images/gll-portfolio-stamp-dark.svg")}
+              alt=""
+              class="w-40 h-auto pointer-events-none"
+              draggable="false"
+            />
+          </a>
         </div>
 
         <!-- Phones keep the full store widget on the play page instead; there

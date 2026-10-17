@@ -94,3 +94,24 @@ describe("page-footer version line", () => {
     });
   });
 });
+
+describe("page-footer company stamp", () => {
+  it("links the Gamble Limited Ltd. stamp to the company site, hidden from screen readers", async () => {
+    if (!customElements.get("page-footer")) {
+      customElements.define("page-footer", Footer);
+    }
+    const footer = document.createElement("page-footer") as Footer;
+    document.body.appendChild(footer);
+    await footer.updateComplete;
+
+    const img = footer.querySelector(
+      'img[src*="gll-portfolio-stamp-dark.svg"]',
+    );
+    const link = img?.closest("a");
+    expect(link?.getAttribute("href")).toBe("https://gll.taps-holdings.org");
+    expect(link?.getAttribute("aria-hidden")).toBe("true");
+    expect(link?.getAttribute("tabindex")).toBe("-1");
+    expect(img?.getAttribute("alt")).toBe("");
+    footer.remove();
+  });
+});

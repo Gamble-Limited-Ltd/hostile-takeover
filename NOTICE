@@ -31,6 +31,11 @@ What belongs to Gamble Limited Ltd.
 - The Hostile Takeover wordmark and icons (resources/images/HostileTakeover*
   and resources/icons/ht512_*): Creative Commons BY-SA 4.0, to match
   resources/. They are set in Overpass Bold, which ships in resources/fonts.
+- The Gamble Limited Ltd. Portfolio Stamp ("A Gamble Limited Ltd. game",
+  resources/images/gll-portfolio-stamp-dark.svg): Copyright (c) Gamble
+  Limited Ltd., All Rights Reserved. It is the company's mark, not part of
+  the game's art, and is NOT licensed under CC BY-SA or the AGPL, even
+  though it sits in resources/. Forks must remove it.
 
 Where the source is
 -------------------

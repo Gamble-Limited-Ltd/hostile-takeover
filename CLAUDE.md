@@ -55,6 +55,9 @@ they were always part of the game.
 2. **No new visual language.** No new colors, fonts, font sizes, radii, shadows, spacing scales,
    icons, animations or CSS files. Use only Tailwind classes and tokens that are already in the
    codebase. If a value you need doesn't exist, use the closest one that does.
+   One exception (Boss, 2026-10-16): the Gamble Limited Ltd. Portfolio Stamp image in the footer
+   (`resources/images/gll-portfolio-stamp-dark.svg`, copied from gll-shared, all rights reserved per
+   `NOTICE`, not CC BY-SA). Never copy it into other art or restyle around it.
 3. **Remove by hiding, not redesigning.** When removing the store, ads, providers or Turnstile, take out
    the entry points (buttons, menu items, slots) and leave the surrounding layout as it was.
    No reflowing, re-centering or "filling the gap" with new content.
