@@ -971,6 +971,7 @@ class Client {
     if ((await userAuth()) === false) {
       // Not logged in: apply the signed-out profile directly.
       applyUserMe(initialAuthGeneration)(false);
+      this.promptSignInOnce();
     } else {
       // JWT appears valid: fetch the profile and apply it if still current.
       getUserMe().then(applyUserMe(initialAuthGeneration));
@@ -1257,6 +1258,20 @@ class Client {
     else stashGateError(gate.code);
     this.openAccountModalFresh();
     return true;
+  }
+
+  // Hostile Takeover: a signed-out player lands on the sign-in screen, once
+  // per tab session, unless the URL already points somewhere (join link,
+  // reset link, GLL ID redirect, another modal).
+  private promptSignInOnce(): void {
+    if (window.location.hash !== "") return;
+    try {
+      if (sessionStorage.getItem("ht_signin_prompted") === "1") return;
+      sessionStorage.setItem("ht_signin_prompted", "1");
+    } catch {
+      // Storage blocked: prompt anyway.
+    }
+    this.openAccountModalFresh();
   }
 
   private openAccountModalFresh(): void {

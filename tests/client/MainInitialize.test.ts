@@ -259,6 +259,11 @@ describe("Client.initialize() booted from Main.ts module scope", () => {
     expect(window.adsEnabled).toBe(false);
   });
 
+  it("opens the sign-in modal once for a signed-out boot with no hash", () => {
+    expect(window.location.hash).toBe("#modal=account");
+    expect(sessionStorage.getItem("ht_signin_prompted")).toBe("1");
+  });
+
   it("clears the stale achievements.pushed record", () => {
     expect(localStorage.getItem("achievements.pushed")).toBeNull();
   });
@@ -289,6 +294,8 @@ describe("Client.initialize() booted from Main.ts module scope", () => {
       close: () => void;
     };
     const closeSpy = vi.spyOn(joinModal, "close").mockImplementation(() => {});
+    // The signed-out boot left the sign-in prompt's hash behind.
+    history.replaceState(null, "", window.location.pathname);
     window.dispatchEvent(new Event("hashchange"));
     await vi.waitFor(() => expect(closeSpy).toHaveBeenCalled());
     closeSpy.mockRestore();
