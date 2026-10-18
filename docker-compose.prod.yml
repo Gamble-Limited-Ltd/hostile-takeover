@@ -59,6 +59,10 @@ services:
       HT_TRUST_PROXY: loopback, uniquelocal
     volumes:
       - ${HT_KEYS_DIR:-${HOME}/.config/hostile-takeover/keys}:/run/keys:ro
+    # default keeps ht-db reachable; gll_gate is the private network to GATE (GATE_DIRECT_URL).
+    networks:
+      - default
+      - gll_gate
     ports:
       - "127.0.0.1:8287:8787"
     healthcheck:
@@ -106,6 +110,11 @@ services:
       retries: 4
       start_period: 60s
     logging: *logging
+
+networks:
+  gll_gate:
+    external: true
+    name: gll_gate
 
 volumes:
   ht_db_data:
