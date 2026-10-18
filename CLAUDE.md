@@ -184,7 +184,15 @@ npm run lint:fix         # Oxlint + ESLint with auto-fix
 npm run format           # Prettier
 npm run build-prod       # Production build
 npm run typecheck        # tsc for the root project and each package
+bash preship.sh          # quick local gate (changed files), offloaded to the build PC when free
+bash preship.sh --full   # everything CI runs, offload PC only (exit 75: push, ht-ci.yml runs it)
+bash preship.sh --status # is there a FULL pass for exactly this tree?
 ```
+
+**Preship** (`preship.sh`, details in `docs/Preship.md`): run `bash preship.sh` before every commit and
+`--full` before merging a slice to `main` (or push the branch and let `ht-ci.yml` do it). Don't run the
+full suite on the VM by hand; preship offloads it. Our files only: `preship.sh`, `scripts/preship-*.sh`,
+`.remotebuilder`, `tests/tools/Preship.test.ts`.
 
 **Run a single test file:**
 

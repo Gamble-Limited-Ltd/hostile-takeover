@@ -67,3 +67,10 @@ Ranked/matchmaking is not planned. Revisit it only if the group grows enough to 
 
 Boss considers Hostile Takeover **complete**. From here it only receives upstream (OpenFront) syncs.
 Update 2 (progression) stays parked in `update-2-progression.md` until Boss reopens it.
+
+## Decision log
+
+- **2026-10-18, preship (slice `offload-preship`).** HT gets a local gate, `preship.sh`, quick (changed files)
+  and `--full` (all of CI, offload PC only, exit 75 when unavailable so we push for `ht-ci.yml` instead of
+  grinding 15 minutes on the shared VM). The build step never runs in our own tree. No upstream file was
+  edited, so nothing was added to `FORK_CHANGES.md`. Details: `docs/Preship.md`.
