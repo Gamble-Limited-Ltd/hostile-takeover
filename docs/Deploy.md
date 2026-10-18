@@ -45,3 +45,20 @@ Reset links for forgotten passwords: `... admin.ts reset <username>`. Both comma
   public lobbies: until `ht-api` answers `POST /cluster/checkin` the game schedules no public games.
 - `.env.prod` values: `POSTGRES_*` and `HT_DB_*` must match (the script writes both). The Postgres
   password is only read when the volume is first created.
+
+## Release record: GLL ID direct sign-in (2026-10-18)
+
+```
+Release: new-tab "Sign in with GLL ID", "Redirect failed? Sign in here" (GLL ID forms inside HT,
+  /auth/gate/direct/*), ht-api joins the private network gll_gate (GATE_DIRECT_URL=http://gate:3301)
+Lane: Minor (feature, sign-in). Deployed by: Boss, after GATE's direct sign-in release.
+Gates: typecheck + lint clean [x]  new GLL ID tests green [x]  dev rehearsal HT dev -> GATE dev,
+  no fakes [x]  full vitest: 6 failures (5 InventoryModal, 1 RenderHtml) that fail the same on main [ ]
+Needs in .env.prod: GATE_DIRECT_URL=http://gate:3301
+Kill switch: GATE side, `cd ~/gll-id && ./manage.sh clients direct hostile-takeover off`
+Watch period: 24 h
+Rollback: cd ~/hostile-takeover && ./ht-deploy.sh a9ff9862a4c4caa0d9a04a99b1804f09f045c9b6
+Overrides:
+  Override: ships inside GATE's watch period — Boss: this can be a blocker for users to play the game at all; GATE was just released today, so this is an update for a same-launch-day feature.
+  Override: full test suite not green (6 failures also on main, not from this change) — Boss: same reason.
+```
