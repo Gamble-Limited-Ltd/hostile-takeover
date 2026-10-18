@@ -12,7 +12,7 @@ import type { UserRow } from "./userMe";
 export const EMAIL_RE = /^[^@\s]+@kmlhs\.org$/i;
 // The client's AccountUsernameSchema (src/client/validations/username.ts):
 // 3-20 chars of [a-zA-Z0-9_-], single spaces between words allowed.
-const USERNAME_RE = /^[a-zA-Z0-9_-]+( [a-zA-Z0-9_-]+)*$/;
+export const USERNAME_RE = /^[a-zA-Z0-9_-]+( [a-zA-Z0-9_-]+)*$/;
 const MAX_NAME = 50;
 const MAX_EMAIL = 254;
 
@@ -89,8 +89,13 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
   const bodyOf = (req: express.Request): Record<string, unknown> =>
     req.body && typeof req.body === "object" ? req.body : {};
 
+  const legacyOff = (res: express.Response) =>
+    !env.legacyLogin &&
+    void res.status(403).json({ error: "legacy_login_disabled" });
+
   app.post("/auth/register", json, async (req, res, next) => {
     try {
+      if (legacyOff(res)) return;
       const body = bodyOf(req);
       const ipOk = d.limits.registerIp.hit(ipOf(req));
       const key = (str(body.username) ?? "").trim().toLowerCase();
@@ -124,6 +129,7 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
 
   app.post("/auth/login", json, async (req, res, next) => {
     try {
+      if (legacyOff(res)) return;
       const body = bodyOf(req);
       const login = str(body.usernameOrEmail)?.trim() ?? "";
       const password = str(body.password) ?? "";

@@ -4,11 +4,14 @@ export interface UserRow {
   id: string;
   public_id: string;
   username: string;
-  first_name: string;
-  last_name: string;
+  /** NULL for accounts created through GLL ID. */
+  first_name: string | null;
+  last_name: string | null;
   email: string;
   rank: string;
   disabled_at: Date | null;
+  /** The linked GLL ID (GATE) subject, if any. */
+  gate_sub?: string | null;
 }
 
 /**

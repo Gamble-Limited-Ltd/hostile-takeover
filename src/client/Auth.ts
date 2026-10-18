@@ -9,6 +9,7 @@ import { ClientEnv } from "./ClientEnv";
 import { crazyGamesSDK } from "./CrazyGamesSDK";
 import type { DesktopSessionState, SessionFailureKind } from "./DesktopShell";
 import { desktopLinkGate, isDesktopShell } from "./DesktopShell";
+import { stashGateLogoutUrl } from "./GateHash";
 import { showInGameAlert } from "./InGameModal";
 import type { SteamTicketResult } from "./SteamSDK";
 import { steamSDK } from "./SteamSDK";
@@ -288,6 +289,14 @@ export async function logOut(allSessions: boolean = false): Promise<boolean> {
       console.warn("Logout failed", response);
       return false;
     }
+
+    // Signed in through GLL ID: the API also hands back the end-session URL.
+    const body = (await response.json().catch(() => null)) as {
+      gateLogoutUrl?: unknown;
+    } | null;
+    stashGateLogoutUrl(
+      typeof body?.gateLogoutUrl === "string" ? body.gateLogoutUrl : null,
+    );
 
     return true;
   } catch (e) {

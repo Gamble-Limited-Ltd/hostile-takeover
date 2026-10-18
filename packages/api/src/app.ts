@@ -4,6 +4,8 @@ import { mountAccountRoutes } from "./accountRoutes";
 import { sameSecret } from "./apiKey";
 import type { ApiEnv } from "./env";
 import { mountGameRoutes } from "./gameRoutes";
+import { createGate, type GateClient } from "./gate";
+import { mountGateRoutes } from "./gateRoutes";
 import type { SigningKeys } from "./keys";
 import { defaultRateLimits, type RateLimits } from "./rateLimit";
 import type { SessionRow, Store } from "./store";
@@ -102,6 +104,7 @@ export function createApp(pool: Queryable, ctx?: AppContext): express.Express {
 function mountAuth(app: express.Express, ctx: AppContext): void {
   const { env, keys, store } = ctx;
   const secure = env.apiUrl.startsWith("https://");
+  const gate: GateClient = createGate(env);
 
   // CORS: only the game origin, with credentials. Cross-site POSTs from any
   // other origin are refused outright (the refresh cookie is SameSite=None in
@@ -302,15 +305,24 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     all: boolean,
   ) {
     const raw = readCookie(req.headers.cookie, REFRESH_COOKIE);
+    let gateLogoutUrl: string | undefined;
     if (raw) {
       const session = await store.findSessionByHash(hashRefreshToken(raw));
       if (session) {
         if (all) await store.revokeAllForUser(session.user_id);
         else await store.revokeSession(session.id);
+        if (!all && gate.enabled) {
+          const user = await store.findUserById(session.user_id);
+          if (user?.gate_sub) {
+            gateLogoutUrl = await gate.logoutUrl(
+              await store.findGateIdToken(user.id),
+            );
+          }
+        }
       }
     }
     clearRefreshCookie(res);
-    res.json({ ok: true });
+    res.json(gateLogoutUrl ? { ok: true, gateLogoutUrl } : { ok: true });
   }
   app.post("/auth/logout", (req, res, next) => {
     endSession(req, res, false).catch(next);
@@ -372,13 +384,23 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     });
   }
 
+  const limits = ctx.limits ?? defaultRateLimits();
   mountAccountRoutes(app, {
     ctx,
-    limits: ctx.limits ?? defaultRateLimits(),
+    limits,
     startSession: (res, userId, ua) => startSession(res, userId, ua),
     clearRefreshCookie,
     readRefreshCookie: (req) => readCookie(req.headers.cookie, REFRESH_COOKIE),
     authenticate,
+  });
+
+  mountGateRoutes(app, {
+    ctx,
+    gate,
+    limits,
+    startSession: (res, userId, ua) => startSession(res, userId, ua),
+    readCookie: (req, name) => readCookie(req.headers.cookie, name),
+    cookieFlags: { secure, sameSite: cookieOpts.sameSite },
   });
 
   mountGameRoutes(app, env);

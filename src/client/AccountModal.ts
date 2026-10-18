@@ -19,6 +19,7 @@ import {
   sendMagicLink,
   steamLogin,
 } from "./Auth";
+import "./components/account/GateSignIn";
 import "./components/account/PasswordAuthForm";
 import "./components/AccountSettingsPanel";
 import "./components/baseComponents/stats/DiscordUserHeader";
@@ -45,6 +46,7 @@ import { crazyGamesSDK, type CrazyGamesUser } from "./CrazyGamesSDK";
 import { desktopLinkGate, isDesktopShell } from "./DesktopShell";
 import { Features } from "./Features";
 import "./GameStatsModal";
+import { takeGateError, takeGateLink, takeGateLogoutUrl } from "./GateHash";
 import { showInGameAlert } from "./InGameModal";
 import { consumeLinkResult } from "./LinkResult";
 import { consumeLoginResult, LoginResult } from "./LoginResult";
@@ -87,6 +89,9 @@ export class AccountModal extends BaseModal {
   @state() private email: string = "";
   // Set when the page opened on a `#reset=<token>` link (Main stashes it).
   @state() private resetToken: string = "";
+  // Set when the page opened on a `#gate=link` / `#gate_error=<code>` redirect.
+  @state() private gateLink: boolean = false;
+  @state() private gateError: string = "";
   @state() private isLoadingUser: boolean = false;
   // Counts openings, to key the profile card's once-per-open flourish.
   private openCount = 0;
@@ -932,11 +937,13 @@ export class AccountModal extends BaseModal {
 
           <!-- Hostile Takeover: password sign-in replaces the provider buttons
                and the magic-link form, which stay in the markup but hidden. -->
-          <password-auth-form
+          <gate-sign-in
             .resetToken=${this.resetToken}
+            .linkMode=${this.gateLink}
+            .errorCode=${this.gateError}
             @auth-success=${this.handleAuthSuccess}
             @reset-done=${() => (this.resetToken = "")}
-          ></password-auth-form>
+          ></gate-sign-in>
 
           <div class="space-y-6" hidden>
             <!-- Discord Login Button -->
@@ -1124,6 +1131,10 @@ export class AccountModal extends BaseModal {
     this.loginError = consumeLoginResult(args);
     this.prefillCreatorCode = this.consumeCreatorCodeArg(args);
     this.resetToken = takeResetToken() ?? this.resetToken;
+    // open() re-runs onOpen while already open (the hash handler opens us,
+    // then the lazy load does again): keep what the first call took.
+    this.gateLink = takeGateLink() || this.gateLink;
+    this.gateError = takeGateError() ?? this.gateError;
 
     this.refreshCrazyGamesUser();
 
@@ -1146,6 +1157,8 @@ export class AccountModal extends BaseModal {
   }
 
   protected onClose(): void {
+    this.gateLink = false;
+    this.gateError = "";
     this.dispatchEvent(
       new CustomEvent("close", { bubbles: true, composed: true }),
     );
@@ -1154,6 +1167,12 @@ export class AccountModal extends BaseModal {
   private async handleLogout() {
     await logOut();
     this.close();
+    // Signed in through GLL ID: end that session too (the API hands us the URL).
+    const gateLogoutUrl = takeGateLogoutUrl();
+    if (gateLogoutUrl) {
+      window.location.href = gateLogoutUrl;
+      return;
+    }
     // Refresh the page after logout to update the UI state
     window.location.reload();
   }

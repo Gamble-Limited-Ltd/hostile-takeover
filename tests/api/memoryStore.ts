@@ -1,6 +1,7 @@
 import { randomUUID } from "node:crypto";
 import type {
   Credentials,
+  GatePendingRow,
   SessionRow,
   Store,
 } from "../../packages/api/src/store";
@@ -19,6 +20,15 @@ export interface MemResetRow {
   used_at: Date | null;
 }
 
+export interface MemGateFlow {
+  stateHash: string;
+  bindingHash: string;
+  nonce: string;
+  codeVerifier: string;
+  expiresAt: Date;
+  usedAt: Date | null;
+}
+
 /** An in-memory Store; `hashes` maps user id to password hash. */
 export function memoryStore(
   users: UserRow[],
@@ -32,11 +42,20 @@ export function memoryStore(
     target: string | null;
     detail?: Record<string, unknown>;
   }[] = [];
+  const flows: MemGateFlow[] = [];
+  /** users.gate_id_token, kept off UserRow like the real store. */
+  const gateTokens = new Map<string, string>();
+  const pending: (GatePendingRow & { tokenHash: string; expiresAt: Date })[] =
+    [];
   const lower = (s: string) => s.toLowerCase();
+  const emailFree = (email: string, exceptId: string) =>
+    !users.some((u) => u.id !== exceptId && lower(u.email) === lower(email));
   const store: Store = {
     findUserByUsername: async (n) =>
       users.find((u) => lower(u.username) === lower(n)) ?? null,
     findUserById: async (id) => users.find((u) => u.id === id) ?? null,
+    findUserByEmail: async (e) =>
+      users.find((u) => lower(u.email) === lower(e)) ?? null,
     createSession: async (s) => {
       const id = randomUUID();
       sessions.push({
@@ -90,6 +109,7 @@ export function memoryStore(
         email: n.email,
         rank: "PLAYER",
         disabled_at: null,
+        gate_sub: null,
       };
       users.push(user);
       hashes[user.id] = n.passwordHash;
@@ -127,9 +147,88 @@ export function memoryStore(
         if (x.user_id === r.user_id) x.used_at ??= new Date();
       return r.user_id;
     },
+    findUserByGateSub: async (sub) =>
+      users.find((u) => u.gate_sub === sub) ?? null,
+    createGateFlow: async (f) => {
+      flows.push({ ...f, usedAt: null });
+    },
+    consumeGateFlow: async (stateHash, bindingHash) => {
+      const f = flows.find(
+        (x) =>
+          x.stateHash === stateHash &&
+          x.bindingHash === bindingHash &&
+          !x.usedAt &&
+          x.expiresAt.getTime() > Date.now(),
+      );
+      if (!f) return null;
+      f.usedAt = new Date();
+      return { nonce: f.nonce, codeVerifier: f.codeVerifier };
+    },
+    createGatePending: async (p) => {
+      pending.push(p);
+    },
+    findGatePending: async (h) => {
+      const p = pending.find(
+        (x) => x.tokenHash === h && x.expiresAt.getTime() > Date.now(),
+      );
+      return p
+        ? {
+            gateSub: p.gateSub,
+            email: p.email,
+            loginName: p.loginName,
+            displayName: p.displayName,
+            idToken: p.idToken,
+          }
+        : null;
+    },
+    deleteGatePending: async (h) => {
+      const i = pending.findIndex((x) => x.tokenHash === h);
+      if (i >= 0) pending.splice(i, 1);
+    },
+    findGateIdToken: async (userId) => gateTokens.get(userId) ?? null,
+    setGateIdToken: async (userId, idToken) => {
+      gateTokens.set(userId, idToken);
+    },
+    linkGate: async (userId, sub, email, idToken) => {
+      const u = users.find((x) => x.id === userId);
+      if (!u) return "gone";
+      if (u.gate_sub) return "already_linked";
+      if (u.disabled_at) return "gone";
+      if (users.some((x) => x.gate_sub === sub)) return "already_linked";
+      u.gate_sub = sub;
+      if (idToken) gateTokens.set(u.id, idToken);
+      if (email && emailFree(email, u.id)) u.email = email;
+      return "ok";
+    },
+    setEmailIfFree: async (userId, email) => {
+      const u = users.find((x) => x.id === userId);
+      if (u && emailFree(email, u.id)) u.email = email;
+    },
+    createGateUser: async (n) => {
+      if (users.some((u) => lower(u.username) === lower(n.username)))
+        return { ok: false, taken: "username" };
+      if (users.some((u) => lower(u.email) === lower(n.email)))
+        return { ok: false, taken: "email" };
+      if (users.some((u) => u.gate_sub === n.gateSub))
+        return { ok: false, taken: "gate" };
+      const user: UserRow = {
+        id: randomUUID(),
+        public_id: n.publicId,
+        username: n.username,
+        first_name: null,
+        last_name: null,
+        email: n.email,
+        rank: "PLAYER",
+        disabled_at: null,
+        gate_sub: n.gateSub,
+      };
+      users.push(user);
+      if (n.idToken) gateTokens.set(user.id, n.idToken);
+      return { ok: true, user };
+    },
     logAdmin: async (e) => {
       audit.push(e);
     },
   };
-  return { store, sessions, resets, audit, users, hashes };
+  return { store, sessions, resets, audit, users, hashes, flows, pending };
 }
