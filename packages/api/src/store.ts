@@ -116,6 +116,8 @@ export interface GatePendingRow {
   email: string | null;
   loginName: string;
   displayName: string;
+  /** GATE's `email_approved` claim; null when GATE sent none. Only true allows creating an account. */
+  emailApproved: boolean | null;
   /** Raw GATE id_token, copied to the user on link/create. Never returned to clients. */
   idToken: string | null;
 }
@@ -338,8 +340,8 @@ export function pgStore(db: SqlClient): Store {
         "DELETE FROM gate_pending WHERE expires_at < now() - interval '1 day'",
       );
       await db.query(
-        `INSERT INTO gate_pending (token_hash, gate_sub, email, login_name, display_name, id_token, expires_at)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO gate_pending (token_hash, gate_sub, email, login_name, display_name, id_token, expires_at, email_approved)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           p.tokenHash,
           p.gateSub,
@@ -348,12 +350,13 @@ export function pgStore(db: SqlClient): Store {
           p.displayName,
           p.idToken,
           p.expiresAt,
+          p.emailApproved,
         ],
       );
     },
     async findGatePending(tokenHash) {
       const r = await db.query(
-        `SELECT gate_sub, email, login_name, display_name, id_token FROM gate_pending
+        `SELECT gate_sub, email, login_name, display_name, id_token, email_approved FROM gate_pending
          WHERE token_hash = $1 AND expires_at > now()`,
         [tokenHash],
       );
@@ -364,6 +367,12 @@ export function pgStore(db: SqlClient): Store {
             email: (row.email as string | null) ?? null,
             loginName: row.login_name as string,
             displayName: row.display_name as string,
+            emailApproved:
+              row.email_approved === true
+                ? true
+                : row.email_approved === false
+                  ? false
+                  : null,
             idToken: (row.id_token as string | null) ?? null,
           }
         : null;

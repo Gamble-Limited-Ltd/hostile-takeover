@@ -554,7 +554,7 @@ describe("pending", () => {
     });
   });
 
-  test("no match when the account is disabled or already linked; canCreate false off-domain; usernameTaken", async () => {
+  test("no match when the account is disabled or already linked; canCreate follows email_approved; usernameTaken", async () => {
     const h = await harness();
     let c = await h.pendingFor({
       mint: {
@@ -567,7 +567,13 @@ describe("pending", () => {
       usernameTaken: true,
     });
     c = await h.pendingFor({
-      mint: { claims: { sub: "s2", email: "someone@gmail.com" } },
+      mint: {
+        claims: {
+          sub: "s2",
+          email: "someone@gmail.com",
+          email_approved: false,
+        },
+      },
     });
     expect(await (await h.get("/auth/gate/pending", c)).json()).toMatchObject({
       match: null,
@@ -611,6 +617,24 @@ describe("link/confirm", () => {
       mint: { claims: { sub: "s-bob", email: "bob@kmlhs.org" } },
     });
     expect(again.where).toBe(`${GAME}/#gate=ok`);
+  });
+
+  test("linking an old account needs no email_approved: absent or false still links", async () => {
+    for (const approved of [false, undefined]) {
+      const h = await harness();
+      const c = await h.pendingFor({
+        mint: {
+          claims: {
+            sub: "s-bob",
+            email: "bob@kmlhs.org",
+            email_approved: approved,
+          },
+        },
+      });
+      const r = await h.post("/auth/gate/link/confirm", {}, c);
+      expect(r.status).toBe(200);
+      expect(h.bob.gate_sub).toBe("s-bob");
+    }
   });
 
   test("401 without a pending; 409 no_match when nothing matches", async () => {
@@ -816,15 +840,124 @@ describe("create", () => {
     expect((await meRes.json()).player.username).toBe("New Kid");
   });
 
-  test("403 email_domain off-domain or without an email", async () => {
+  test("a non-kmlhs email creates an account when GATE says email_approved", async () => {
     const h = await harness();
-    for (const email of ["x@gmail.com", undefined]) {
+    const c = await h.pendingFor({
+      mint: { claims: { sub: "s-ext", email: "friend@gmail.com" } },
+    });
+    const pend = await (await h.get("/auth/gate/pending", c)).json();
+    expect(pend.canCreate).toBe(true);
+    const r = await h.post("/auth/gate/create", { username: "Outsider" }, c);
+    expect(r.status).toBe(201);
+    expect(h.mem.users.find((x) => x.username === "Outsider")?.email).toBe(
+      "friend@gmail.com",
+    );
+  });
+
+  test("a kmlhs email with email_approved true creates", async () => {
+    const h = await harness();
+    const c = await h.pendingFor({
+      mint: { claims: { sub: "s-k", email: "kid@kmlhs.org" } },
+    });
+    const r = await h.post("/auth/gate/create", { username: "Kmlhskid" }, c);
+    expect(r.status).toBe(201);
+  });
+
+  test("403 email_not_approved when the claim is false or missing, and nothing is created", async () => {
+    const h = await harness();
+    for (const approved of [false, undefined, "true", 1, null]) {
       const c = await h.pendingFor({
-        mint: { claims: { sub: `s-${email}`, email } },
+        mint: {
+          claims: {
+            sub: `s-${String(approved)}`,
+            email: "kid@kmlhs.org",
+            email_approved: approved,
+          },
+        },
+      });
+      const pend = await (await h.get("/auth/gate/pending", c)).json();
+      expect(pend.canCreate).toBe(false);
+      const r = await h.post("/auth/gate/create", { username: "Okname" }, c);
+      expect(r.status).toBe(403);
+      expect(await r.json()).toEqual({ error: "email_not_approved" });
+    }
+    expect(h.mem.users.some((u) => u.username === "Okname")).toBe(false);
+  });
+
+  test("403 email_not_approved without an email even if approved", async () => {
+    const h = await harness();
+    const c = await h.pendingFor({
+      mint: { claims: { sub: "s-none", email: undefined } },
+    });
+    const r = await h.post("/auth/gate/create", { username: "Okname" }, c);
+    expect(r.status).toBe(403);
+    expect(await r.json()).toEqual({ error: "email_not_approved" });
+  });
+
+  test("a client-supplied email_approved in the body is ignored", async () => {
+    const h = await harness();
+    const c = await h.pendingFor({
+      mint: {
+        claims: { sub: "s-f", email: "f@gmail.com", email_approved: false },
+      },
+    });
+    const r = await h.post(
+      "/auth/gate/create",
+      { username: "Forger", email_approved: true, emailApproved: true },
+      c,
+    );
+    expect(r.status).toBe(403);
+  });
+
+  test("falls back to userinfo when the id_token has no email_approved", async () => {
+    const h = await harness();
+    h.fake.state.userinfo = { sub: "s-ui", email_approved: true };
+    const c = await h.pendingFor({
+      mint: {
+        claims: {
+          sub: "s-ui",
+          email: "ui@gmail.com",
+          email_approved: undefined,
+        },
+      },
+    });
+    expect(h.fake.state.userinfoRequests).toEqual(["Bearer at"]);
+    const r = await h.post("/auth/gate/create", { username: "Viauserinfo" }, c);
+    expect(r.status).toBe(201);
+  });
+
+  test("the id_token value wins over userinfo; no userinfo call is made", async () => {
+    const h = await harness();
+    h.fake.state.userinfo = { sub: "s-w", email_approved: true };
+    const c = await h.pendingFor({
+      mint: {
+        claims: { sub: "s-w", email: "w@kmlhs.org", email_approved: false },
+      },
+    });
+    expect(h.fake.state.userinfoRequests).toEqual([]);
+    const r = await h.post("/auth/gate/create", { username: "Okname" }, c);
+    expect(r.status).toBe(403);
+  });
+
+  test("userinfo that is missing, failing or for another sub fails closed", async () => {
+    for (const ui of [
+      null,
+      { sub: "someone-else", email_approved: true },
+      { sub: "s-x", email_approved: "yes" },
+    ]) {
+      const h = await harness();
+      h.fake.state.userinfo = ui;
+      const c = await h.pendingFor({
+        mint: {
+          claims: {
+            sub: "s-x",
+            email: "x@kmlhs.org",
+            email_approved: undefined,
+          },
+        },
       });
       const r = await h.post("/auth/gate/create", { username: "Okname" }, c);
       expect(r.status).toBe(403);
-      expect(await r.json()).toEqual({ error: "email_domain" });
     }
   });
 
@@ -976,6 +1109,17 @@ describe("logout", () => {
     const c = await h.pendingFor({ mint: { claims: { sub: "s-p" } } });
     const pend = await h.get("/auth/gate/pending", c);
     expect(await pend.text()).not.toContain(h.fake.lastIdToken());
+  });
+});
+
+describe("migration 005_gate_email_approved.sql", () => {
+  test("adds a nullable email_approved column to gate_pending", async () => {
+    const { dirSource } = await import("../../packages/api/src/migrate");
+    const src = dirSource();
+    expect(await src.list()).toContain("005_gate_email_approved.sql");
+    const sql = await src.read("005_gate_email_approved.sql");
+    expect(sql).toMatch(/ALTER TABLE gate_pending/);
+    expect(sql).toMatch(/ADD COLUMN email_approved boolean\b(?!.*NOT NULL)/);
   });
 });
 

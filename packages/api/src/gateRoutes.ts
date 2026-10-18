@@ -3,7 +3,7 @@
 // see GATE.
 import { uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
-import { EMAIL_RE, USERNAME_RE } from "./accountRoutes";
+import { USERNAME_RE } from "./accountRoutes";
 import type { AppContext } from "./app";
 import { profanityMatcher } from "./censor";
 import {
@@ -155,6 +155,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         email: who.email,
         loginName: who.loginName,
         displayName: who.displayName,
+        emailApproved: who.emailApproved,
         idToken: who.idToken,
         expiresAt: new Date(Date.now() + PENDING_TTL_MS),
       });
@@ -202,6 +203,13 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     await d.startSession(res, userId, req.headers["user-agent"]);
   }
 
+  /** New accounts need an email and GATE's explicit `email_approved: true`. */
+  function mayCreate(p: GatePendingRow): boolean {
+    return (
+      p.email !== null && p.email.length <= 254 && p.emailApproved === true
+    );
+  }
+
   app.get("/auth/gate/pending", async (req, res, next) => {
     try {
       const pend = await pendingOf(req);
@@ -214,7 +222,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         displayName: p.displayName,
         email: p.email,
         match: match ? { username: match.username } : null,
-        canCreate: p.email !== null && EMAIL_RE.test(p.email),
+        canCreate: mayCreate(p),
         usernameTaken: (await store.findUserByUsername(p.loginName)) !== null,
       });
     } catch (e) {
@@ -307,8 +315,10 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       const { p } = pend;
       // GATE requires players to be 13 or older when they sign up there, so
       // the age confirmation HT asks for at registration is covered.
-      if (!p.email || p.email.length > 254 || !EMAIL_RE.test(p.email)) {
-        return void res.status(403).json({ error: "email_domain" });
+      // The approval comes from the verified id_token/userinfo stored with the
+      // pending, never from the request. Missing or false fails closed.
+      if (!p.email || !mayCreate(p)) {
+        return void res.status(403).json({ error: "email_not_approved" });
       }
       const username = str(bodyOf(req).username)?.trim() ?? "";
       if (

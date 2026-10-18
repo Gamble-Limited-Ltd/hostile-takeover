@@ -953,7 +953,7 @@
     "one_minute_remaining": "One minute remaining!"
   },
   "gate_auth": {
-    "cannot_create": "New accounts need a @kmlhs.org email on your GLL ID. You can still link an old account with its password.",
+    "cannot_create": "GLL ID hasn't approved your email for a new account. You can still link an old account with its password.",
     "create_submit": "Start new account",
     "create_title": "Start a new account",
     "error_account_disabled": "This GLL ID account is disabled. Ask an admin for help.",
@@ -961,6 +961,7 @@
     "error_denied": "GLL ID sign-in was cancelled. Try again when you're ready.",
     "error_disabled": "GLL ID sign-in isn't turned on right now.",
     "error_email_domain": "New accounts need a @kmlhs.org email on your GLL ID.",
+    "error_email_not_approved": "GLL ID hasn't approved your email for a new account.",
     "error_expired": "That sign-in took too long. Please try again.",
     "error_generic": "Something went wrong. Please try again.",
     "error_invalid": "GLL ID sign-in didn't check out. Please try again.",

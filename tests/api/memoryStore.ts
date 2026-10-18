@@ -177,6 +177,7 @@ export function memoryStore(
             email: p.email,
             loginName: p.loginName,
             displayName: p.displayName,
+            emailApproved: p.emailApproved,
             idToken: p.idToken,
           }
         : null;
