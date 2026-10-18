@@ -64,7 +64,12 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
   };
 
   app.get("/auth/config", (_req, res) => {
-    res.json({ gate: gate.enabled, legacy: env.legacyLogin });
+    res.json({
+      gate: gate.enabled,
+      legacy: env.legacyLogin,
+      // GLL ID's public address, for the Terms and Privacy links in the direct form.
+      gateUrl: gate.enabled ? env.gateIssuer : "",
+    });
   });
 
   app.get("/auth/gate/start", async (req, res, next) => {
