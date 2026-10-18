@@ -1,0 +1,4 @@
+NODE_FROM=.nvmrc
+NPM_VERSION=12.1.0
+SETUP_CMD='npm run inst'
+SETUP_KEY_FILES='package-lock.json'
