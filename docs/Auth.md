@@ -51,3 +51,38 @@ WebSocket code never see GATE. HT talks to GATE only over standard OIDC/HTTP; no
   `LEGACY_LOGIN=off` makes `/auth/login` and `/auth/register` answer 403 `legacy_login_disabled`; linking an old account
   by password keeps working. `GET /auth/config` tells the client which to show.
 - **Ranks:** HT's own `users.rank` stays the source of root; GATE's `global_rank` is ignored.
+
+### New-tab sign-in
+
+"Sign in with GLL ID" opens `/auth/gate/start?tab=1` in a **new tab** (a blocked popup falls back to this tab). The
+start route sets a short `ht_gate_tab` cookie and the callback then redirects to `#gate=ok|link|gate_error=...&tab=1`.
+The new tab remembers it is the sign-in tab (`sessionStorage`), runs the existing link/create steps, and when done
+shows "You're signed in. You can close this tab." and tries `window.close()`. It also tells the original tab
+(`BroadcastChannel`, with a `localStorage` `storage` event as fallback, `src/client/GateTabSignal.ts`); the original
+tab reloads, and the normal startup refresh-cookie exchange signs it in.
+
+### "Redirect failed? Sign in here" (direct sign-in)
+
+A link under the GLL ID button opens an HT-styled modal branded "GLL ID" (`GateDirectModal.ts`): sign in, create account,
+6-digit email code (with resend) and forgot password. The browser posts to `POST /auth/gate/direct/login|signup|verify|
+resend|recover|reset`; HT's server calls GATE's `/oidc/direct/*` (contract: GATE's `docs/DIRECT-SIGNIN.md`) with the
+client's Basic credentials and `player_ip`. The password is only forwarded, never stored or logged.
+
+- `login` / `verify`: HT makes a PKCE verifier + S256 challenge and a nonce, sends HT's registered `GATE_REDIRECT_URI`,
+  gets `{code}`, then exchanges it at `/oidc/token` through the same `gate.exchange` (id_token checks as the callback)
+  and the same `signInWho` as the callback: linked player gets the refresh cookie (`{status:"ok"}`); otherwise a
+  `gate_pending` row and `{status:"link"}`, and the account modal's link card runs (email match, old password, or create
+  only when `email_approved === true`).
+- GATE's `error` (`code`, `message`, `fields`) and any `pending` handle are passed through unchanged, including
+  `DIRECT_SIGNIN_DISABLED`. HT's own failures use `HT_*` codes. `signup` fills the Terms/Privacy versions from GATE's
+  `/api/legal/versions`.
+- Limits: the usual CORS/origin check and 16 kb body limit; only a flood backstop per IP (600/min) because players
+  share a school IP. GATE enforces the real limits per account.
+
+### GATE_DIRECT_URL (private path to GATE)
+
+`GATE_DIRECT_URL` (optional, default the issuer) is where HT's server reaches GATE for discovery, JWKS, token and the
+direct endpoints; discovered public URLs are rewritten onto it. The id_token `iss` must still equal `GATE_ISSUER`
+exactly. Production: `GATE_DIRECT_URL=http://gate:3301` over the external Docker network `gll_gate` (alias `gate`,
+declared in `docker-compose.prod.yml`; `ht-deploy.sh` creates it with `--internal` if missing). Dev: `http://127.0.0.1:3302`.
+Takes precedence over `GATE_BACKCHANNEL_URL`.
