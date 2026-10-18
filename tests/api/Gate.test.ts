@@ -222,11 +222,13 @@ describe("config", () => {
     expect(await (await h.get("/auth/config")).json()).toEqual({
       gate: true,
       legacy: true,
+      gateUrl: h.fake.issuer,
     });
     const off = await harness({ noGate: true, env: { LEGACY_LOGIN: "off" } });
     expect(await (await off.get("/auth/config")).json()).toEqual({
       gate: false,
       legacy: false,
+      gateUrl: "",
     });
   });
 

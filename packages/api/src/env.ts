@@ -52,6 +52,12 @@ export interface ApiEnv {
   gatePostLogoutUri: string;
   /** Origin used instead of the issuer's for server-to-server fetches; "" = none. */
   gateBackchannelUrl: string;
+  /**
+   * Origin for server-to-server calls to GATE (discovery, JWKS, token and the
+   * direct sign-in endpoints), e.g. a private Docker address. "" = the issuer.
+   * The id_token `iss` must still equal `gateIssuer`.
+   */
+  gateDirectUrl: string;
   /** Whether username/password sign-in and sign-up are still allowed. */
   legacyLogin: boolean;
 }
@@ -129,6 +135,7 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
       /\/+$/,
       "",
     ),
+    gateDirectUrl: str(source.GATE_DIRECT_URL, "").replace(/\/+$/, ""),
     legacyLogin: str(source.LEGACY_LOGIN, "on").toLowerCase() !== "off",
   };
 }

@@ -62,6 +62,28 @@ export async function startFakeGate(
     /** Body served by the userinfo endpoint (404 when null). */
     userinfo: null as null | Record<string, unknown>,
     userinfoRequests: [] as (string | undefined)[],
+    /** Every /oidc/direct/<op> request, oldest first. */
+    directRequests: [] as {
+      op: string;
+      authorization: string | undefined;
+      body: Record<string, unknown>;
+    }[],
+    /** Per-op answers for /oidc/direct/<op>; an op with none answers 404. */
+    direct: {} as Record<
+      string,
+      (body: Record<string, unknown>) =>
+        | { status: number; json?: unknown; headers?: Record<string, string> }
+        | Promise<{
+            status: number;
+            json?: unknown;
+            headers?: Record<string, string>;
+          }>
+    >,
+    /** Body served by GET /api/legal/versions. */
+    legal: {
+      tosVersion: "2026-10-18",
+      privacyVersion: "2026-10-18",
+    } as unknown,
   };
   let origin = "";
   const pub = () => opts.publicIssuer ?? origin;
@@ -90,6 +112,23 @@ export async function startFakeGate(
       return void res.status(state.userinfo ? 401 : 404).json({});
     }
     res.json(state.userinfo);
+  });
+  app.get("/api/legal/versions", (_req, res) => {
+    res.json(state.legal);
+  });
+  app.post("/oidc/direct/:op", express.json(), async (req, res) => {
+    const op = String(req.params.op);
+    state.directRequests.push({
+      op,
+      authorization: req.headers.authorization,
+      body: req.body as Record<string, unknown>,
+    });
+    const h = state.direct[op];
+    if (!h) return void res.status(404).json({});
+    const r = await h(req.body as Record<string, unknown>);
+    for (const [k, v] of Object.entries(r.headers ?? {})) res.setHeader(k, v);
+    if (r.json === undefined) return void res.status(r.status).end();
+    res.status(r.status).json(r.json);
   });
   app.get("/oidc/jwks", (_req, res) => {
     state.jwksHits++;

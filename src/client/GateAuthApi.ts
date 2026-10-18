@@ -6,6 +6,8 @@ import { getApiBase } from "./ApiBase";
 export interface AuthConfig {
   gate: boolean;
   legacy: boolean;
+  /** GLL ID's public address ("" when off); the direct form links its Terms and Privacy. */
+  gateUrl: string;
 }
 
 export interface GatePending {
@@ -26,7 +28,11 @@ export type GateResult =
   | { ok: false; status: number; code: string };
 
 // What the client assumes when /auth/config can't be read: today's behaviour.
-export const DEFAULT_AUTH_CONFIG: AuthConfig = { gate: false, legacy: true };
+export const DEFAULT_AUTH_CONFIG: AuthConfig = {
+  gate: false,
+  legacy: true,
+  gateUrl: "",
+};
 
 export async function fetchAuthConfig(): Promise<AuthConfig> {
   try {
@@ -38,7 +44,11 @@ export async function fetchAuthConfig(): Promise<AuthConfig> {
     if (typeof body?.gate !== "boolean" || typeof body?.legacy !== "boolean") {
       return DEFAULT_AUTH_CONFIG;
     }
-    return { gate: body.gate, legacy: body.legacy };
+    return {
+      gate: body.gate,
+      legacy: body.legacy,
+      gateUrl: typeof body.gateUrl === "string" ? body.gateUrl : "",
+    };
   } catch {
     return DEFAULT_AUTH_CONFIG;
   }

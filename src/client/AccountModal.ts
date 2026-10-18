@@ -47,6 +47,12 @@ import { desktopLinkGate, isDesktopShell } from "./DesktopShell";
 import { Features } from "./Features";
 import "./GameStatsModal";
 import { takeGateError, takeGateLink, takeGateLogoutUrl } from "./GateHash";
+import {
+  clearNewTab,
+  isNewTab,
+  notifySignedIn,
+  showTabDone,
+} from "./GateTabSignal";
 import { showInGameAlert } from "./InGameModal";
 import { consumeLinkResult } from "./LinkResult";
 import { consumeLoginResult, LoginResult } from "./LoginResult";
@@ -1033,6 +1039,13 @@ export class AccountModal extends BaseModal {
   // close and reload and the page signs in from it.
   private handleAuthSuccess = (): void => {
     this.close();
+    if (isNewTab()) {
+      // GLL ID sign-in opened in a new tab: the original tab picks it up.
+      notifySignedIn();
+      clearNewTab();
+      showTabDone(translateText("gate_auth.tab_done"));
+      return;
+    }
     window.location.reload();
   };
 

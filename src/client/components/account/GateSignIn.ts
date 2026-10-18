@@ -6,6 +6,8 @@ import {
   gateErrorKey,
   gateStartUrl,
 } from "../../GateAuthApi";
+import { openInNewTab } from "../../GateTabSignal";
+import { whenModalLoaded } from "../../LazyModals";
 import { translateText } from "../../Utils";
 import "../baseComponents/Button";
 import "./GateLinkCard";
@@ -44,8 +46,30 @@ export class GateSignIn extends LitElement {
         width="block"
         size="md"
         translationKey="gate_auth.sign_in"
-        @click=${() => (window.location.href = gateStartUrl())}
+        @click=${() => {
+          // A new tab keeps this page; a blocked popup falls back to this tab.
+          if (!openInNewTab(gateStartUrl())) {
+            window.location.href = gateStartUrl();
+          }
+        }}
       ></o-button>
+      <div class="text-center pt-3">
+        <button
+          type="button"
+          name="redirectFailed"
+          class=${LINK_CLASS}
+          @click=${() =>
+            whenModalLoaded("gate-direct-modal", () =>
+              document
+                .querySelector<
+                  HTMLElement & { open(): void }
+                >("gate-direct-modal")
+                ?.open(),
+            )}
+        >
+          ${translateText("gate_auth.direct_link")}
+        </button>
+      </div>
     `;
   }
 

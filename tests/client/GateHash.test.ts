@@ -11,11 +11,20 @@ import {
 
 describe("parseGateHash", () => {
   it("parses ok, link and error", () => {
-    expect(parseGateHash("#gate=ok")).toEqual({ kind: "ok" });
-    expect(parseGateHash("#gate=link")).toEqual({ kind: "link" });
+    expect(parseGateHash("#gate=ok")).toEqual({ kind: "ok", tab: false });
+    expect(parseGateHash("#gate=link")).toEqual({ kind: "link", tab: false });
     expect(parseGateHash("#gate_error=denied")).toEqual({
       kind: "error",
       code: "denied",
+      tab: false,
+    });
+  });
+
+  it("reads the new-tab flag", () => {
+    expect(parseGateHash("#gate=ok&tab=1")).toEqual({ kind: "ok", tab: true });
+    expect(parseGateHash("#gate=link&tab=1")).toEqual({
+      kind: "link",
+      tab: true,
     });
   });
 
