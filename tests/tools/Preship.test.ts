@@ -153,16 +153,10 @@ describe("ps_filter_kind", () => {
     ]);
   });
 
-  it("prettier keeps formattable files and drops binaries and shell scripts", () => {
-    expect(lines(lib(`ps_filter_kind prettier <<< '${input}'`).out)).toEqual([
-      "src/a.ts",
-      "src/b.tsx",
-      "scripts/x.mjs",
-      "README.md",
-      "package.json",
-      "resources/lang/en.json",
-      "styles.css",
-    ]);
+  it("prettier passes everything through (it skips what it does not know)", () => {
+    expect(lines(lib(`ps_filter_kind prettier <<< '${input}'`).out)).toEqual(
+      input.split("\n"),
+    );
   });
 
   it("test keeps code and json under src, packages, tests and resources", () => {
@@ -504,6 +498,25 @@ exit 0`;
     fs.rmSync(log);
     inner(["full"], { PRESHIP_BUILD: "1" });
     expect(has("npm run build-prod")).toBe(true);
+  });
+
+  it("with PRESHIP_BUILD=1 clears leftover static/ before and after; otherwise leaves it alone", () => {
+    fs.mkdirSync(path.join(repo, "static"));
+    inner(["full"]);
+    expect(fs.existsSync(path.join(repo, "static"))).toBe(true);
+    inner(["full"], { PRESHIP_BUILD: "1" });
+    expect(fs.existsSync(path.join(repo, "static"))).toBe(false);
+  });
+
+  it("leaves tests/UpdateRegister.test.ts out, with a note, only when jq is missing", () => {
+    const noJq = inner(["full"], { PRESHIP_ASSUME_NO_JQ: "1" });
+    expect(has("--exclude tests/UpdateRegister.test.ts")).toBe(true);
+    expect(noJq.stdout).toContain("tests/UpdateRegister.test.ts was NOT run");
+    fs.rmSync(log);
+    stub("jq", "exit 0");
+    const withJq = inner(["full"]);
+    expect(has("--exclude")).toBe(false);
+    expect(withJq.stdout).not.toContain("NOT run");
   });
 
   it("exits non-zero when any step fails, and names it in the summary", () => {

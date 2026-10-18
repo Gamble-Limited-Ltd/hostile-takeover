@@ -15,7 +15,8 @@ bash preship.sh --local  # never offload (quick on this VM; --full --local skips
 ## Quick
 
 - `typecheck` runs in full (`npm run typecheck`, so upstream changes to that script apply).
-- `oxlint`, `eslint` and `prettier --check` run on the changed files only; `vitest related --run`
+- `oxlint` and `eslint` (JS and TS files) and `prettier --check --ignore-unknown` (any file, so `.sh` and docs
+  too) run on the changed files only; `vitest related --run`
   runs the tests that import a changed file (and a changed test file itself).
 - "Changed" = committed on the branch since `merge-base HEAD origin/main`, staged, unstaged and
   untracked-not-ignored; deleted files drop out, a rename counts as its new name, `.nodeterm/` is ignored.
@@ -34,6 +35,11 @@ bash preship.sh --local  # never offload (quick on this VM; --full --local skips
 - The build only runs when `PRESHIP_BUILD=1`, which `preship.sh` sets for offloaded runs. It writes
   `static/` and `src/assets/` (both gitignored), but we still never run it in our own tree.
   The PC copy lives in `~/remotebuilder-work/`, outside this repo.
+- Offloaded full runs delete `static/` before and after (on the PC copy only): a leftover
+  `static/asset-hashes.json` from an earlier build makes `tests/server/RenderHtml.test.ts` fail. For the
+  same reason `--full --local` on this VM fails that test while the VM has a `static/` build; CI is clean.
+- The PC image is plain `node` and has no `jq`, so `tests/UpdateRegister.test.ts` (update.sh) is left
+  out there, with a `NOTE:` in the output. CI runs it. Installing jq in the image would close the gap.
 - If the only failing tests are `InventoryModal` ones, the output says so (known flaky timeouts under
   load, see CLAUDE.md). The run still fails; nothing is hidden.
 
