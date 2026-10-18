@@ -2,7 +2,8 @@
 # (release tags live on release branches like v34, never on main, so a tag can't
 # be "merged" here). The run fails when upstream/main has commits our main
 # doesn't; the summary lists them and names the newest release tag for context.
-# Follow "Syncing with upstream OpenFront" in CLAUDE.md.
+# Follow "Syncing with upstream OpenFront" in CLAUDE.md and the ht-upstream-sync skill.
+# A second step adds the skill's read-only triage (conflicts, risk flags) to the summary.
 name: 🔭 Upstream release watch
 
 on:
@@ -46,3 +47,12 @@ jobs:
             echo "::warning::$behind upstream OpenFront commits are not merged into main (newest release $tag)"
             exit 1
           fi
+      - name: Triage the newest stable release
+        if: always()
+        continue-on-error: true
+        run: |
+          {
+            echo
+            echo "# Sync triage (.claude/skills/ht-upstream-sync)"
+            bash .claude/skills/ht-upstream-sync/scripts/triage.sh
+          } >> "$GITHUB_STEP_SUMMARY"

@@ -128,6 +128,8 @@ http://localhost:8787/auth/gate/callback --post-logout http://localhost:5178/`),
 
 ### Syncing with upstream OpenFront
 
+The `ht-upstream-sync` skill (`.claude/skills/ht-upstream-sync/`) is the runbook for this: triage script, conflict playbook, lane and verification. The steps below are the short version.
+
 `upstream` is `openfrontio/openfrontio`. We forked from its `main`. We never rebase our `main`;
 upstream changes come in by **merging**, so our history and the public fork stay intact.
 
