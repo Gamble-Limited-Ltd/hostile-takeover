@@ -44,8 +44,19 @@ export interface GateClient {
     codeVerifier: string;
     nonce: string;
   }): Promise<GateIdentity>;
+  /** POST to GATE's /oidc/direct/<op> with the client's Basic credentials. */
+  direct(op: string, body: Record<string, unknown>): Promise<DirectResult>;
+  /** GATE's current terms / privacy versions, for direct sign-up. */
+  legalVersions(): Promise<{ tos: string; privacy: string } | null>;
   /** Where to send the browser to end the GATE session too. */
   logoutUrl(idTokenHint?: string | null): Promise<string>;
+}
+
+export interface DirectResult {
+  status: number;
+  /** The parsed JSON body; null for 204 or a non-JSON answer. */
+  body: Record<string, unknown> | null;
+  retryAfter: string | null;
 }
 
 export const randomToken = (): string => randomBytes(32).toString("base64url");
@@ -86,11 +97,15 @@ const formEncode = (s: string): string =>
 export function createGate(env: ApiEnv): GateClient {
   const enabled = env.gateIssuer !== "" && env.gateClientId !== "";
 
-  /** Server-to-server fetches go to GATE_BACKCHANNEL_URL's origin when set. */
+  /**
+   * Server-to-server fetches go to GATE_DIRECT_URL's origin (else
+   * GATE_BACKCHANNEL_URL's) when set; discovered URLs are rewritten onto it.
+   */
   function backchannel(url: string): string {
-    if (env.gateBackchannelUrl === "") return url;
+    const base = env.gateDirectUrl || env.gateBackchannelUrl;
+    if (base === "") return url;
     const u = new URL(url);
-    const to = new URL(env.gateBackchannelUrl);
+    const to = new URL(base);
     u.protocol = to.protocol;
     u.host = to.host;
     return u.toString();
@@ -107,6 +122,11 @@ export function createGate(env: ApiEnv): GateClient {
       throw new GateError("unavailable", "GATE unreachable");
     }
   }
+
+  const basicAuth = (): string =>
+    `Basic ${Buffer.from(
+      `${formEncode(env.gateClientId)}:${formEncode(env.gateClientSecret)}`,
+    ).toString("base64")}`;
 
   let cached: Discovery | null = null;
   let inflight: Promise<Discovery> | null = null;
@@ -263,13 +283,10 @@ export function createGate(env: ApiEnv): GateClient {
 
     async exchange(p) {
       const d = await discovery();
-      const basic = Buffer.from(
-        `${formEncode(env.gateClientId)}:${formEncode(env.gateClientSecret)}`,
-      ).toString("base64");
       const res = await fetchJson(d.tokenEndpoint, {
         method: "POST",
         headers: {
-          authorization: `Basic ${basic}`,
+          authorization: basicAuth(),
           "content-type": "application/x-www-form-urlencoded",
           accept: "application/json",
         },
@@ -301,6 +318,44 @@ export function createGate(env: ApiEnv): GateClient {
         p.nonce,
         typeof at === "string" && at !== "" ? at : null,
       );
+    },
+
+    async direct(op, body) {
+      const res = await fetchJson(`${env.gateIssuer}/oidc/direct/${op}`, {
+        method: "POST",
+        headers: {
+          authorization: basicAuth(),
+          "content-type": "application/json",
+          accept: "application/json",
+        },
+        body: JSON.stringify(body),
+      });
+      const json = (await res.json().catch(() => null)) as unknown;
+      return {
+        status: res.status,
+        body:
+          json && typeof json === "object" && !Array.isArray(json)
+            ? (json as Record<string, unknown>)
+            : null,
+        retryAfter: res.headers.get("retry-after"),
+      };
+    },
+
+    async legalVersions() {
+      try {
+        const res = await fetchJson(`${env.gateIssuer}/api/legal/versions`, {
+          headers: { accept: "application/json" },
+        });
+        if (!res.ok) return null;
+        const j = (await res.json()) as Record<string, unknown>;
+        const tos = j.tosVersion;
+        const privacy = j.privacyVersion;
+        return typeof tos === "string" && typeof privacy === "string"
+          ? { tos, privacy }
+          : null;
+      } catch {
+        return null;
+      }
     },
 
     async logoutUrl(idTokenHint) {
