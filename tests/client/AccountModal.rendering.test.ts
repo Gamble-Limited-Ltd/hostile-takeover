@@ -297,6 +297,32 @@ describe("AccountModal — rendering", () => {
     );
   });
 
+  // Hostile Takeover: a `#gate=link` redirect opens the modal from the hash
+  // handler and again once the lazy modal loads; the second onOpen must not
+  // drop the link (or error) flag. A later, separate opening starts clean.
+  it("keeps the GLL ID link flag across a repeated open, clears it on close", async () => {
+    const { stashGateError, stashGateLink } =
+      await import("../../src/client/GateHash");
+    const signIn = () =>
+      modal.querySelector("gate-sign-in") as unknown as {
+        linkMode: boolean;
+        errorCode: string;
+      };
+    stashGateLink();
+    stashGateError("expired");
+    modal.open();
+    modal.open();
+    await flushOpen();
+    expect(signIn().linkMode).toBe(true);
+    expect(signIn().errorCode).toBe("expired");
+
+    modal.close();
+    modal.open();
+    await flushOpen();
+    expect(signIn().linkMode).toBe(false);
+    expect(signIn().errorCode).toBe("");
+  });
+
   // OPE-343. On the desktop shell the provider buttons cannot run an OAuth
   // redirect (the redirect_uri would be app://openfront), so Auth.ts routes
   // them through the shell's browser link flow -- and the captions must say

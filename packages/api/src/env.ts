@@ -44,6 +44,16 @@ export interface ApiEnv {
    * network's private range (the tunnel reaches us from the bridge gateway).
    */
   trustProxy: string;
+  /** GLL ID (GATE) OIDC issuer; "" turns "Sign in with GLL ID" off. */
+  gateIssuer: string;
+  gateClientId: string;
+  gateClientSecret: string;
+  gateRedirectUri: string;
+  gatePostLogoutUri: string;
+  /** Origin used instead of the issuer's for server-to-server fetches; "" = none. */
+  gateBackchannelUrl: string;
+  /** Whether username/password sign-in and sign-up are still allowed. */
+  legacyLogin: boolean;
 }
 
 /** The repo root, wherever the process was started from. */
@@ -70,6 +80,14 @@ function int(value: string | undefined, fallback: number): number {
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
+  const apiUrl = str(source.API_URL, "http://localhost:8787").replace(
+    /\/+$/,
+    "",
+  );
+  const gameOrigin = str(source.GAME_ORIGIN, "http://localhost:5178").replace(
+    /\/+$/,
+    "",
+  );
   return {
     apiPort: int(source.API_PORT, 8787),
     dbHost: str(source.HT_DB_HOST, "127.0.0.1"),
@@ -78,12 +96,9 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     dbUser: str(source.HT_DB_USER, "hostile_takeover"),
     dbPassword: source.HT_DB_PASSWORD ?? "",
     migrateOnBoot: source.HT_DB_MIGRATE_ON_BOOT === "true",
-    apiUrl: str(source.API_URL, "http://localhost:8787").replace(/\/+$/, ""),
+    apiUrl,
     domain: str(source.DOMAIN, "localhost"),
-    gameOrigin: str(source.GAME_ORIGIN, "http://localhost:5178").replace(
-      /\/+$/,
-      "",
-    ),
+    gameOrigin,
     extraOrigins: str(source.EXTRA_GAME_ORIGINS, "")
       .split(",")
       .map((o) => o.trim().replace(/\/+$/, ""))
@@ -102,6 +117,19 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     gameVersion: str(source.HT_GAME_VERSION, "0000000"),
     nodeEnv: source.NODE_ENV ?? "",
     trustProxy: str(source.HT_TRUST_PROXY, "loopback"),
+    gateIssuer: str(source.GATE_ISSUER, "").replace(/\/+$/, ""),
+    gateClientId: str(source.GATE_CLIENT_ID, ""),
+    gateClientSecret: str(source.GATE_CLIENT_SECRET, ""),
+    gateRedirectUri: str(
+      source.GATE_REDIRECT_URI,
+      `${apiUrl}/auth/gate/callback`,
+    ),
+    gatePostLogoutUri: str(source.GATE_POST_LOGOUT_URI, `${gameOrigin}/`),
+    gateBackchannelUrl: str(source.GATE_BACKCHANNEL_URL, "").replace(
+      /\/+$/,
+      "",
+    ),
+    legacyLogin: str(source.LEGACY_LOGIN, "on").toLowerCase() !== "off",
   };
 }
 

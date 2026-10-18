@@ -2,6 +2,10 @@
 
 🆕 **What's new**
 
+- Sign in with GLL ID, the one Gamble Limited Ltd. login for all our games.
+  → Already have an account? Sign in with GLL ID and link it. If your GLL ID uses the same email, it's one click. Otherwise enter your old password once.
+  → New players need a GLL ID with a kmlhs.org email.
+  → Your old username and password keep working for a few more days.
 - Hostile Takeover is a private fork of OpenFront for a group of friends, with its own accounts and servers.
   → Sign up with your kmlhs.org email, pick a username and play.
 - Store, ads and third-party logins have been removed.

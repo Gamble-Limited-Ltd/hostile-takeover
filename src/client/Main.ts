@@ -65,6 +65,7 @@ import {
   shouldBlockJoin,
 } from "./GameModeSelector";
 import { GameStartingModal } from "./GameStartingModal";
+import { parseGateHash, stashGateError, stashGateLink } from "./GateHash";
 import type { HelpModal } from "./HelpModal";
 import "./HomepagePromos";
 import type { HostLobbyModal as HostPrivateLobbyModal } from "./HostLobbyModal";
@@ -1073,6 +1074,7 @@ class Client {
         this.openPasswordReset(resetToken);
         return;
       }
+      if (this.handleGateHash(window.location.hash)) return;
       // Router-managed hash changes (#modal=...) are handled by the router
       // syncing in/out; we don't need to tear down the lobby state for them.
       if (modalRouter.isHashRouted()) {
@@ -1234,6 +1236,30 @@ class Client {
   // form for an admin-issued `#reset=<token>` link.
   private openPasswordReset(token: string): void {
     stashResetToken(token);
+    this.openAccountModalFresh();
+  }
+
+  // Hostile Takeover: GLL ID sign-in redirects back with `#gate=ok|link` or
+  // `#gate_error=<code>`. Returns true when the hash was one of those.
+  private handleGateHash(hash: string): boolean {
+    const gate = parseGateHash(hash);
+    if (!gate) return false;
+    if (gate.kind === "ok") {
+      // The session cookie is already set; the startup refresh signs us in.
+      history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search,
+      );
+      return true;
+    }
+    if (gate.kind === "link") stashGateLink();
+    else stashGateError(gate.code);
+    this.openAccountModalFresh();
+    return true;
+  }
+
+  private openAccountModalFresh(): void {
     // A link opened while the modal is already showing reopens it afresh.
     document
       .querySelector<HTMLElement & { close?(): void }>("account-modal")
@@ -1325,6 +1351,9 @@ class Client {
       this.openPasswordReset(resetToken);
       return;
     }
+
+    // Hostile Takeover: back from GLL ID sign-in.
+    if (this.handleGateHash(hash)) return;
 
     if (decodedHash.startsWith("#token-login")) {
       const token = params.get("token-login");
