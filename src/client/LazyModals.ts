@@ -16,6 +16,7 @@ const modules: Record<string, () => Promise<unknown>> = {
   "change-username-modal": () => import("./ChangeUsernameModal"),
   "clan-modal": () => import("./ClanModal"),
   "detailed-view-modal": () => import("./components/DetailedGameViewModal"),
+  "gate-direct-modal": () => import("./GateDirectModal"),
   "game-stats-modal": () => import("./GameStatsModal"),
   "help-modal": () => import("./HelpModal"),
   "host-lobby-modal": () => import("./HostLobbyModal"),

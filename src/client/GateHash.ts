@@ -5,10 +5,14 @@
 // Main strips the hash and parks link/error here for the account modal to pick
 // up on open, same idea as PasswordResetHash.
 
-export type GateHash =
+export type GateHash = (
   | { kind: "ok" }
   | { kind: "link" }
-  | { kind: "error"; code: string };
+  | { kind: "error"; code: string }
+) & {
+  /** `&tab=1`: the sign-in ran in a new tab opened from another HT tab. */
+  tab: boolean;
+};
 
 const CODE_RE = /^[a-z_]{1,32}$/;
 
@@ -17,10 +21,11 @@ export function parseGateHash(hash: string): GateHash | null {
   if (!hash.startsWith("#")) return null;
   const params = new URLSearchParams(hash.slice(1));
   const gate = params.get("gate");
-  if (gate === "ok") return { kind: "ok" };
-  if (gate === "link") return { kind: "link" };
+  const tab = params.get("tab") === "1";
+  if (gate === "ok") return { kind: "ok", tab };
+  if (gate === "link") return { kind: "link", tab };
   const code = params.get("gate_error");
-  if (code !== null && CODE_RE.test(code)) return { kind: "error", code };
+  if (code !== null && CODE_RE.test(code)) return { kind: "error", code, tab };
   return null;
 }
 

@@ -66,6 +66,14 @@ import {
 } from "./GameModeSelector";
 import { GameStartingModal } from "./GameStartingModal";
 import { parseGateHash, stashGateError, stashGateLink } from "./GateHash";
+import {
+  clearNewTab,
+  isNewTab,
+  listenSignedIn,
+  markNewTab,
+  notifySignedIn,
+  showTabDone,
+} from "./GateTabSignal";
 import type { HelpModal } from "./HelpModal";
 import "./HomepagePromos";
 import type { HostLobbyModal as HostPrivateLobbyModal } from "./HostLobbyModal";
@@ -967,6 +975,9 @@ class Client {
       applyUserMe(generation)(result === false ? false : await getUserMe());
     });
 
+    // A GLL ID sign-in finished in another tab: reload to pick up its refresh cookie.
+    if (!isNewTab()) listenSignedIn(() => window.location.reload());
+
     const initialAuthGeneration = authGeneration;
     if ((await userAuth()) === false) {
       // Not logged in: apply the signed-out profile directly.
@@ -1245,8 +1256,15 @@ class Client {
   private handleGateHash(hash: string): boolean {
     const gate = parseGateHash(hash);
     if (!gate) return false;
+    if (gate.tab) markNewTab();
     if (gate.kind === "ok") {
       // The session cookie is already set; the startup refresh signs us in.
+      if (isNewTab()) {
+        // Opened from another HT tab: tell it, then ask the player to close this one.
+        notifySignedIn();
+        clearNewTab();
+        showTabDone(translateText("gate_auth.tab_done"));
+      }
       history.replaceState(
         null,
         "",

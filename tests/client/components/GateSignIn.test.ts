@@ -38,7 +38,7 @@ async function mount(
   config: { gate: boolean; legacy: boolean },
   props: Partial<GateSignIn> = {},
 ) {
-  vi.mocked(fetchAuthConfig).mockResolvedValue(config);
+  vi.mocked(fetchAuthConfig).mockResolvedValue({ ...config, gateUrl: "" });
   el = document.createElement("gate-sign-in");
   Object.assign(el, props);
   document.body.appendChild(el);
@@ -100,6 +100,35 @@ describe("gate-sign-in views", () => {
     (el.querySelector("button[name=usePassword]") as HTMLButtonElement).click();
     await settle();
     expect(el.querySelector("password-auth-form")).not.toBeNull();
+  });
+
+  it("the GLL ID button opens a new tab; a blocked popup falls back to this tab", async () => {
+    const open = vi.fn(() => ({}));
+    vi.stubGlobal("open", open);
+    await mount({ gate: true, legacy: false });
+    const click = () =>
+      (
+        el.querySelector(
+          "o-button[translationKey='gate_auth.sign_in'] button",
+        ) as HTMLButtonElement
+      ).click();
+    click();
+    expect(open).toHaveBeenCalledWith(
+      "http://api.test/auth/gate/start?tab=1",
+      "_blank",
+    );
+    vi.unstubAllGlobals();
+  });
+
+  it("always shows 'Redirect failed? Sign in here' under the button", async () => {
+    for (const legacy of [true, false]) {
+      document.body.innerHTML = "";
+      await mount({ gate: true, legacy });
+      const link = el.querySelector(
+        "button[name=redirectFailed]",
+      ) as HTMLButtonElement;
+      expect(link.textContent?.trim()).toBe("gate_auth.direct_link");
+    }
   });
 
   it("gate on + legacy off: button only", async () => {

@@ -74,7 +74,7 @@ export HT_TAG="$HASH"
 
 echo "Starting the database"
 # Private network to GATE (GLL ID); GATE's compose joins it too. Idempotent.
-docker network inspect gll_gate >/dev/null 2>&1 || docker network create --internal gll_gate
+docker network inspect gll_gate > /dev/null 2>&1 || docker network create --internal gll_gate
 
 dc up -d ht-db
 wait_healthy ht-db
