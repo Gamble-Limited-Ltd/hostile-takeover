@@ -20,6 +20,12 @@ export interface GateIdentity {
   sub: string;
   /** The verified email claim, or null when GATE sent none. */
   email: string | null;
+  /**
+   * GATE's `email_approved` claim (id_token first, then userinfo): true when the
+   * email is @kmlhs.org or covered by an owner exception. null when GATE sent
+   * none; callers must treat anything but true as not approved.
+   */
+  emailApproved: boolean | null;
   loginName: string;
   displayName: string;
   /** The raw id_token: kept only as the logout `id_token_hint`. Never log or return it. */
@@ -58,11 +64,22 @@ interface Discovery {
   tokenEndpoint: string;
   jwksUri: string;
   endSessionEndpoint: string | null;
+  userinfoEndpoint: string | null;
   fetchedAt: number;
   jwks: ReturnType<typeof createRemoteJWKSet>;
 }
 
 /** form-urlencoded, as RFC 6749 section 2.3.1 asks of the Basic credentials. */
+const userinfoUrl = (v: unknown): string | null => {
+  if (typeof v !== "string") return null;
+  try {
+    new URL(v);
+    return v;
+  } catch {
+    return null;
+  }
+};
+
 const formEncode = (s: string): string =>
   new URLSearchParams({ x: s }).toString().slice(2);
 
@@ -128,6 +145,7 @@ export function createGate(env: ApiEnv): GateClient {
       tokenEndpoint,
       jwksUri,
       endSessionEndpoint: typeof end === "string" ? end : null,
+      userinfoEndpoint: userinfoUrl(doc.userinfo_endpoint),
       fetchedAt: Date.now(),
       jwks: createRemoteJWKSet(new URL(backchannel(jwksUri)), {
         timeoutDuration: TIMEOUT_MS,
@@ -147,10 +165,40 @@ export function createGate(env: ApiEnv): GateClient {
     return inflight;
   }
 
+  /** `email_approved` from userinfo; null on any problem, so the caller fails closed. */
+  async function userinfoApproved(
+    d: Discovery,
+    accessToken: string | null,
+    sub: string,
+  ): Promise<boolean | null> {
+    if (!d.userinfoEndpoint || !accessToken) return null;
+    try {
+      const res = await fetchJson(d.userinfoEndpoint, {
+        headers: {
+          authorization: `Bearer ${accessToken}`,
+          accept: "application/json",
+        },
+      });
+      if (!res.ok) return null;
+      const body = (await res.json().catch(() => null)) as Record<
+        string,
+        unknown
+      > | null;
+      // OIDC Core 5.3.2: the userinfo `sub` must match the id_token's.
+      if (!body || body.sub !== sub) return null;
+      return typeof body.email_approved === "boolean"
+        ? body.email_approved
+        : null;
+    } catch {
+      return null;
+    }
+  }
+
   async function verifyIdToken(
     idToken: string,
     d: Discovery,
     nonce: string,
+    accessToken: string | null,
   ): Promise<GateIdentity> {
     let claims: Record<string, unknown>;
     try {
@@ -182,8 +230,13 @@ export function createGate(env: ApiEnv): GateClient {
       typeof v === "string" && v.trim() !== "" ? v.trim() : null;
     const email = str(claims.email);
     const loginName = str(claims.login_name) ?? sub;
+    const fromToken =
+      typeof claims.email_approved === "boolean" ? claims.email_approved : null;
+    const emailApproved =
+      fromToken ?? (await userinfoApproved(d, accessToken, sub));
     return {
       sub,
+      emailApproved,
       email: email !== null && email.length <= MAX_EMAIL ? email : null,
       loginName: loginName.slice(0, 100),
       displayName: (str(claims.display_name) ?? loginName).slice(0, 100),
@@ -241,7 +294,13 @@ export function createGate(env: ApiEnv): GateClient {
       if (typeof idToken !== "string" || idToken === "") {
         throw new GateError("invalid", "no id_token");
       }
-      return verifyIdToken(idToken, d, p.nonce);
+      const at = body?.access_token;
+      return verifyIdToken(
+        idToken,
+        d,
+        p.nonce,
+        typeof at === "string" && at !== "" ? at : null,
+      );
     },
 
     async logoutUrl(idTokenHint) {

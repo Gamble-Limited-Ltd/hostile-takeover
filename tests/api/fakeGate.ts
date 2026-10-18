@@ -59,6 +59,9 @@ export async function startFakeGate(
     idTokens: [] as string[],
     discoveryIssuer: undefined as string | undefined,
     tokenOverride: null as null | { status: number; body: unknown },
+    /** Body served by the userinfo endpoint (404 when null). */
+    userinfo: null as null | Record<string, unknown>,
+    userinfoRequests: [] as (string | undefined)[],
   };
   let origin = "";
   const pub = () => opts.publicIssuer ?? origin;
@@ -70,6 +73,7 @@ export async function startFakeGate(
       authorization_endpoint: `${pub()}/oidc/auth`,
       token_endpoint: `${pub()}/oidc/token`,
       jwks_uri: `${pub()}/oidc/jwks`,
+      userinfo_endpoint: `${pub()}/oidc/me`,
       id_token_signing_alg_values_supported: ["ES256"],
     };
     if (opts.endSession !== false) {
@@ -79,6 +83,13 @@ export async function startFakeGate(
           : `${pub()}/oidc/logout`;
     }
     res.json(doc);
+  });
+  app.get("/oidc/me", (req, res) => {
+    state.userinfoRequests.push(req.headers.authorization);
+    if (req.headers.authorization !== "Bearer at" || !state.userinfo) {
+      return void res.status(state.userinfo ? 401 : 404).json({});
+    }
+    res.json(state.userinfo);
   });
   app.get("/oidc/jwks", (_req, res) => {
     state.jwksHits++;
@@ -157,6 +168,7 @@ export async function startFakeGate(
       global_rank: "PLAYER",
       email_verified: true,
       email: "alice@kmlhs.org",
+      email_approved: true,
       ...o.claims,
     };
     for (const k of Object.keys(claims))

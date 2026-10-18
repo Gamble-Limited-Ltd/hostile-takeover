@@ -148,6 +148,7 @@ const CREATE_ERROR_KEYS: Record<string, string> = {
   username_invalid: "gate_auth.error_username_invalid",
   username_censored: "gate_auth.error_username_censored",
   email_domain: "gate_auth.error_email_domain",
+  email_not_approved: "gate_auth.error_email_not_approved",
   rate_limited: "gate_auth.error_rate_limited",
   no_pending: "gate_auth.error_no_pending",
   network: "gate_auth.error_network",

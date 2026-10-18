@@ -106,5 +106,8 @@ describe("error keys", () => {
       "gate_auth.error_username_taken",
     );
     expect(createErrorKey("email_domain")).toBe("gate_auth.error_email_domain");
+    expect(createErrorKey("email_not_approved")).toBe(
+      "gate_auth.error_email_not_approved",
+    );
   });
 });
