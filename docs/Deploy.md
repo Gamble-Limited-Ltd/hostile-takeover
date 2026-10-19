@@ -62,3 +62,20 @@ Rollback: cd ~/hostile-takeover && ./ht-deploy.sh a9ff9862a4c4caa0d9a04a99b1804f
 Overrides:
   Override: ships inside GATE's watch period — Boss: this can be a blocker for users to play the game at all; GATE was just released today, so this is an update for a same-launch-day feature.
 ```
+
+## Release record: direct sign-in link hand-off hotfix (2026-10-19)
+
+```
+Release: "Redirect failed? Sign in here" for players with no linked HT account. GATE issued the
+  code and HT answered status "link", but the modal set location.hash = "gate=link" on the live
+  page: Main handled it twice (popstate, then hashchange) and the second pass reopened the account
+  modal without the link card, so the player landed back on sign-in. Prod evidence: gate_pending
+  rows created 3 to 7 times per player on 2026-10-19 and never used; only 3 of 50 users linked.
+  Fix: replace the hash with #gate=link and reload, the redirect's own landing (client only).
+Lane: Hotfix (sign-in blocked for every unlinked player using the fallback). Deployed by: Boss's go.
+Gates: regression test written first and failing [x]  gate client + API tests green (54) [x]
+  typecheck + lint + prettier clean [x]  golden path: headless Chromium on the prod page with the
+  fixed chunk and a mocked API shows the link card and fetches /auth/gate/pending [x]
+Watch period: 2 h (patch watch)
+Rollback: cd ~/hostile-takeover && ./ht-deploy.sh ea4a80a7cb060ff49a90674003b5f947e62a117f
+```

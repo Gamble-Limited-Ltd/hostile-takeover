@@ -7,6 +7,7 @@
   → New players sign up with a GLL ID. GLL ID checks the school email rule for us.
   → Your old username and password keep working for a few more days.
   → GLL ID opens in a new tab and signs this tab in by itself. If the redirect fails, use "Redirect failed? Sign in here" under the button.
+  → Fixed: "Redirect failed? Sign in here" sent players without a linked Hostile Takeover account back to the sign-in screen. It now shows the link or new account step.
 - Hostile Takeover is a private fork of OpenFront for a group of friends, with its own accounts and servers.
   → Sign up with your kmlhs.org email, pick a username and play.
 - Store, ads and third-party logins have been removed.

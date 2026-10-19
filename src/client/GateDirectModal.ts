@@ -177,10 +177,21 @@ export class GateDirectModal extends BaseModal {
     this.values = this.emptyValues();
     this.close();
     if (status === "link") {
-      // Same hand-off the redirect uses: the account modal shows the link card.
-      window.location.hash = "gate=link";
-      return;
+      // Same hand-off the redirect uses: the page loads on `#gate=link` and
+      // the account modal shows the link card. Setting the hash on the live
+      // page instead is handled twice (popstate, then hashchange), and the
+      // second pass reopens the modal without the card.
+      history.replaceState(
+        null,
+        "",
+        window.location.pathname + window.location.search + "#gate=link",
+      );
     }
+    this.reload();
+  }
+
+  /** A seam for tests: jsdom can't reload. */
+  private reload(): void {
     window.location.reload();
   }
 

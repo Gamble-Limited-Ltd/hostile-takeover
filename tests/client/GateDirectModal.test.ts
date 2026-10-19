@@ -68,6 +68,37 @@ describe("GateDirectModal", () => {
     expect(modal.textContent).toContain("Nope.");
   });
 
+  it("an unlinked player reloads onto #gate=link, the redirect's own landing", async () => {
+    // Regression (2026-10-19): setting the hash on the live page was handled
+    // twice (popstate, then hashchange) and the second pass dropped the link
+    // card, so players without an HT account landed back on sign-in.
+    directCall.mockResolvedValue({ ok: true, status: "link" });
+    const reload = vi.fn();
+    (modal as unknown as { reload: () => void }).reload = reload;
+    const hashChanges = vi.fn();
+    window.addEventListener("hashchange", hashChanges);
+    type("identifier", "newplayer");
+    type("password", "pw");
+    await submit();
+    await new Promise((r) => setTimeout(r, 10));
+    window.removeEventListener("hashchange", hashChanges);
+    expect(reload).toHaveBeenCalledOnce();
+    expect(window.location.hash).toBe("#gate=link");
+    expect(hashChanges).not.toHaveBeenCalled();
+  });
+
+  it("a linked player reloads with the hash as it was", async () => {
+    history.replaceState(null, "", "/#modal=account");
+    directCall.mockResolvedValue({ ok: true, status: "ok" });
+    const reload = vi.fn();
+    (modal as unknown as { reload: () => void }).reload = reload;
+    type("identifier", "boss");
+    type("password", "pw");
+    await submit();
+    expect(reload).toHaveBeenCalledOnce();
+    expect(window.location.hash).toBe("#modal=account");
+  });
+
   it("shows GLL ID's DIRECT_SIGNIN_DISABLED message as returned", async () => {
     directCall.mockResolvedValue({
       ok: false,
