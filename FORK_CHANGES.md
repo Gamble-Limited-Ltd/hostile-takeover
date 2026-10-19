@@ -161,3 +161,55 @@ only exist in the fork aren't listed.
 | `package-lock.json`                                                                                                                                                                                                                                                                                                                                                                                                                            | Added `jose` to the `packages/api` workspace                                                                                                                                                                                                           | Same: id_token verification against GATE's JWKS                                                                                                 |
 | `tests/client/AccountModal.rendering.test.ts`                                                                                                                                                                                                                                                                                                                                                                                                  | Test that the GLL ID link/error flags survive a repeated `onOpen` and clear on close                                                                                                                                                                   | Same                                                                                                                                            |
 | `src/client/Main.ts`                                                                                                                                                                                                                                                                                                                                                                                                                           | `promptSignInOnce()`: a signed-out player at startup gets the account (sign-in) modal once per tab session, when the URL has no hash                                                                                                                   | GLL ID launch: players land on the sign-in screen                                                                                               |
+
+## Upstream tests modified by the fork
+
+Checked 2026-10-18: `git diff --diff-filter=M a15138358 main -- tests` (merge-base with `upstream/main`) lists 47 existing upstream test files we changed (the fork also added 38 new ones, not listed). Most were edited because the feature they test is gated off in `Features.ts` or the API is ours. On an upstream merge, expect conflicts in these:
+
+- `tests/DesktopUpdateStateSeeding.test.ts`
+- `tests/GameModeSelectorGatingWiring.test.ts`
+- `tests/LayerBoundaries.test.ts`
+- `tests/ReachabilityGating.test.ts`
+- `tests/UsernameInput.test.ts`
+- `tests/client/AccountGameStatsNavigation.test.ts`
+- `tests/client/AccountModal.rendering.test.ts`
+- `tests/client/AccountModalPrestige.test.ts`
+- `tests/client/AccountSettingsModal.test.ts`
+- `tests/client/ApiPlayerLeaderboard.test.ts`
+- `tests/client/ApiTribeLeaderboard.test.ts`
+- `tests/client/AuthRefreshFailure.test.ts`
+- `tests/client/AuthRefreshTimeout.test.ts`
+- `tests/client/ClientEnvStatic.test.ts`
+- `tests/client/CosmeticLockerIntegration.test.ts`
+- `tests/client/InventoryModal.test.ts`
+- `tests/client/InventoryNavigation.test.ts`
+- `tests/client/InventoryRetryCache.test.ts`
+- `tests/client/MainInitialize.test.ts`
+- `tests/client/Matchmaking.test.ts`
+- `tests/client/NavAccountMenu.test.ts`
+- `tests/client/NavAccountMenuLevel.test.ts`
+- `tests/client/NavNotifications.test.ts`
+- `tests/client/ProgressionApi.test.ts`
+- `tests/client/PurchaseNudgeModal.test.ts`
+- `tests/client/RankedTrustLock.test.ts`
+- `tests/client/ServerList.test.ts`
+- `tests/client/SteamLink.test.ts`
+- `tests/client/UserMeFetchTimeout.test.ts`
+- `tests/client/components/AccountSettingsPanel.test.ts`
+- `tests/client/components/FeaturedStreamPanel.test.ts`
+- `tests/client/components/Footer.test.ts`
+- `tests/client/components/IdentityTokenCard.test.ts`
+- `tests/client/components/LobbyPlayerView.badgeFill.test.ts`
+- `tests/client/components/LobbyPlayerView.levelBadge.test.ts`
+- `tests/client/components/StreamingNow.test.ts`
+- `tests/client/components/StreamsFeed.test.ts`
+- `tests/client/graphics/layers/PlayerPanelLevelBadge.test.ts`
+- `tests/client/graphics/layers/WinModal.test.ts`
+- `tests/client/graphics/layers/WinModalXp.test.ts`
+- `tests/client/sound/MenuMusic.test.ts`
+- `tests/client/sound/SoundManager.test.ts`
+- `tests/server/JoinVerify.test.ts`
+- `tests/server/PublicAssetManifest.test.ts`
+- `tests/server/RenderHtml.test.ts`
+- `tests/server/ServerEnv.test.ts`
+- `tests/server/telemetry/MatchTelemetryConfig.test.ts`

@@ -1,3 +1,5 @@
+> **Upstream-only.** This describes OpenFront's replay viewer. Hostile Takeover does not store game records (`POST /game/:id` saves nothing), so replays do not work in this fork. Kept for upstream merges.
+
 # Replays
 
 The replay viewer plays a finished game with the game's own renderer and

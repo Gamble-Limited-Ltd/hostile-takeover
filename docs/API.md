@@ -1,3 +1,5 @@
+> **Upstream-only.** These endpoints belong to OpenFront's hosted API (`api.openfront.io`), not Hostile Takeover's API in `packages/api`. For ours, see `docs/Auth.md` and `CLAUDE.md`.
+
 # API Usage
 
 ## Games

@@ -39,3 +39,6 @@ packages/api/.keys/
 
 # Hostile Takeover: written by ht-deploy.sh
 .last-deploy-hash
+
+# nodeterm canvas state
+.nodeterm/

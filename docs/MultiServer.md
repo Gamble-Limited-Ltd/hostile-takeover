@@ -1,3 +1,5 @@
+> **Upstream-only.** This is OpenFront's multi-server plan; Hostile Takeover runs a single box and does not use it. Many paths it names do not exist here. Kept for upstream merges.
+
 # Multi-Server Architecture — Implementation Plan
 
 Status: planned. Design summary and decisions below; the meat of this document

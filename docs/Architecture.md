@@ -17,7 +17,7 @@ The game is split into four components:
 
 3. **server** - Handles coordination and relays of intents/requests
 
-4. **api** - A closed source Cloudflare Worker that handles auth, stats, game data storage, cosmetics, and monetization
+4. **api** - Upstream: a closed source Cloudflare Worker that handles auth, stats, game data storage, cosmetics, and monetization. In the Hostile Takeover fork the API is our own workspace package, `packages/api`, in this repo (see `CLAUDE.md`).
 
 ## Simulation Architecture
 
