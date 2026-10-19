@@ -77,6 +77,7 @@ services:
       timeout: 5s
       retries: 4
       start_period: 20s
+      start_interval: 2s # probe every 2s while starting, so 'healthy' is seen within seconds, not after 15s
     logging: *logging
 
   ht-game:
@@ -109,6 +110,7 @@ services:
       timeout: 5s
       retries: 4
       start_period: 60s
+      start_interval: 2s
     logging: *logging
 
 networks:

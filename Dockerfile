@@ -37,8 +37,8 @@ COPY packages ./packages
 # container build runs build-prod from a copied tree.
 COPY scripts ./scripts
 
-ARG GIT_COMMIT=unknown
-ENV GIT_COMMIT="$GIT_COMMIT"
+# Hostile Takeover: GIT_COMMIT is deliberately NOT declared in this stage. Nothing in build-prod reads it,
+# and an ARG/ENV here would re-run the whole tsc + vite build on every commit. The final stage stamps it.
 # Hostile Takeover: build-time footer link to Meridian (vite.config.ts); empty hides it.
 ARG MERIDIAN_URL=
 ENV MERIDIAN_URL="$MERIDIAN_URL"
