@@ -38,8 +38,9 @@ bash preship.sh --local  # never offload (quick on this VM; --full --local skips
 - Offloaded full runs delete `static/` before and after (on the PC copy only): a leftover
   `static/asset-hashes.json` from an earlier build makes `tests/server/RenderHtml.test.ts` fail. For the
   same reason `--full --local` on this VM fails that test while the VM has a `static/` build; CI is clean.
-- The PC image is plain `node` and has no `jq`, so `tests/UpdateRegister.test.ts` (update.sh) is left
-  out there, with a `NOTE:` in the output. CI runs it. Installing jq in the image would close the gap.
+- The PC image gets `jq` through `EXTRA_APT=jq` in `.remotebuilder`, so `tests/UpdateRegister.test.ts`
+  (update.sh) runs there. Where `jq` is missing (a run with no `.remotebuilder` image), that file is left
+  out with a `NOTE:` in the output, and CI runs it.
 - If the only failing tests are `InventoryModal` ones, the output says so (known flaky timeouts under
   load, see CLAUDE.md). The run still fails; nothing is hidden.
 
