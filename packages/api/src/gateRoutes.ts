@@ -114,16 +114,38 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     }
   });
 
+  /** Why `name` can't be an HT username, if it can't. */
+  function usernameProblem(name: string) {
+    if (name.length < 3 || name.length > 20 || !USERNAME_RE.test(name)) {
+      return "username_invalid";
+    }
+    return profanityMatcher.hasMatch(name) ? "username_censored" : null;
+  }
+  const nameFree = async (name: string) =>
+    usernameProblem(name) === null &&
+    (await store.findUserByUsername(name)) === null;
+
+  /** The first of name_2 .. name_9 that is valid, clean and free. */
+  async function suggestionFor(name: string): Promise<string | null> {
+    for (let n = 2; n <= 9; n++) {
+      const s = `${name.slice(0, 18)}_${n}`;
+      if (await nameFree(s)) return s;
+    }
+    return null;
+  }
+
   /**
    * What happens once GATE has vouched for a player, whichever way they came
-   * (the redirect callback or the direct sign-in): a linked account gets a
-   * session; anyone else gets a pending identity to link or create from.
+   * (the redirect callback or the direct sign-in). A linked account gets a
+   * session. A new player whose GATE login name is free here gets an account
+   * with that name. Anyone else gets a pending identity: "match" when an old
+   * account has their email, "rename" when the name is taken or not allowed.
    */
   async function signInWho(
     req: express.Request,
     res: express.Response,
     who: GateIdentity,
-  ): Promise<"ok" | "link" | "disabled"> {
+  ): Promise<"ok" | "match" | "rename" | "disabled" | "not_approved"> {
     const user = await store.findUserByGateSub(who.sub);
     if (user) {
       if (user.disabled_at) return "disabled";
@@ -134,22 +156,41 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       await d.startSession(res, user.id, req.headers["user-agent"]);
       return "ok";
     }
-    const token = randomToken();
-    await store.createGatePending({
-      tokenHash: sha256Hex(token),
+    const p: GatePendingRow = {
       gateSub: who.sub,
       email: who.email,
       loginName: who.loginName,
-      displayName: who.displayName,
       emailApproved: who.emailApproved,
       idToken: who.idToken,
+    };
+    const match = await matchOf(p);
+    if (!match) {
+      if (!p.email || !mayCreate(p)) return "not_approved";
+      if (await nameFree(p.loginName)) {
+        const created = await store.createGateUser({
+          publicId: generatePublicId(),
+          username: p.loginName,
+          email: p.email,
+          gateSub: p.gateSub,
+          idToken: p.idToken,
+        });
+        if (created.ok) {
+          await d.startSession(res, created.user.id, req.headers["user-agent"]);
+          return "ok";
+        }
+      }
+    }
+    const token = randomToken();
+    await store.createGatePending({
+      ...p,
+      tokenHash: sha256Hex(token),
       expiresAt: new Date(Date.now() + PENDING_TTL_MS),
     });
     res.cookie(GATE_PENDING_COOKIE, token, {
       ...cookieOpts,
       maxAge: PENDING_TTL_MS,
     });
-    return "link";
+    return match ? "match" : "rename";
   }
 
   app.get("/auth/gate/callback", async (req, res, next) => {
@@ -194,6 +235,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
 
       const outcome = await signInWho(req, res, who);
       if (outcome === "disabled") return fail("account_disabled");
+      if (outcome === "not_approved") return fail("email_not_approved");
       res.clearCookie(GATE_FLOW_COOKIE, cookieOpts);
       res.clearCookie(GATE_TAB_COOKIE, cookieOpts);
       back(res, outcome === "ok" ? "gate=ok" : "gate=link", tab);
@@ -251,11 +293,9 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       res.setHeader("Cache-Control", "no-store");
       res.json({
         loginName: p.loginName,
-        displayName: p.displayName,
         email: p.email,
         match: match ? { username: match.username } : null,
-        canCreate: mayCreate(p),
-        usernameTaken: (await store.findUserByUsername(p.loginName)) !== null,
+        suggestion: match ? null : await suggestionFor(p.loginName),
       });
     } catch (e) {
       next(e);
@@ -353,16 +393,8 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         return void res.status(403).json({ error: "email_not_approved" });
       }
       const username = str(bodyOf(req).username)?.trim() ?? "";
-      if (
-        username.length < 3 ||
-        username.length > 20 ||
-        !USERNAME_RE.test(username)
-      ) {
-        return void res.status(400).json({ error: "username_invalid" });
-      }
-      if (profanityMatcher.hasMatch(username)) {
-        return void res.status(400).json({ error: "username_censored" });
-      }
+      const problem = usernameProblem(username);
+      if (problem) return void res.status(400).json({ error: problem });
       const created = await store.createGateUser({
         publicId: generatePublicId(),
         username,
@@ -411,10 +443,10 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       firstName: 100,
       lastName: 100,
       loginName: 100,
-      displayName: 100,
       email: 254,
       password: 1024,
       ageConfirmed13: "bool",
+      acceptedLegal: "bool",
     },
   };
   const playerIp = (req: express.Request): string | undefined => {
@@ -448,42 +480,33 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     res.status(r.status).json(typeof pending === "string" ? { pending } : {});
   }
 
-  /** login and verify: ask GATE for a code, then take the redirect callback's path. */
-  async function codeFlow(
+  /** login, verify and reset: GATE answers with an id_token; take the redirect callback's path. */
+  async function tokenFlow(
     req: express.Request,
     res: express.Response,
-    r: DirectResult | null,
-    verifier: string,
-    nonce: string,
+    r: DirectResult,
   ): Promise<void> {
-    if (!r || r.status !== 200 || typeof r.body?.code !== "string") {
-      return relay(res, r ?? { status: 503, body: null, retryAfter: null });
+    if (r.status !== 200 || typeof r.body?.id_token !== "string") {
+      return relay(res, r);
     }
     let who: GateIdentity;
     try {
-      who = await gate.exchange({
-        code: r.body.code,
-        codeVerifier: verifier,
-        nonce,
-      });
+      who = await gate.verify(r.body.id_token);
     } catch (e) {
       if (!(e instanceof GateError)) throw e;
-      if (e.code === "unavailable") {
-        return htError(
-          res,
-          503,
-          "HT_UNAVAILABLE",
-          "GLL ID isn't reachable right now. Try again in a bit.",
-        );
-      }
-      return htError(
-        res,
-        e.code === "expired" ? 400 : 502,
-        e.code === "expired" ? "HT_EXPIRED" : "HT_INVALID",
-        e.code === "expired"
-          ? "That sign-in took too long. Please try again."
-          : "GLL ID sign-in didn't check out. Please try again.",
-      );
+      return e.code === "unavailable"
+        ? htError(
+            res,
+            503,
+            "HT_UNAVAILABLE",
+            "GLL ID isn't reachable right now. Try again in a bit.",
+          )
+        : htError(
+            res,
+            502,
+            "HT_INVALID",
+            "GLL ID sign-in didn't check out. Please try again.",
+          );
     }
     const outcome = await signInWho(req, res, who);
     if (outcome === "disabled") {
@@ -492,6 +515,14 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         403,
         "HT_ACCOUNT_DISABLED",
         "This GLL ID account is disabled. Ask an admin for help.",
+      );
+    }
+    if (outcome === "not_approved") {
+      return htError(
+        res,
+        403,
+        "HT_EMAIL_NOT_APPROVED",
+        "Sign up with your school email to play.",
       );
     }
     res.setHeader("Cache-Control", "no-store");
@@ -538,25 +569,11 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         const ip = playerIp(req);
         if (ip) out.player_ip = ip;
         try {
-          if (op === "signup") {
-            const legal = await gate.legalVersions();
-            if (!legal) throw new GateError("unavailable");
-            out.tosVersion = legal.tos;
-            out.privacyVersion = legal.privacy;
+          const r = await gate.direct(op, out);
+          if (op === "login" || op === "verify" || op === "reset") {
+            return await tokenFlow(req, res, r);
           }
-          if (op === "login" || op === "verify") {
-            const verifier = randomToken();
-            const nonce = randomToken();
-            const r = await gate.direct(op, {
-              ...out,
-              redirect_uri: env.gateRedirectUri,
-              code_challenge: pkceChallenge(verifier),
-              nonce,
-              scope: "openid profile email",
-            });
-            return await codeFlow(req, res, r, verifier, nonce);
-          }
-          relay(res, await gate.direct(op, out));
+          relay(res, r);
         } catch (e) {
           if (!(e instanceof GateError)) throw e;
           htError(

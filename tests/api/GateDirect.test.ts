@@ -105,14 +105,11 @@ async function harness(
     const v = raw?.split(";")[0].slice(name.length + 1);
     return v ? decodeURIComponent(v) : null;
   };
-  /** GATE's login/verify: mints a code for the authorize params HT sent. */
-  const accept = (mint?: MintOptions) => async (b: Record<string, unknown>) => {
-    const u = new URL(`${fake.issuer}/oidc/auth`);
-    for (const k of ["redirect_uri", "code_challenge", "nonce"]) {
-      u.searchParams.set(k, String(b[k]));
-    }
-    return { status: 200, json: { code: await fake.mint(u.toString(), mint) } };
-  };
+  /** GATE's login/verify/reset in token mode: answers with an id_token. */
+  const accept = (mint?: MintOptions) => async () => ({
+    status: 200,
+    json: { id_token: await fake.token(mint) },
+  });
   return { fake, mem, env, ctx, base, post, cookieVal, accept, alice, linked };
 }
 
@@ -145,10 +142,11 @@ describe("forwarding", () => {
       firstName: "A",
       lastName: "B",
       loginName: "ab",
-      displayName: "AB",
       email: "ab@kmlhs.org",
       password: "Aa1!aaaa",
       ageConfirmed13: true,
+      acceptedLegal: true,
+      displayName: "AB",
       isAdmin: true,
     });
     expect(su.status).toBe(201);
@@ -169,13 +167,19 @@ describe("forwarding", () => {
       identifier: "alice",
       player_ip: reqs[2].body.player_ip,
     });
-    // Legal versions are filled in by HT from GATE's /api/legal/versions.
+    // One consent from the browser covers both; HT adds nothing and fetches no versions.
     expect(reqs[3].body).toMatchObject({
-      tosVersion: "2026-10-18",
-      privacyVersion: "2026-10-18",
       ageConfirmed13: true,
+      acceptedLegal: true,
     });
-    expect(reqs[3].body).not.toHaveProperty("isAdmin");
+    for (const k of [
+      "isAdmin",
+      "displayName",
+      "tosVersion",
+      "privacyVersion",
+    ]) {
+      expect(reqs[3].body).not.toHaveProperty(k);
+    }
   });
 
   test("GATE's error body, status and Retry-After pass through", async () => {
@@ -282,7 +286,7 @@ describe("forwarding", () => {
 });
 
 describe("login -> code -> HT session", () => {
-  test("a linked player gets a refresh cookie; PKCE, nonce and redirect_uri go to GATE", async () => {
+  test("a linked player gets a refresh cookie; token mode sends no PKCE, nonce or redirect_uri", async () => {
     const h = await harness();
     h.fake.state.direct.login = h.accept();
     const r = await h.post("/auth/gate/direct/login", LOGIN);
@@ -290,33 +294,28 @@ describe("login -> code -> HT session", () => {
     expect(await r.json()).toEqual({ status: "ok" });
     expect(h.cookieVal(r, REFRESH_COOKIE)).toBeTruthy();
     const sent = h.fake.state.directRequests[0].body;
-    expect(sent).toMatchObject({
-      identifier: "gatealice",
-      redirect_uri: `${API}/auth/gate/callback`,
-      scope: "openid profile email",
-    });
-    expect(sent.code_challenge).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    expect(sent.nonce).toMatch(/^[A-Za-z0-9_-]{43}$/);
-    // Exchanged through the same token path, with Basic auth.
-    const tok = h.fake.state.tokenRequests;
-    expect(tok).toHaveLength(1);
-    expect(tok[0].authorization).toBe(basic);
-    expect(tok[0].body.redirect_uri).toBe(`${API}/auth/gate/callback`);
+    expect(sent).toMatchObject({ identifier: "gatealice" });
+    for (const k of ["redirect_uri", "code_challenge", "nonce", "scope"]) {
+      expect(sent).not.toHaveProperty(k);
+    }
+    // Checked against GATE's keys; no code exchange.
+    expect(h.fake.state.jwksHits).toBe(1);
+    expect(h.fake.state.tokenRequests).toHaveLength(0);
   });
 
-  test("an id_token with the wrong nonce is refused (same verification as the callback)", async () => {
+  test("an id_token signed with another key is refused, no session", async () => {
     const h = await harness();
-    h.fake.state.direct.login = h.accept({ claims: { nonce: "other" } });
+    h.fake.state.direct.login = h.accept({ signWith: await h.fake.otherKey() });
     const r = await h.post("/auth/gate/direct/login", LOGIN);
     expect(r.status).toBe(502);
     expect(r.headers.getSetCookie().join()).not.toContain(REFRESH_COOKIE);
   });
 
-  test("an unlinked GATE account gets a pending cookie and status link", async () => {
+  test("an email that matches an old account gets a pending cookie and status match", async () => {
     const h = await harness();
     h.fake.state.direct.login = h.accept({ claims: { sub: "fresh" } });
     const r = await h.post("/auth/gate/direct/login", LOGIN);
-    expect(await r.json()).toEqual({ status: "link" });
+    expect(await r.json()).toEqual({ status: "match" });
     const pend = h.cookieVal(r, "ht_gate_pending");
     expect(pend).toBeTruthy();
     expect(h.cookieVal(r, REFRESH_COOKIE)).toBeNull();
@@ -329,6 +328,45 @@ describe("login -> code -> HT session", () => {
     const ok = await h.post("/auth/gate/link/confirm", {}, c);
     expect(ok.status).toBe(200);
     expect(h.cookieVal(ok, REFRESH_COOKIE)).toBeTruthy();
+  });
+
+  test("a new player with a free login name is signed in on the spot", async () => {
+    const h = await harness({ users: [] });
+    h.fake.state.direct.login = h.accept({ claims: { sub: "fresh" } });
+    const r = await h.post("/auth/gate/direct/login", LOGIN);
+    expect(await r.json()).toEqual({ status: "ok" });
+    expect(h.cookieVal(r, REFRESH_COOKIE)).toBeTruthy();
+    expect(h.mem.users[0]).toMatchObject({
+      username: "gatealice",
+      gate_sub: "fresh",
+    });
+  });
+
+  test("a taken login name gets status rename and a suggestion", async () => {
+    const h = await harness({ users: [row("gatealice")] });
+    h.fake.state.direct.login = h.accept({ claims: { sub: "fresh" } });
+    const r = await h.post("/auth/gate/direct/login", LOGIN);
+    expect(await r.json()).toEqual({ status: "rename" });
+    const c = `ht_gate_pending=${h.cookieVal(r, "ht_gate_pending")}`;
+    const pe = await fetch(`${h.base}/auth/gate/pending`, {
+      headers: { cookie: c },
+    });
+    expect(await pe.json()).toMatchObject({ suggestion: "gatealice_2" });
+  });
+
+  test("an email GATE hasn't approved gets 403 HT_EMAIL_NOT_APPROVED and nothing is stored", async () => {
+    const h = await harness({ users: [] });
+    h.fake.state.direct.login = h.accept({
+      claims: { sub: "fresh", email_approved: false },
+    });
+    const r = await h.post("/auth/gate/direct/login", LOGIN);
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toEqual({
+      code: "HT_EMAIL_NOT_APPROVED",
+      message: "Sign up with your school email to play.",
+    });
+    expect(h.cookieVal(r, "ht_gate_pending")).toBeNull();
+    expect(h.mem.pending).toHaveLength(0);
   });
 
   test("a disabled linked account is refused", async () => {
@@ -369,38 +407,34 @@ describe("verify, signup, recover", () => {
     const sent = h.fake.state.directRequests[1];
     expect(sent.op).toBe("verify");
     expect(sent.body).toMatchObject({ pending: "opaque-1", code: "123456" });
-    expect(sent.body.code_challenge).toBeTruthy();
+    expect(sent.body).not.toHaveProperty("code_challenge");
   });
 
-  test("signup -> verify -> a new HT account needs email_approved true", async () => {
+  test("signup -> verify -> a new HT account is made with the login name", async () => {
     const h = await harness({ users: [] });
     h.fake.state.direct.verify = h.accept({
-      claims: { sub: "new-1", email: "new@kmlhs.org", email_approved: true },
+      claims: { sub: "new-1", email: "new@kmlhs.org", login_name: "Newbie" },
     });
     const v = await h.post("/auth/gate/direct/verify", {
       pending: "p",
       code: "123456",
     });
-    expect(await v.json()).toEqual({ status: "link" });
-    const c = `ht_gate_pending=${h.cookieVal(v, "ht_gate_pending")}`;
-    const cr = await h.post("/auth/gate/create", { username: "Newbie" }, c);
-    expect(cr.status).toBe(201);
-    expect(h.cookieVal(cr, REFRESH_COOKIE)).toBeTruthy();
+    expect(await v.json()).toEqual({ status: "ok" });
+    expect(h.cookieVal(v, REFRESH_COOKIE)).toBeTruthy();
+    expect(h.mem.users[0].username).toBe("Newbie");
   });
 
-  test("signup -> verify with email_approved false cannot create", async () => {
-    const h = await harness({ users: [] });
-    h.fake.state.direct.verify = h.accept({
-      claims: { sub: "new-2", email: "x@gmail.com", email_approved: false },
-    });
-    const v = await h.post("/auth/gate/direct/verify", {
+  test("reset signs the player in when GATE answers with an id_token", async () => {
+    const h = await harness();
+    h.fake.state.direct.reset = h.accept();
+    const r = await h.post("/auth/gate/direct/reset", {
       pending: "p",
       code: "123456",
+      newPassword: "Aa1!aaaa",
     });
-    const c = `ht_gate_pending=${h.cookieVal(v, "ht_gate_pending")}`;
-    const cr = await h.post("/auth/gate/create", { username: "Newbie" }, c);
-    expect(cr.status).toBe(403);
-    expect((await cr.json()).error).toBe("email_not_approved");
+    expect(await r.json()).toEqual({ status: "ok" });
+    expect(h.cookieVal(r, REFRESH_COOKIE)).toBeTruthy();
+    expect(h.fake.state.directRequests[0].body).not.toHaveProperty("nonce");
   });
 });
 
@@ -417,7 +451,6 @@ describe("GATE_DIRECT_URL", () => {
     expect(h.fake.state.directRequests).toHaveLength(1);
     expect(h.fake.state.discoveryHits).toBe(1);
     expect(h.fake.state.jwksHits).toBe(1);
-    expect(h.fake.state.tokenRequests).toHaveLength(1);
   });
 
   test("an id_token whose iss is not GATE_ISSUER is refused", async () => {

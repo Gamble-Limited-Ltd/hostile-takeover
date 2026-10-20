@@ -27,7 +27,6 @@ export interface GateIdentity {
    */
   emailApproved: boolean | null;
   loginName: string;
-  displayName: string;
   /** The raw id_token: kept only as the logout `id_token_hint`. Never log or return it. */
   idToken: string;
 }
@@ -44,10 +43,10 @@ export interface GateClient {
     codeVerifier: string;
     nonce: string;
   }): Promise<GateIdentity>;
+  /** Checks an id_token that GATE's direct endpoints returned (no code, no nonce). */
+  verify(idToken: string): Promise<GateIdentity>;
   /** POST to GATE's /oidc/direct/<op> with the client's Basic credentials. */
   direct(op: string, body: Record<string, unknown>): Promise<DirectResult>;
-  /** GATE's current terms / privacy versions, for direct sign-up. */
-  legalVersions(): Promise<{ tos: string; privacy: string } | null>;
   /** Where to send the browser to end the GATE session too. */
   logoutUrl(idTokenHint?: string | null): Promise<string>;
 }
@@ -217,7 +216,7 @@ export function createGate(env: ApiEnv): GateClient {
   async function verifyIdToken(
     idToken: string,
     d: Discovery,
-    nonce: string,
+    nonce: string | null,
     accessToken: string | null,
   ): Promise<GateIdentity> {
     let claims: Record<string, unknown>;
@@ -235,7 +234,8 @@ export function createGate(env: ApiEnv): GateClient {
       if (e instanceof errors.JOSEError) throw new GateError("invalid", e.code);
       throw new GateError("unavailable");
     }
-    if (claims.nonce !== nonce) throw new GateError("invalid", "nonce");
+    if (nonce !== null && claims.nonce !== nonce)
+      throw new GateError("invalid", "nonce");
     if (claims.azp !== undefined && claims.azp !== env.gateClientId) {
       throw new GateError("invalid", "azp");
     }
@@ -259,7 +259,6 @@ export function createGate(env: ApiEnv): GateClient {
       emailApproved,
       email: email !== null && email.length <= MAX_EMAIL ? email : null,
       loginName: loginName.slice(0, 100),
-      displayName: (str(claims.display_name) ?? loginName).slice(0, 100),
       idToken,
     };
   }
@@ -320,6 +319,10 @@ export function createGate(env: ApiEnv): GateClient {
       );
     },
 
+    async verify(idToken) {
+      return verifyIdToken(idToken, await discovery(), null, null);
+    },
+
     async direct(op, body) {
       const res = await fetchJson(`${env.gateIssuer}/oidc/direct/${op}`, {
         method: "POST",
@@ -339,23 +342,6 @@ export function createGate(env: ApiEnv): GateClient {
             : null,
         retryAfter: res.headers.get("retry-after"),
       };
-    },
-
-    async legalVersions() {
-      try {
-        const res = await fetchJson(`${env.gateIssuer}/api/legal/versions`, {
-          headers: { accept: "application/json" },
-        });
-        if (!res.ok) return null;
-        const j = (await res.json()) as Record<string, unknown>;
-        const tos = j.tosVersion;
-        const privacy = j.privacyVersion;
-        return typeof tos === "string" && typeof privacy === "string"
-          ? { tos, privacy }
-          : null;
-      } catch {
-        return null;
-      }
     },
 
     async logoutUrl(idTokenHint) {

@@ -20,8 +20,11 @@ export interface DirectError {
 export type DirectResult =
   | {
       ok: true;
-      /** login / verify: "ok" = session set, "link" = pick or create an HT account. */
-      status?: "ok" | "link";
+      /**
+       * login / verify / reset: "ok" = session set; "match" / "rename" = signed in
+       * to GLL ID but no HT account yet (see /auth/gate/pending).
+       */
+      status?: "ok" | "match" | "rename";
       /** signup / recover: the handle for the emailed code. */
       pending?: string;
     }
@@ -58,7 +61,9 @@ export async function directCall(
       typeof parsed?.pending === "string" ? parsed.pending : undefined;
     if (response.ok) {
       const status =
-        parsed?.status === "ok" || parsed?.status === "link"
+        parsed?.status === "ok" ||
+        parsed?.status === "match" ||
+        parsed?.status === "rename"
           ? parsed.status
           : undefined;
       return { ok: true, status, pending };

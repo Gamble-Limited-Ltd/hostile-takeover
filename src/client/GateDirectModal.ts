@@ -1,5 +1,6 @@
 import { html, nothing, TemplateResult } from "lit";
 import { customElement, state } from "lit/decorators.js";
+import "./components/account/GateLinkCard";
 import "./components/baseComponents/Button";
 import { BaseModal } from "./components/BaseModal";
 import { modalHeader } from "./components/ui/ModalHeader";
@@ -17,19 +18,7 @@ const INPUT_CLASS =
 const LINK_CLASS =
   "text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest";
 
-type Mode = "signin" | "signup" | "code" | "forgot" | "reset";
-type Values = Record<
-  | "identifier"
-  | "password"
-  | "firstName"
-  | "lastName"
-  | "loginName"
-  | "displayName"
-  | "email"
-  | "code"
-  | "newPassword",
-  string
->;
+type Mode = "signin" | "signup" | "code" | "forgot" | "reset" | "link";
 
 /**
  * "Redirect failed? Sign in here": GLL ID's own forms inside Hostile Takeover.
@@ -41,28 +30,12 @@ export class GateDirectModal extends BaseModal {
   @state() private busy = false;
   @state() private notice = "";
   @state() private error: DirectError | null = null;
-  @state() private age = false;
-  @state() private terms = false;
   @state() private gateUrl = "";
 
   /** The handle GLL ID gave for the emailed code, and what the code is for. */
   private pending = "";
   private codeFor: "login" | "signup" | "reset" = "login";
-  private values: Values = this.emptyValues();
-
-  private emptyValues(): Values {
-    return {
-      identifier: "",
-      password: "",
-      firstName: "",
-      lastName: "",
-      loginName: "",
-      displayName: "",
-      email: "",
-      code: "",
-      newPassword: "",
-    };
-  }
+  private pendingCode = "";
 
   protected modalConfig() {
     return { maxWidth: "620px" };
@@ -77,8 +50,7 @@ export class GateDirectModal extends BaseModal {
   }
 
   protected onOpen(): void {
-    this.values = this.emptyValues();
-    this.age = this.terms = false;
+    this.querySelector("form")?.reset();
     this.setMode("signin");
     void fetchAuthConfig().then((c) => (this.gateUrl = c.gateUrl));
   }
@@ -97,10 +69,11 @@ export class GateDirectModal extends BaseModal {
   }
 
   private input(
-    key: keyof Values,
+    key: string,
     type: string,
     placeholderKey: string,
     autocomplete: string,
+    hintKey?: string,
   ): TemplateResult {
     return html`
       <div class="space-y-1">
@@ -108,37 +81,15 @@ export class GateDirectModal extends BaseModal {
           type=${type}
           name=${key}
           autocomplete=${autocomplete}
-          .value=${this.values[key]}
-          @input=${(e: Event) => {
-            this.values[key] = (e.target as HTMLInputElement).value;
-          }}
           placeholder=${translateText(placeholderKey)}
           aria-label=${translateText(placeholderKey)}
           class=${INPUT_CLASS}
         />
-        ${this.fieldError(key === "newPassword" ? "newPassword" : key)}
+        ${hintKey
+          ? html`<p class="text-xs text-white/50">${translateText(hintKey)}</p>`
+          : nothing}
+        ${this.fieldError(key)}
       </div>
-    `;
-  }
-
-  private checkbox(
-    checked: boolean,
-    onChange: (v: boolean) => void,
-    label: TemplateResult | string,
-  ): TemplateResult {
-    return html`
-      <label
-        class="flex items-start gap-2 text-xs text-white/60 cursor-pointer"
-      >
-        <input
-          type="checkbox"
-          class="mt-0.5"
-          .checked=${checked}
-          @change=${(e: Event) =>
-            onChange((e.target as HTMLInputElement).checked)}
-        />
-        <span>${label}</span>
-      </label>
     `;
   }
 
@@ -168,25 +119,13 @@ export class GateDirectModal extends BaseModal {
   ): void {
     this.pending = pending;
     this.codeFor = codeFor;
-    this.values.code = "";
     this.setMode("code", notice || translateText("gate_direct.code_sent"));
   }
 
-  /** Signed in at GLL ID and HT: let the page pick up the session. */
-  private done(status: "ok" | "link" | undefined): void {
-    this.values = this.emptyValues();
+  /** Signed in at GLL ID: reload onto the session, or finish the HT account first. */
+  private signedIn(status: "ok" | "match" | "rename"): void {
+    if (status !== "ok") return this.setMode("link");
     this.close();
-    if (status === "link") {
-      // Same hand-off the redirect uses: the page loads on `#gate=link` and
-      // the account modal shows the link card. Setting the hash on the live
-      // page instead is handled twice (popstate, then hashchange), and the
-      // second pass reopens the modal without the card.
-      history.replaceState(
-        null,
-        "",
-        window.location.pathname + window.location.search + "#gate=link",
-      );
-    }
     this.reload();
   }
 
@@ -195,20 +134,23 @@ export class GateDirectModal extends BaseModal {
     window.location.reload();
   }
 
+  // Values are read from the form at submit: password managers fill fields
+  // without firing input events.
   private onSubmit = (e: Event): void => {
     e.preventDefault();
-    const v = this.values;
+    const f = new FormData(e.target as HTMLFormElement);
+    const v = (k: string) => String(f.get(k) ?? "");
     if (this.mode === "signin") {
       void this.run(
         () =>
           directCall("login", {
-            identifier: v.identifier.trim(),
-            password: v.password,
+            identifier: v("identifier").trim(),
+            password: v("password"),
           }),
-        (r) => this.done(r.status),
+        (r) => this.signedIn(r.status ?? "ok"),
       );
     } else if (this.mode === "signup") {
-      if (!this.age || !this.terms) {
+      if (!f.has("agreed")) {
         this.error = {
           code: "HT_CONSENT",
           message: translateText("gate_direct.error_consent"),
@@ -219,13 +161,13 @@ export class GateDirectModal extends BaseModal {
       void this.run(
         () =>
           directCall("signup", {
-            firstName: v.firstName.trim(),
-            lastName: v.lastName.trim(),
-            loginName: v.loginName.trim(),
-            displayName: v.displayName.trim(),
-            email: v.email.trim(),
-            password: v.password,
+            firstName: v("firstName").trim(),
+            lastName: v("lastName").trim(),
+            loginName: v("loginName").trim(),
+            email: v("email").trim(),
+            password: v("password"),
             ageConfirmed13: true,
+            acceptedLegal: true,
           }),
         (r) =>
           r.pending
@@ -237,46 +179,39 @@ export class GateDirectModal extends BaseModal {
               }),
       );
     } else if (this.mode === "code") {
-      void this.submitCode();
+      const code = v("code").trim();
+      if (this.codeFor === "reset") {
+        // Reset needs the new password too: collected in the reset step.
+        this.pendingCode = code;
+        this.setMode("reset");
+        return;
+      }
+      void this.run(
+        () => directCall("verify", { pending: this.pending, code }),
+        (r) => this.signedIn(r.status ?? "ok"),
+      );
     } else if (this.mode === "forgot") {
       void this.run(
-        () => directCall("recover", { identifier: v.identifier.trim() }),
+        () => directCall("recover", { identifier: v("identifier").trim() }),
         (r) => {
           if (r.pending) this.toCode(r.pending, "reset");
         },
       );
+    } else if (this.mode === "reset") {
+      void this.run(
+        () =>
+          directCall("reset", {
+            pending: this.pending,
+            code: this.pendingCode,
+            newPassword: v("newPassword"),
+          }),
+        // GLL ID signs the player in when it can; otherwise they sign in again.
+        (r) =>
+          r.status
+            ? this.signedIn(r.status)
+            : this.setMode("signin", translateText("gate_direct.reset_done")),
+      );
     }
-  };
-
-  private async submitCode(): Promise<void> {
-    const code = this.values.code.trim();
-    if (this.codeFor === "reset") {
-      // Reset needs the new password too: collected in the reset step.
-      this.pendingCode = code;
-      this.setMode("reset");
-      return;
-    }
-    await this.run(
-      () => directCall("verify", { pending: this.pending, code }),
-      (r) => this.done(r.status),
-    );
-  }
-  private pendingCode = "";
-
-  private onReset = (e: Event): void => {
-    e.preventDefault();
-    void this.run(
-      () =>
-        directCall("reset", {
-          pending: this.pending,
-          code: this.pendingCode,
-          newPassword: this.values.newPassword,
-        }),
-      () => {
-        this.values.password = "";
-        this.setMode("signin", translateText("gate_direct.reset_done"));
-      },
-    );
   };
 
   private onResend = (): void => {
@@ -378,12 +313,7 @@ export class GateDirectModal extends BaseModal {
               "text",
               "gate_direct.login_name",
               "username",
-            )}
-            ${this.input(
-              "displayName",
-              "text",
-              "gate_direct.display_name",
-              "nickname",
+              "gate_direct.login_name_hint",
             )}
             ${this.input("email", "email", "password_auth.email", "email")}
             ${this.input(
@@ -392,16 +322,12 @@ export class GateDirectModal extends BaseModal {
               "password_auth.new_password",
               "new-password",
             )}
-            ${this.checkbox(
-              this.age,
-              (v) => (this.age = v),
-              translateText("gate_direct.age"),
-            )}
-            ${this.checkbox(
-              this.terms,
-              (v) => (this.terms = v),
-              this.renderLegalLinks(),
-            )}
+            <label
+              class="flex items-start gap-2 text-xs text-white/60 cursor-pointer"
+            >
+              <input type="checkbox" name="agreed" class="mt-0.5" />
+              <span>${this.renderLegalLinks()}</span>
+            </label>
             ${this.renderFormError()}
             ${this.submitButton("password_auth.create_account")}
             <div class="pt-1">
@@ -423,10 +349,6 @@ export class GateDirectModal extends BaseModal {
               inputmode="numeric"
               autocomplete="one-time-code"
               maxlength="6"
-              .value=${this.values.code}
-              @input=${(e: Event) => {
-                this.values.code = (e.target as HTMLInputElement).value;
-              }}
               placeholder=${translateText("gate_direct.code")}
               aria-label=${translateText("gate_direct.code")}
               class=${INPUT_CLASS}
@@ -462,9 +384,13 @@ export class GateDirectModal extends BaseModal {
             </div>
           </form>
         `;
+      case "link":
+        return html`<gate-link-card
+          @auth-success=${() => this.signedIn("ok")}
+        ></gate-link-card>`;
       case "reset":
         return html`
-          <form class="space-y-3" novalidate @submit=${this.onReset}>
+          <form class="space-y-3" novalidate @submit=${this.onSubmit}>
             ${this.input(
               "newPassword",
               "password",

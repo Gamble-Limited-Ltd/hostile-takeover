@@ -79,11 +79,6 @@ export async function startFakeGate(
             headers?: Record<string, string>;
           }>
     >,
-    /** Body served by GET /api/legal/versions. */
-    legal: {
-      tosVersion: "2026-10-18",
-      privacyVersion: "2026-10-18",
-    } as unknown,
   };
   let origin = "";
   const pub = () => opts.publicIssuer ?? origin;
@@ -112,9 +107,6 @@ export async function startFakeGate(
       return void res.status(state.userinfo ? 401 : 404).json({});
     }
     res.json(state.userinfo);
-  });
-  app.get("/api/legal/versions", (_req, res) => {
-    res.json(state.legal);
   });
   app.post("/oidc/direct/:op", express.json(), async (req, res) => {
     const op = String(req.params.op);
@@ -188,19 +180,15 @@ export async function startFakeGate(
   await new Promise((r) => server.once("listening", r));
   origin = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
 
-  /** Issues a code for the authorization request in `authorizeUrl`, as GATE would after login. */
-  async function mint(
-    authorizeUrl: string,
-    o: MintOptions = {},
-  ): Promise<string> {
-    const u = new URL(authorizeUrl);
+  /** Signs an id_token; `nonce` null is token mode (no nonce claim). */
+  async function sign(nonce: string | null, o: MintOptions): Promise<string> {
     const now = Math.floor(Date.now() / 1000);
     const claims: Record<string, unknown> = {
       iss: pub(),
       sub: "gate-sub-1",
       aud: FAKE_CLIENT_ID,
       azp: FAKE_CLIENT_ID,
-      nonce: u.searchParams.get("nonce"),
+      nonce,
       auth_time: now,
       login_name: "gatealice",
       display_name: "Gate Alice",
@@ -237,6 +225,19 @@ export async function startFakeGate(
         .sign((o.signWith ?? privateKey) as CryptoKey);
     }
     state.idTokens.push(idToken);
+    return idToken;
+  }
+
+  /** The id_token GATE's direct endpoints return in token mode. */
+  const token = (o: MintOptions = {}) => sign(null, o);
+
+  /** Issues a code for the authorization request in `authorizeUrl`, as GATE would after login. */
+  async function mint(
+    authorizeUrl: string,
+    o: MintOptions = {},
+  ): Promise<string> {
+    const u = new URL(authorizeUrl);
+    const idToken = await sign(u.searchParams.get("nonce"), o);
     const code = randomBytes(12).toString("base64url");
     codes.set(code, {
       challenge: u.searchParams.get("code_challenge") ?? "",
@@ -251,6 +252,7 @@ export async function startFakeGate(
     issuer: pub(),
     state,
     mint,
+    token,
     lastIdToken: () => state.idTokens[state.idTokens.length - 1],
     otherKey: async () => (await generateKeyPair("ES256")).privateKey,
     close: () => server.close(),

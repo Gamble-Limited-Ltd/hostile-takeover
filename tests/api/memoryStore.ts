@@ -176,7 +176,6 @@ export function memoryStore(
             gateSub: p.gateSub,
             email: p.email,
             loginName: p.loginName,
-            displayName: p.displayName,
             emailApproved: p.emailApproved,
             idToken: p.idToken,
           }

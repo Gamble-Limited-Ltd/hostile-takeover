@@ -35,15 +35,27 @@ WebSocket code never see GATE. HT talks to GATE only over standard OIDC/HTTP; no
   the code with `client_secret_basic`, and verifies the id_token with `jose` (ES256 only, `iss`, `aud`, `exp`, `nonce`,
   `azp`, `email_verified`). Code: `packages/api/src/gate.ts`, `gateRoutes.ts`.
 - **Linked player** (`users.gate_sub` = GATE `sub`): signed straight in, back to `#gate=ok`.
-- **Not linked yet:** a `gate_pending` row (15 min, `ht_gate_pending` cookie) and `#gate=link`. The account modal then
-  offers, in order: "Is this your account X?" when an unlinked HT account has the same email as the GLL ID (one click,
-  `POST /auth/gate/link/confirm`); linking an old account by its HT password once (`/auth/gate/link/password`, same
-  rate limits as sign-in); or a new account (`/auth/gate/create`) only when GATE says the email is approved: the boolean `email_approved`
-  claim (true for `@kmlhs.org` or an owner exception, computed live by GATE) must be exactly `true`. HT reads it from the
-  verified id_token, falling back to the userinfo endpoint (bearer access token, `sub` must match), and stores it in
-  `gate_pending.email_approved`; the create step reads that stored value, never the request body. A missing, non-boolean
-  or false claim (or an unreachable userinfo) refuses with 403 `email_not_approved`. Linking an old account (email match
-  or old password) never needs the claim. The legacy `/auth/register` stays `@kmlhs.org` only.
+- **Not linked yet** (`signInWho`, shared by the callback and the direct sign-in), decided in this order:
+  1. An unlinked HT account has the same email: a `gate_pending` row (15 min, `ht_gate_pending` cookie), status `match`.
+     The link card shows "We found your account X" with one button, "Continue as X" (`POST /auth/gate/link/confirm`).
+  2. No match, and GATE says the email is approved: the boolean `email_approved` claim (true for `@kmlhs.org` or an
+     owner exception, computed live by GATE) must be exactly `true`; HT reads it from the verified id_token, falling
+     back to the userinfo endpoint (bearer access token, `sub` must match). If the GLL ID login name is a valid, clean,
+     free HT username (3-20 chars, `USERNAME_RE`, not profane), HT creates the account with that name and signs the
+     player in (status `ok`, no pending). If the create loses a race for the name it falls through to the next step.
+  3. The name is taken, invalid or profane: a pending row and status `rename`. `/auth/gate/pending` returns
+     `suggestion`, the first of `name_2` to `name_9` that is valid, clean and free (null if none). The card shows
+     "name is taken" and "Create as name_2" (`POST /auth/gate/create`), or a username box when there is no suggestion.
+     "It's my old account" reveals the old username and password form (`/auth/gate/link/password`, same rate limits
+     as sign-in).
+  4. No match and the email is not approved (missing, non-boolean or false claim, or unreachable userinfo): nothing is
+     stored; the callback redirects to `#gate_error=email_not_approved` and the direct routes answer 403
+     `HT_EMAIL_NOT_APPROVED` ("Sign up with your school email to play."). `/auth/gate/create` still checks the stored
+     value and refuses with 403 `email_not_approved`. Linking an old account by email never needs the claim.
+
+  The callback maps `match` / `rename` to `#gate=link`. The legacy `/auth/register` stays `@kmlhs.org` only. HT no
+  longer reads GATE's `display_name` (it equals the login name); `gate_pending.display_name` is nullable and unused.
+
 - **Logout:** `/auth/logout` also returns `gateLogoutUrl` (GATE's end-session endpoint with `id_token_hint` from the
   player's latest GLL ID sign-in, `client_id` and `post_logout_redirect_uri`); the client navigates there and GATE sends
   the player back. GATE's force sign-out does **not** end HT sessions (HT sessions are HT's own, up to 30 days).
@@ -68,14 +80,16 @@ A link under the GLL ID button opens an HT-styled modal branded "GLL ID" (`GateD
 resend|recover|reset`; HT's server calls GATE's `/oidc/direct/*` (contract: GATE's `docs/DIRECT-SIGNIN.md`) with the
 client's Basic credentials and `player_ip`. The password is only forwarded, never stored or logged.
 
-- `login` / `verify`: HT makes a PKCE verifier + S256 challenge and a nonce, sends HT's registered `GATE_REDIRECT_URI`,
-  gets `{code}`, then exchanges it at `/oidc/token` through the same `gate.exchange` (id_token checks as the callback)
-  and the same `signInWho` as the callback: linked player gets the refresh cookie (`{status:"ok"}`); otherwise a
-  `gate_pending` row and `{status:"link"}`, and the account modal's link card runs (email match, old password, or create
-  only when `email_approved === true`).
+- `login` / `verify` / `reset` use **token mode**: HT sends no `redirect_uri`, PKCE or nonce, and GATE answers 200
+  `{id_token}` (`reset` answers 204 when the player can't be signed in). HT verifies it with `gate.verify` (the same
+  ES256 / `iss` / `aud` / `azp` / `email_verified` checks as the callback, no nonce or code exchange) and runs the same
+  `signInWho`: the response is `{status:"ok"|"match"|"rename"}`. `ok` sets the refresh cookie; `match` / `rename`
+  leave the pending cookie and the modal shows the link card inline (no reload until the account is made).
 - GATE's `error` (`code`, `message`, `fields`) and any `pending` handle are passed through unchanged, including
-  `DIRECT_SIGNIN_DISABLED`. HT's own failures use `HT_*` codes. `signup` fills the Terms/Privacy versions from GATE's
-  `/api/legal/versions`.
+  `DIRECT_SIGNIN_DISABLED`. HT's own failures use `HT_*` codes. `signup` sends the browser's single consent as
+  `ageConfirmed13: true` and `acceptedLegal: true` (no `displayName`, no legal versions fetched).
+- The modal reads field values from the form at submit (password managers fill without input events) and sets
+  `autocomplete` attributes.
 - Limits: the usual CORS/origin check and 16 kb body limit; only a flood backstop per IP (600/min) because players
   share a school IP. GATE enforces the real limits per account.
 
