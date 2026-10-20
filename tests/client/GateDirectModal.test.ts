@@ -3,11 +3,17 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 vi.mock("../../src/client/Utils", () => ({
   translateText: vi.fn((key: string) => key),
 }));
-vi.mock("../../src/client/GateAuthApi", () => ({
+vi.mock("../../src/client/GateAuthApi", async (orig) => ({
+  ...(await orig<typeof import("../../src/client/GateAuthApi")>()),
   fetchAuthConfig: vi.fn(async () => ({
     gate: true,
     legacy: false,
     gateUrl: "https://id.test",
+  })),
+  fetchGatePending: vi.fn(async () => ({
+    ok: false,
+    status: 401,
+    code: "no_pending",
   })),
 }));
 const { directCall } = vi.hoisted(() => ({ directCall: vi.fn() }));
@@ -21,10 +27,10 @@ const settle = async () => {
   await new Promise((r) => setTimeout(r, 0));
   await modal.updateComplete;
 };
+// Sets the value the way a password manager does: no input event.
 const type = (name: string, value: string) => {
-  const i = modal.querySelector(`input[name="${name}"]`) as HTMLInputElement;
-  i.value = value;
-  i.dispatchEvent(new Event("input"));
+  (modal.querySelector(`input[name="${name}"]`) as HTMLInputElement).value =
+    value;
 };
 const toSignUp = () =>
   [...modal.querySelectorAll("button")]
@@ -68,23 +74,34 @@ describe("GateDirectModal", () => {
     expect(modal.textContent).toContain("Nope.");
   });
 
-  it("an unlinked player reloads onto #gate=link, the redirect's own landing", async () => {
-    // Regression (2026-10-19): setting the hash on the live page was handled
-    // twice (popstate, then hashchange) and the second pass dropped the link
-    // card, so players without an HT account landed back on sign-in.
-    directCall.mockResolvedValue({ ok: true, status: "link" });
+  it("match / rename show the link card in the modal instead of reloading", async () => {
     const reload = vi.fn();
     (modal as unknown as { reload: () => void }).reload = reload;
-    const hashChanges = vi.fn();
-    window.addEventListener("hashchange", hashChanges);
+    for (const status of ["match", "rename"]) {
+      directCall.mockResolvedValue({ ok: true, status });
+      type("identifier", "newplayer");
+      type("password", "pw");
+      await submit();
+      expect(modal.querySelector("gate-link-card")).not.toBeNull();
+      expect(reload).not.toHaveBeenCalled();
+      // Back to a fresh sign-in form for the next round.
+      modal.open();
+      await settle();
+      expect(modal.querySelector("gate-link-card")).toBeNull();
+    }
+  });
+
+  it("the link card finishing the account reloads once", async () => {
+    directCall.mockResolvedValue({ ok: true, status: "rename" });
+    const reload = vi.fn();
+    (modal as unknown as { reload: () => void }).reload = reload;
     type("identifier", "newplayer");
     type("password", "pw");
     await submit();
-    await new Promise((r) => setTimeout(r, 10));
-    window.removeEventListener("hashchange", hashChanges);
+    modal
+      .querySelector("gate-link-card")!
+      .dispatchEvent(new CustomEvent("auth-success", { bubbles: true }));
     expect(reload).toHaveBeenCalledOnce();
-    expect(window.location.hash).toBe("#gate=link");
-    expect(hashChanges).not.toHaveBeenCalled();
   });
 
   it("a linked player reloads with the hash as it was", async () => {
@@ -158,15 +175,97 @@ describe("GateDirectModal", () => {
         fields: { loginName: "That login name is taken." },
       },
     });
-    modal
-      .querySelectorAll<HTMLInputElement>('input[type="checkbox"]')
-      .forEach((c) => {
-        c.checked = true;
-        c.dispatchEvent(new Event("change"));
-      });
+    (
+      modal.querySelector('input[type="checkbox"]') as HTMLInputElement
+    ).checked = true;
     await submit();
     expect(modal.textContent).toContain("That login name is taken.");
-    expect(directCall.mock.calls[0][1]).toMatchObject({ ageConfirmed13: true });
+  });
+
+  it("sign-up has one consent checkbox, no display name, and sends what was filled in", async () => {
+    toSignUp();
+    await settle();
+    expect(modal.querySelectorAll('input[type="checkbox"]')).toHaveLength(1);
+    expect(modal.querySelector('input[name="displayName"]')).toBeNull();
+    const auto = (n: string) =>
+      (modal.querySelector(`input[name="${n}"]`) as HTMLInputElement)
+        .autocomplete;
+    expect(
+      ["firstName", "lastName", "loginName", "email", "password"].map(auto),
+    ).toEqual([
+      "given-name",
+      "family-name",
+      "username",
+      "email",
+      "new-password",
+    ]);
+    expect(modal.textContent).toContain("gate_direct.login_name_hint");
+
+    directCall.mockResolvedValue({ ok: true, pending: "p1" });
+    type("firstName", "Al");
+    type("lastName", "Ice");
+    type("loginName", " alice ");
+    type("email", "a@kmlhs.org");
+    type("password", "Aa1!aaaa");
+    await submit();
+    expect(directCall).not.toHaveBeenCalled();
+    expect(modal.textContent).toContain("gate_direct.error_consent");
+    (
+      modal.querySelector('input[type="checkbox"]') as HTMLInputElement
+    ).checked = true;
+    await submit();
+    expect(directCall).toHaveBeenCalledWith("signup", {
+      firstName: "Al",
+      lastName: "Ice",
+      loginName: "alice",
+      email: "a@kmlhs.org",
+      password: "Aa1!aaaa",
+      ageConfirmed13: true,
+      acceptedLegal: true,
+    });
+  });
+
+  it("the code and reset forms read autofilled values too; reset signs in when GLL ID did", async () => {
+    directCall.mockResolvedValueOnce({ ok: true, pending: "h2" });
+    [...modal.querySelectorAll("button")]
+      .find((b) => b.textContent?.includes("gate_direct.forgot"))!
+      .click();
+    await settle();
+    type("identifier", "alice");
+    await submit();
+    expect(directCall).toHaveBeenLastCalledWith("recover", {
+      identifier: "alice",
+    });
+    type("code", "654321");
+    await submit();
+    const reload = vi.fn();
+    (modal as unknown as { reload: () => void }).reload = reload;
+    directCall.mockResolvedValueOnce({ ok: true, status: "ok" });
+    type("newPassword", "Bb2@bbbb");
+    await submit();
+    expect(directCall).toHaveBeenLastCalledWith("reset", {
+      pending: "h2",
+      code: "654321",
+      newPassword: "Bb2@bbbb",
+    });
+    expect(reload).toHaveBeenCalledOnce();
+  });
+
+  it("reset with no sign-in (204) goes back to sign in", async () => {
+    directCall.mockResolvedValueOnce({ ok: true, pending: "h3" });
+    [...modal.querySelectorAll("button")]
+      .find((b) => b.textContent?.includes("gate_direct.forgot"))!
+      .click();
+    await settle();
+    type("identifier", "alice");
+    await submit();
+    type("code", "654321");
+    await submit();
+    directCall.mockResolvedValueOnce({ ok: true });
+    type("newPassword", "Bb2@bbbb");
+    await submit();
+    expect(modal.querySelector('input[name="identifier"]')).not.toBeNull();
+    expect(modal.textContent).toContain("gate_direct.reset_done");
   });
 
   it("sign-up links point at GLL ID's /terms and /privacy", async () => {

@@ -79,3 +79,25 @@ Gates: regression test written first and failing [x]  gate client + API tests gr
 Watch period: 2 h (patch watch)
 Rollback: cd ~/hostile-takeover && ./ht-deploy.sh ea4a80a7cb060ff49a90674003b5f947e62a117f
 ```
+
+## Release record: simpler GLL ID sign-in, login name is your HT name (2026-10-20)
+
+```
+Release: first GLL ID sign-in makes the HT account with the GLL ID login name (no second form);
+  an old HT account with the same email is one "Continue as X" click; a taken or blocked name is
+  one "Create as X_2" click ("It's my old account" keeps the old-password link). Direct login,
+  verify and reset take GATE's id_token directly (no PKCE/code); reset ends signed in; sign-up has
+  no display name and one consent box; forms read values at submit (password-manager autofill).
+  Migration 006: gate_pending.display_name nullable (additive).
+Lane: Patch (sign-in polish, no new system). Deployed by: Boss, after GATE's release (§13 in
+  ~/gll-id/docs/LAUNCH.md) is live: this build needs GATE's token mode.
+Gates: typecheck + lint clean [x]  GLL ID client + API tests green (155) [x]  full vitest: 4318
+  passed, failures only in InventoryModal (known flake, CLAUDE.md) and one MainInitialize timeout
+  that passed on re-run [ ]  dev rehearsal HT dev -> GATE dev in Chromium, no fakes: sign-up with
+  autofill-style input, sign-in, match, rename, forgot password [x]  zero open P0/P1 [x]
+Needs in .env.prod: nothing new.
+Kill switch: GATE side, `cd ~/gll-id && ./manage.sh clients direct hostile-takeover off`
+Watch period: 2 h
+Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 2ea2a7f00aebf4f8a94c346f9c3db8c086d8122e
+  (works with the new GATE too: GATE keeps code mode for one release)
+```

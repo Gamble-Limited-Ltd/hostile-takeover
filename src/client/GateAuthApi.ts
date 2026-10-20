@@ -12,11 +12,10 @@ export interface AuthConfig {
 
 export interface GatePending {
   loginName: string;
-  displayName: string;
   email: string | null;
   match: { username: string } | null;
-  canCreate: boolean;
-  usernameTaken: boolean;
+  /** A free, allowed username close to the login name; null when none was found. */
+  suggestion: string | null;
 }
 
 export type GatePendingResult =
@@ -132,6 +131,7 @@ const GATE_ERROR_KEYS: Record<string, string> = {
   disabled: "gate_auth.error_disabled",
   account_disabled: "gate_auth.error_account_disabled",
   unavailable: "gate_auth.error_unavailable",
+  email_not_approved: "gate_auth.error_email_not_approved",
 };
 
 /** Message key for a `#gate_error=<code>` redirect. */

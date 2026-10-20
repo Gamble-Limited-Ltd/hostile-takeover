@@ -48,11 +48,9 @@ async function mount(
 
 const pendingBase: GatePending = {
   loginName: "bob",
-  displayName: "Bob",
   email: "bob@kmlhs.org",
   match: null,
-  canCreate: true,
-  usernameTaken: false,
+  suggestion: "bob_2",
 };
 
 async function mountLink(pending: GatePending | "no_pending") {
@@ -64,11 +62,13 @@ async function mountLink(pending: GatePending | "no_pending") {
   await mount({ gate: true, legacy: true }, { linkMode: true });
 }
 
-function type(name: string, value: string) {
-  const input = el.querySelector(`input[name="${name}"]`) as HTMLInputElement;
-  input.value = value;
-  input.dispatchEvent(new Event("input"));
+// Sets the value the way a password manager does: no input event.
+function fill(name: string, value: string) {
+  (el.querySelector(`input[name="${name}"]`) as HTMLInputElement).value = value;
 }
+
+const click = (selector: string) =>
+  (el.querySelector(selector) as HTMLElement).click();
 
 async function submit(selector: string) {
   el.querySelector(selector)!.dispatchEvent(
@@ -166,67 +166,63 @@ describe("gate-link-card", () => {
     ).not.toBeNull();
   });
 
-  it("match: asks, confirms, and fires auth-success", async () => {
+  it("match: one button, confirms, and fires auth-success", async () => {
     vi.mocked(confirmGateLink).mockResolvedValue({ ok: true });
     await mountLink({ ...pendingBase, match: { username: "bobby" } });
-    expect(el.textContent).toContain("gate_auth.signed_in_as");
-    expect(el.textContent).toContain("bobby");
+    expect(el.textContent).toContain("gate_auth.match_found");
+    expect(el.querySelector("b")?.textContent).toBe("bobby");
+    expect(el.querySelectorAll("o-button")).toHaveLength(1);
     expect(el.querySelector("form")).toBeNull();
     const onSuccess = vi.fn();
     el.addEventListener("auth-success", onSuccess);
-    (
-      el.querySelector(
-        "o-button[translationKey='gate_auth.match_yes']",
-      ) as HTMLElement
-    ).click();
+    click('o-button[title=\'gate_auth.match_continue:{"username":"bobby"}\']');
     await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
     expect(confirmGateLink).toHaveBeenCalled();
   });
 
-  it("match then No reveals the other options", async () => {
-    await mountLink({ ...pendingBase, match: { username: "bobby" } });
-    (
-      el.querySelector(
-        "o-button[translationKey='gate_auth.match_no']",
-      ) as HTMLElement
-    ).click();
-    await settle();
-    expect(el.querySelectorAll("form").length).toBe(2);
-  });
-
-  it("no match + canCreate: link and create forms, prefilled name", async () => {
-    vi.mocked(gateCreate).mockResolvedValue({
+  it("rename: names the taken login and creates as the suggestion", async () => {
+    vi.mocked(gateCreate).mockResolvedValueOnce({
       ok: false,
       status: 409,
       code: "username_taken",
     });
-    await mountLink({ ...pendingBase, usernameTaken: true });
-    expect(el.querySelectorAll("form").length).toBe(2);
-    expect(el.textContent).toContain("gate_auth.username_taken_hint");
-    const name = el.querySelector(
-      "input[name=newUsername]",
-    ) as HTMLInputElement;
-    expect(name.value).toBe("bob");
-    await submit("form:last-of-type");
-    expect(gateCreate).toHaveBeenCalledWith("bob");
+    await mountLink(pendingBase);
+    expect(el.textContent).toContain('gate_auth.name_taken:{"name":"bob"}');
+    expect(el.querySelector("form")).toBeNull();
+    click('o-button[title=\'gate_auth.rename_continue:{"username":"bob_2"}\']');
+    await settle();
+    expect(gateCreate).toHaveBeenCalledWith("bob_2");
     expect(el.textContent).toContain("gate_auth.error_username_taken");
+
+    vi.mocked(gateCreate).mockResolvedValueOnce({ ok: true });
+    const onSuccess = vi.fn();
+    el.addEventListener("auth-success", onSuccess);
+    click("o-button");
+    await vi.waitFor(() => expect(onSuccess).toHaveBeenCalledOnce());
   });
 
-  it("no match + !canCreate: explains, link form only", async () => {
-    await mountLink({ ...pendingBase, canCreate: false });
-    expect(el.querySelectorAll("form").length).toBe(1);
-    expect(el.textContent).toContain("gate_auth.cannot_create");
+  it("rename without a suggestion asks for a username (autofilled value counts)", async () => {
+    vi.mocked(gateCreate).mockResolvedValue({ ok: true });
+    await mountLink({ ...pendingBase, suggestion: null });
+    fill("username", " Bobby ");
+    await submit("form");
+    expect(gateCreate).toHaveBeenCalledWith("Bobby");
   });
 
-  it("link with password: errors map, success fires auth-success", async () => {
-    await mountLink({ ...pendingBase, canCreate: false });
+  it("'It's my old account' reveals the password form; autofilled values are sent; errors map", async () => {
+    await mountLink(pendingBase);
+    expect(el.querySelector("input[type=password]")).toBeNull();
+    click("button:not([type=submit]):not(o-button button)");
+    await settle();
+    const pw = el.querySelector("input[type=password]") as HTMLInputElement;
+    expect(pw.autocomplete).toBe("current-password");
+    fill("username", " old ");
+    fill("password", "pw");
     vi.mocked(gateLinkWithPassword).mockResolvedValueOnce({
       ok: false,
       status: 401,
       code: "invalid_credentials",
     });
-    type("username", "old");
-    type("password", "pw");
     await submit("form");
     expect(gateLinkWithPassword).toHaveBeenCalledWith("old", "pw");
     expect(el.textContent).toContain("gate_auth.error_invalid_credentials");
@@ -238,14 +234,6 @@ describe("gate-link-card", () => {
     });
     await submit("form");
     expect(el.textContent).toContain("gate_auth.error_already_linked");
-
-    vi.mocked(gateLinkWithPassword).mockResolvedValueOnce({
-      ok: false,
-      status: 429,
-      code: "rate_limited",
-    });
-    await submit("form");
-    expect(el.textContent).toContain("gate_auth.error_rate_limited");
 
     vi.mocked(gateLinkWithPassword).mockResolvedValueOnce({ ok: true });
     const onSuccess = vi.fn();

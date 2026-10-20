@@ -21,21 +21,19 @@ const INPUT_CLASS =
 type Status = "loading" | "ready" | "expired";
 
 /**
- * Shown after `#gate=link`: the player is signed in to GLL ID but has no
- * Hostile Takeover account linked yet. Offers to confirm a matching account,
- * link an old one with its password, or start a new one. Fires `auth-success`
- * once the API has set the session cookie.
+ * Shown when the player is signed in to GLL ID but has no Hostile Takeover
+ * account linked yet (after `#gate=link`, or inline in the direct sign-in
+ * modal). One primary button: continue as the account we found by email, or
+ * create one under a free name. "It's my old account" links one by password.
+ * Fires `auth-success` once the API has set the session cookie.
  */
 @customElement("gate-link-card")
 export class GateLinkCard extends LitElement {
   @state() private status: Status = "loading";
   @state() private pending: GatePending | null = null;
-  @state() private declinedMatch = false;
+  @state() private oldAccount = false;
   @state() private busy = false;
   @state() private error = "";
-  @state() private createError = "";
-
-  private values = { username: "", password: "", newUsername: "" };
 
   createRenderRoot() {
     return this;
@@ -53,18 +51,15 @@ export class GateLinkCard extends LitElement {
       return;
     }
     this.pending = result.pending;
-    this.values.newUsername = result.pending.loginName;
     this.status = "ready";
   }
 
   private async run(
     call: () => Promise<GateResult>,
     keyOf: (code: string) => string,
-    target: "error" | "createError" = "error",
   ): Promise<void> {
     if (this.busy) return;
     this.error = "";
-    this.createError = "";
     this.busy = true;
     const result = await call();
     this.busy = false;
@@ -78,43 +73,42 @@ export class GateLinkCard extends LitElement {
       this.status = "expired";
       return;
     }
-    this[target] = translateText(keyOf(result.code));
+    this.error = translateText(keyOf(result.code));
   }
 
-  private onConfirm(): Promise<void> {
-    return this.run(() => confirmGateLink(), linkErrorKey);
+  // Values are read from the form at submit: password managers fill fields
+  // without firing input events.
+  private fields(e: Event): FormData {
+    e.preventDefault();
+    return new FormData(e.target as HTMLFormElement);
   }
 
   private onLinkPassword(e: Event): Promise<void> {
-    e.preventDefault();
-    const { username, password } = this.values;
-    if (!username.trim() || !password) {
+    const f = this.fields(e);
+    const username = String(f.get("username") ?? "").trim();
+    const password = String(f.get("password") ?? "");
+    if (!username || !password) {
       this.error = translateText("gate_auth.error_invalid_credentials");
       return Promise.resolve();
     }
     return this.run(
-      () => gateLinkWithPassword(username.trim(), password),
+      () => gateLinkWithPassword(username, password),
       linkErrorKey,
     );
   }
 
-  private onCreate(e: Event): Promise<void> {
-    e.preventDefault();
-    return this.run(
-      () => gateCreate(this.values.newUsername.trim()),
-      createErrorKey,
-      "createError",
-    );
+  private create(username: string): Promise<void> {
+    return this.run(() => gateCreate(username), createErrorKey);
   }
 
-  private message(text: string): TemplateResult | typeof nothing {
-    return text
-      ? html`<p class="text-sm text-red-200" role="alert">${text}</p>`
+  private message(): TemplateResult | typeof nothing {
+    return this.error
+      ? html`<p class="text-sm text-red-200" role="alert">${this.error}</p>`
       : nothing;
   }
 
   private input(
-    key: keyof typeof this.values,
+    name: string,
     type: string,
     placeholderKey: string,
     autocomplete: string,
@@ -122,17 +116,29 @@ export class GateLinkCard extends LitElement {
     return html`
       <input
         type=${type}
-        name=${key}
+        name=${name}
         autocomplete=${autocomplete}
-        .value=${this.values[key]}
-        @input=${(e: Event) => {
-          this.values[key] = (e.target as HTMLInputElement).value;
-        }}
         placeholder=${translateText(placeholderKey)}
         aria-label=${translateText(placeholderKey)}
         class=${INPUT_CLASS}
       />
     `;
+  }
+
+  private button(
+    label: string,
+    onClick?: () => void,
+    variant: "primary" | "secondary" = "primary",
+  ): TemplateResult {
+    return html`<o-button
+      variant=${variant}
+      width="block"
+      size="md"
+      title=${label}
+      ?submit=${!onClick}
+      ?disable=${this.busy}
+      @click=${onClick}
+    ></o-button>`;
   }
 
   private renderExpired(): TemplateResult {
@@ -152,31 +158,63 @@ export class GateLinkCard extends LitElement {
     `;
   }
 
-  private renderMatch(match: { username: string }): TemplateResult {
+  private renderMatch(username: string): TemplateResult {
     return html`
       <div class="space-y-3">
         <p class="text-white font-medium">
-          ${translateText("gate_auth.match_question", {
-            username: match.username,
-          })}
+          ${translateText("gate_auth.match_found")} <b>${username}</b>.
         </p>
-        <o-button
-          variant="primary"
-          width="block"
-          size="md"
-          ?disable=${this.busy}
-          translationKey="gate_auth.match_yes"
-          @click=${() => void this.onConfirm()}
-        ></o-button>
-        <o-button
-          variant="secondary"
-          width="block"
-          size="md"
-          ?disable=${this.busy}
-          translationKey="gate_auth.match_no"
-          @click=${() => (this.declinedMatch = true)}
-        ></o-button>
-        ${this.message(this.error)}
+        ${this.button(
+          translateText("gate_auth.match_continue", { username }),
+          () => void this.run(() => confirmGateLink(), linkErrorKey),
+        )}
+        ${this.message()}
+      </div>
+    `;
+  }
+
+  private renderRename(pending: GatePending): TemplateResult {
+    const { suggestion } = pending;
+    return html`
+      <div class="space-y-3">
+        <p class="text-white font-medium">
+          ${translateText("gate_auth.name_taken", { name: pending.loginName })}
+        </p>
+        ${suggestion
+          ? this.button(
+              translateText("gate_auth.rename_continue", {
+                username: suggestion,
+              }),
+              () => void this.create(suggestion),
+            )
+          : html`<form
+              class="space-y-3"
+              novalidate
+              @submit=${(e: Event) =>
+                this.create(
+                  String(this.fields(e).get("username") ?? "").trim(),
+                )}
+            >
+              <p class="text-white/50 text-sm">
+                ${translateText("gate_auth.rename_pick")}
+              </p>
+              ${this.input(
+                "username",
+                "text",
+                "password_auth.username",
+                "username",
+              )}
+              ${this.button(translateText("gate_auth.create_submit"))}
+            </form>`}
+        ${this.message()}
+        <button
+          type="button"
+          class="text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest"
+          @click=${() => (this.oldAccount = !this.oldAccount)}
+        >
+          ${translateText("gate_auth.old_account")}
+        </button>
+        ${this.oldAccount ? this.renderLinkOld() : nothing}
       </div>
     `;
   }
@@ -184,13 +222,8 @@ export class GateLinkCard extends LitElement {
   private renderLinkOld(): TemplateResult {
     return html`
       <form class="space-y-3" novalidate @submit=${this.onLinkPassword}>
-        <div>
-          <div class="text-white font-medium">
-            ${translateText("gate_auth.link_old_title")}
-          </div>
-          <div class="text-white/50 text-sm mt-1">
-            ${translateText("gate_auth.link_old_desc")}
-          </div>
+        <div class="text-white/50 text-sm">
+          ${translateText("gate_auth.link_old_desc")}
         </div>
         ${this.input("username", "text", "password_auth.username", "username")}
         ${this.input(
@@ -199,47 +232,11 @@ export class GateLinkCard extends LitElement {
           "password_auth.password",
           "current-password",
         )}
-        ${this.message(this.error)}
-        <o-button
-          variant="secondary"
-          width="block"
-          size="md"
-          submit
-          ?disable=${this.busy}
-          translationKey="gate_auth.link_old_submit"
-        ></o-button>
-      </form>
-    `;
-  }
-
-  private renderCreate(pending: GatePending): TemplateResult {
-    return html`
-      <form class="space-y-3" novalidate @submit=${this.onCreate}>
-        <div>
-          <div class="text-white font-medium">
-            ${translateText("gate_auth.create_title")}
-          </div>
-          ${pending.usernameTaken
-            ? html`<div class="text-white/50 text-sm mt-1">
-                ${translateText("gate_auth.username_taken_hint")}
-              </div>`
-            : nothing}
-        </div>
-        ${this.input(
-          "newUsername",
-          "text",
-          "password_auth.username",
-          "username",
+        ${this.button(
+          translateText("gate_auth.link_old_submit"),
+          undefined,
+          "secondary",
         )}
-        ${this.message(this.createError)}
-        <o-button
-          variant="primary"
-          width="block"
-          size="md"
-          submit
-          ?disable=${this.busy}
-          translationKey="gate_auth.create_submit"
-        ></o-button>
       </form>
     `;
   }
@@ -247,28 +244,8 @@ export class GateLinkCard extends LitElement {
   render() {
     if (this.status === "loading") return nothing;
     if (this.status === "expired" || !this.pending) return this.renderExpired();
-    const pending = this.pending;
-    const asking = pending.match !== null && !this.declinedMatch;
-    return html`
-      <div class="space-y-6">
-        <p class="text-sm text-emerald-300" role="status">
-          ${translateText("gate_auth.signed_in_as", {
-            name: pending.loginName,
-          })}
-        </p>
-        ${asking && pending.match
-          ? this.renderMatch(pending.match)
-          : html`
-              ${this.renderLinkOld()}
-              ${pending.canCreate
-                ? this.renderCreate(pending)
-                : pending.match === null
-                  ? html`<p class="text-sm text-white/50">
-                      ${translateText("gate_auth.cannot_create")}
-                    </p>`
-                  : nothing}
-            `}
-      </div>
-    `;
+    return this.pending.match
+      ? this.renderMatch(this.pending.match.username)
+      : this.renderRename(this.pending);
   }
 }
