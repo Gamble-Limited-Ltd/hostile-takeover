@@ -1,0 +1,24 @@
+#!/usr/bin/env bash
+# Move the game to hostile-takeover-N.taps-holdings.org and redeploy.
+#
+#   ./ht-name 2        game host hostile-takeover-2.taps-holdings.org
+#   ./ht-name none     back to hostile-takeover.taps-holdings.org
+#
+# Writes HT_DOMAIN_NUMBER into .env.prod, then runs ./ht-deploy.sh (rebuild + up). The API host never
+# changes. Pulls nothing by default (HT_SKIP_PULL=1); run with HT_SKIP_PULL=0 to git pull first.
+# Still needs the tunnel route and GATE's post-logout URI for the new host (see example.env.prod).
+set -Eeuo pipefail
+cd "$(dirname "$0")"
+
+n="${1:-}"
+[ -n "$n" ] || { echo "usage: ./ht-name <number|none>" >&2; exit 1; }
+[ "$n" = none ] && n=
+case "$n" in *[!0-9]*) echo "ht-name: '$n' is not a whole number" >&2; exit 1 ;; esac
+[ -f .env.prod ] || { echo "ht-name: .env.prod is missing; run ./ht-init-prod.sh first" >&2; exit 1; }
+
+sed -i '/^HT_DOMAIN_NUMBER=/d' .env.prod
+echo "HT_DOMAIN_NUMBER=$n" >> .env.prod
+chmod 600 .env.prod
+echo "ht-name: game host is now hostile-takeover${n:+-$n}.taps-holdings.org"
+
+HT_SKIP_PULL="${HT_SKIP_PULL:-1}" exec ./ht-deploy.sh
