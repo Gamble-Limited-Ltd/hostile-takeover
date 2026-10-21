@@ -5,7 +5,7 @@
 #   ./ht-name none     back to hostile-takeover.taps-holdings.org
 #
 # Writes HT_DOMAIN_NUMBER into .env.prod, then runs ./ht-deploy.sh (rebuild + up). The API host never
-# changes. Pulls nothing by default (HT_SKIP_PULL=1); run with HT_SKIP_PULL=0 to git pull first.
+# changes. Works with uncommitted changes. Pulls nothing by default (HT_SKIP_PULL=1); run with HT_SKIP_PULL=0 to git pull first.
 # Still needs the tunnel route and GATE's post-logout URI for the new host (see example.env.prod).
 set -Eeuo pipefail
 cd "$(dirname "$0")"
@@ -21,4 +21,8 @@ echo "HT_DOMAIN_NUMBER=$n" >> .env.prod
 chmod 600 .env.prod
 echo "ht-name: game host is now hostile-takeover${n:+-$n}.taps-holdings.org"
 
-HT_SKIP_PULL="${HT_SKIP_PULL:-1}" exec ./ht-deploy.sh
+# Uncommitted files (docs, notes) must never block a host change: the host is runtime config, so a dirty
+# tree is fine here. Pull only when asked.
+export HT_ALLOW_DIRTY=1
+if [ "${HT_SKIP_PULL:-1}" = 0 ]; then unset HT_SKIP_PULL; else export HT_SKIP_PULL=1; fi
+exec ./ht-deploy.sh
