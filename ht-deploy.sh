@@ -30,6 +30,15 @@ KEYS_DIR="${HT_KEYS_DIR:-$HOME/.config/hostile-takeover/keys}"
 # MERIDIAN_URL is optional and only used at build time; .env.prod is not sourced wholesale.
 MERIDIAN_URL="$(sed -n 's/^MERIDIAN_URL=//p' .env.prod | tail -n 1)"
 export MERIDIAN_URL
+# HT_DOMAIN_NUMBER=N moves the game to hostile-takeover-N.taps-holdings.org (the API host stays put).
+# Empty/unset = hostile-takeover.taps-holdings.org. docker-compose.prod.yml reads HT_DOMAIN_SUFFIX.
+HT_DOMAIN_NUMBER="$(sed -n 's/^HT_DOMAIN_NUMBER=//p' .env.prod | tail -n 1)"
+case "$HT_DOMAIN_NUMBER" in
+'') HT_DOMAIN_SUFFIX= ;;
+*[!0-9]*) fail "HT_DOMAIN_NUMBER in .env.prod must be a whole number (got '$HT_DOMAIN_NUMBER')" ;;
+*) HT_DOMAIN_SUFFIX="-$HT_DOMAIN_NUMBER" ;;
+esac
+export HT_DOMAIN_SUFFIX
 
 wait_healthy() {
     local deadline=$((SECONDS + WAIT_SECONDS)) c status all
