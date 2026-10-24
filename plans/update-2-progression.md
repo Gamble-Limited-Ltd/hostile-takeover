@@ -27,6 +27,28 @@ singleplayer game gives half XP. Reloading keeps everything.
 | Rewards     | Levels are a badge only. No Caps, Plutonium, flares or cosmetics (the store is gone)                                                                                                                                    |
 | Old games   | No backfill. Records were never stored, so everyone starts at level 1 on launch day                                                                                                                                     |
 
+## Decided (owner, 2026-10-19): next update's scope
+
+These widen and override the 2026-10-12 scope above where they conflict. Size and date are open:
+the owner is still collecting what goes in.
+
+| Area              | Decision                                                                                                                                                                                       |
+| ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope             | Update 2 **plus the profile page**, username change, profile flag, admin XP tools, and more leaderboard tabs. Still out: achievements, prestige, game history, friends, clans                  |
+| Upstream          | Merge the latest stable tag (`v0.35.2` today) **first**, then build the features on top. The triage runs later in the week                                                                     |
+| Private farming   | A private game with fewer than 3 humans scores at 500 permille, like singleplayer (answers open question 2)                                                                                    |
+| Feats             | Most territory at the end, eliminated a player, survived to the end. 5 XP each, so the cap is 15 (answers open question 1; no nuke feat)                                                       |
+| Visibility        | No opt-out. Every account is on the leaderboard and has a public profile, `thestrongest` too (answers open question 4)                                                                         |
+| XP numbers        | As proposed above, **after a simulation** of the curve and per-game XP that checks the ~300-games-to-100 pace                                                                                   |
+| Profile page      | Turn on `Features.profile`. It shows stats per mode (Singleplayer/Public/Private), the level + XP bar (read-only for other players) and the join date. No recent-games list                    |
+| Opening profiles  | From a leaderboard row, the lobby roster and the win screen                                                                                                                                    |
+| Username change   | `Features.usernameChange`. Once per 7 days, with the censor and uniqueness checks. The old name is free right away. Root can rename anyone at any time                                                 |
+| HT vs GLL ID      | HT username and display name belong to HT, and changing them never touches GATE. Email/password stay with GATE for linked accounts and with HT for legacy ones. Every change must be possible inside HT |
+| Profile flag      | When a signed-in player picks a flag, it's saved to the account and shown on the profile and on leaderboard rows                                                                                  |
+| Admin XP          | Root can view a player's progress and fix or reset their XP from the admin tools, and each change is written to `admin_audit`                                                                                |
+| Leaderboard tabs  | Level/XP, Wins, Games played, Win rate (with a minimum of 10 games)                                                                                                                            |
+| Migration number  | `004`/`005` are taken by GLL ID, so the progression migration is `006_progression.sql`                                                                                                     |
+
 ## What already exists (don't rebuild)
 
 - **Client UI, hidden behind `Features.xp`:** level badges (`LobbyPlayerView`, `PlayerPanel`,
