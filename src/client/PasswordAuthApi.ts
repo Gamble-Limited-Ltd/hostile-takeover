@@ -154,6 +154,64 @@ export async function createResetLink(
   return { ok: false, status: response.status, code };
 }
 
+export type AdminRenameResult =
+  | { ok: true; username: string }
+  | { ok: false; status: number; code: string };
+
+/** POST /admin/users/:username/rename (Bearer JWT, root only). */
+export async function renameUserAsAdmin(
+  username: string,
+  newUsername: string,
+): Promise<AdminRenameResult> {
+  const authorization = await getAuthHeader();
+  if (!authorization) return { ok: false, status: 401, code: "unauthorized" };
+  let response: Response;
+  try {
+    response = await fetch(
+      `${getApiBase()}/admin/users/${encodeURIComponent(username)}/rename`,
+      {
+        method: "POST",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authorization,
+        },
+        body: JSON.stringify({ username: newUsername }),
+      },
+    );
+  } catch (e) {
+    console.warn("/admin/users rename request failed", e);
+    return { ok: false, status: 0, code: "network" };
+  }
+  const parsed = (await response.json().catch(() => null)) as {
+    error?: unknown;
+    username?: unknown;
+  } | null;
+  if (response.ok && typeof parsed?.username === "string") {
+    return { ok: true, username: parsed.username };
+  }
+  const code =
+    typeof parsed?.error === "string"
+      ? parsed.error
+      : response.status === 429
+        ? "rate_limited"
+        : "unknown";
+  return { ok: false, status: response.status, code };
+}
+
+export function adminRenameErrorKey(code: string): string {
+  switch (code) {
+    case "username_invalid":
+      return "password_auth.admin_error_rename_invalid";
+    case "username_censored":
+      return "account_modal.username_error_profane";
+    case "username_taken":
+      return "account_modal.username_error_taken";
+    default:
+      return adminResetErrorKey(code);
+  }
+}
+
 export function adminResetErrorKey(code: string): string {
   switch (code) {
     case "no_such_user":

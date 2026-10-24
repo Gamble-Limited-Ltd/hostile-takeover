@@ -40,6 +40,8 @@ export interface RateLimits {
   registerAccount: RateLimiter;
   /** Reset-token redemptions per IP. */
   resetIp: RateLimiter;
+  /** Rename attempts per user. */
+  usernameChange: RateLimiter;
 }
 
 const MIN = 60_000;
@@ -51,5 +53,6 @@ export function defaultRateLimits(): RateLimits {
     registerIp: new RateLimiter(10, 60 * MIN),
     registerAccount: new RateLimiter(5, 60 * MIN),
     resetIp: new RateLimiter(20, 15 * MIN),
+    usernameChange: new RateLimiter(10, 15 * MIN),
   };
 }

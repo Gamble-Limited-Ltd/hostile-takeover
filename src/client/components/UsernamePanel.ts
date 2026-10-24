@@ -345,8 +345,7 @@ export class UsernamePanel extends LitElement {
   }
 
   render() {
-    if (!this.player || this.player.usernameStatus === undefined)
-      return nothing;
+    if (!this.player) return nothing;
     const cooldownEnd = this.cooldownEnd();
     const locked = cooldownEnd !== null;
     const trimmed = this.draft.trim();

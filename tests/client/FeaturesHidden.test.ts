@@ -38,7 +38,6 @@ const SWITCHES = [
   "clans",
   "friends",
   "profile",
-  "usernameChange",
   "stream",
   "steam",
   "discord",
@@ -58,6 +57,7 @@ const isHidden = (el: Element | null): boolean =>
 describe("Slice 3.5 switches", () => {
   it("exist and default to off", () => {
     for (const name of SWITCHES) expect(Features[name]).toBe(false);
+    expect(Features.usernameChange).toBe(true);
   });
 });
 

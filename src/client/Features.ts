@@ -79,10 +79,10 @@ export const Features = Object.freeze({
    */
   profile: false,
   /**
-   * Username changes (out of v1): the account menu's "Change username" row
+   * Username changes (on since U2.6): the account menu's "Change username" row
    * and `#modal=change-username`.
    */
-  usernameChange: false,
+  usernameChange: true,
   /**
    * The featured stream panel and "Streaming now" strip. With this off the
    * shared poller never starts, so `/streams.json` is never fetched.

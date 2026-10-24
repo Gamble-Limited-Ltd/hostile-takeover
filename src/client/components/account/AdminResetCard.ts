@@ -1,7 +1,12 @@
 import { html, LitElement, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { userAuth } from "../../Auth";
-import { adminResetErrorKey, createResetLink } from "../../PasswordAuthApi";
+import {
+  adminRenameErrorKey,
+  adminResetErrorKey,
+  createResetLink,
+  renameUserAsAdmin,
+} from "../../PasswordAuthApi";
 import { translateText } from "../../Utils";
 import "../baseComponents/Button";
 import "../CopyButton";
@@ -27,6 +32,11 @@ export class AdminResetCard extends LitElement {
   @state() private expiresAt = "";
 
   private username = "";
+  private renameFrom = "";
+  private renameTo = "";
+  @state() private renameBusy = false;
+  @state() private renameError = "";
+  @state() private renameDone = "";
 
   createRenderRoot() {
     return this;
@@ -63,8 +73,94 @@ export class AdminResetCard extends LitElement {
     this.expiresAt = result.expiresAt;
   }
 
+  private async submitRename(e: Event): Promise<void> {
+    e.preventDefault();
+    if (this.renameBusy) return;
+    this.renameError = "";
+    this.renameDone = "";
+    const from = this.renameFrom.trim();
+    const to = this.renameTo.trim();
+    if (!from || !to) {
+      this.renameError = translateText(
+        "password_auth.admin_error_no_such_user",
+      );
+      return;
+    }
+    this.renameBusy = true;
+    const result = await renameUserAsAdmin(from, to);
+    this.renameBusy = false;
+    if (!result.ok) {
+      this.renameError = translateText(adminRenameErrorKey(result.code));
+      return;
+    }
+    this.renameDone = translateText("password_auth.admin_rename_done", {
+      name: result.username,
+    });
+  }
+
   render() {
     if (!this.isRoot) return nothing;
+    return html`${this.renderReset()}${this.renderRename()}`;
+  }
+
+  private renderRename() {
+    return html`
+      <div class="bg-white/5 rounded-xl border border-white/10 p-6 mt-4">
+        <form class="space-y-3" novalidate @submit=${this.submitRename}>
+          <div>
+            <div class="text-white font-medium">
+              ${translateText("password_auth.admin_rename_title")}
+            </div>
+            <div class="text-white/50 text-sm mt-1">
+              ${translateText("password_auth.admin_rename_desc")}
+            </div>
+          </div>
+          <input
+            type="text"
+            name="renameFrom"
+            autocomplete="off"
+            @input=${(e: Event) => {
+              this.renameFrom = (e.target as HTMLInputElement).value;
+            }}
+            placeholder=${translateText("password_auth.admin_username")}
+            aria-label=${translateText("password_auth.admin_username")}
+            class=${INPUT_CLASS}
+          />
+          <input
+            type="text"
+            name="renameTo"
+            autocomplete="off"
+            @input=${(e: Event) => {
+              this.renameTo = (e.target as HTMLInputElement).value;
+            }}
+            placeholder=${translateText("password_auth.admin_new_username")}
+            aria-label=${translateText("password_auth.admin_new_username")}
+            class=${INPUT_CLASS}
+          />
+          ${this.renameError
+            ? html`<p class="text-sm text-red-200" role="alert">
+                ${this.renameError}
+              </p>`
+            : nothing}
+          ${this.renameDone
+            ? html`<p class="text-white/50 text-sm" role="status">
+                ${this.renameDone}
+              </p>`
+            : nothing}
+          <o-button
+            variant="primary"
+            width="block"
+            size="md"
+            submit
+            ?disable=${this.renameBusy}
+            translationKey="password_auth.admin_rename_button"
+          ></o-button>
+        </form>
+      </div>
+    `;
+  }
+
+  private renderReset() {
     return html`
       <div class="bg-white/5 rounded-xl border border-white/10 p-6">
         <form class="space-y-3" novalidate @submit=${this.submit}>

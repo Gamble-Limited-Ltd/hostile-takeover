@@ -12,13 +12,16 @@ export interface UserRow {
   disabled_at: Date | null;
   /** The linked GLL ID (GATE) subject, if any. */
   gate_sub?: string | null;
+  /** Last self-service rename; null if never. */
+  username_changed_at?: Date | null;
 }
 
 /**
  * The /users/@me body. The game server and client both run it through
  * UserMeResponseSchema.parse; one bad field makes the player look signed out.
  * Optional fields are left out. usernameStatus is left out on purpose: its
- * presence turns on the custom-username UI, which Stage 2 decides on.
+ * presence would unlock the free in-game name box and stop the game server
+ * forcing the account name; the username panel works without it.
  */
 export function buildUserMe(row: UserRow): UserMeResponse {
   return {
@@ -34,6 +37,11 @@ export function buildUserMe(row: UserRow): UserMeResponse {
       trustTier: "trusted",
       username: row.username,
       usernameBase: row.username,
+      nextUsernameChangeAt: row.username_changed_at
+        ? new Date(
+            row.username_changed_at.getTime() + 7 * 24 * 60 * 60 * 1000,
+          ).toISOString()
+        : null,
       achievements: { singleplayerMap: [], player: [] },
       friends: [],
       subscription: null,
