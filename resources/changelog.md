@@ -2,6 +2,8 @@
 
 🆕 **What's new**
 
+- From Monday, October 26, the game's address changes every morning at 7:00 AM Central. The news box shows tomorrow's address, and https://status.taps-holdings.org always has today's link.
+  → You'll need to sign in again each morning.
 - Updated to OpenFront v0.35.3: the latest engine, gameplay and interface fixes from OpenFront, including a fix for troops being duplicated.
   → A Halloween look for the homepage from October 25 to November 1, with a setting to turn it off.
 - Fixed: "Log out" in the account menu now also signs you out of GLL ID.

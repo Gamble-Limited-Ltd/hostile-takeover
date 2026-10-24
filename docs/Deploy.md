@@ -134,3 +134,24 @@ Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 2168da6d5f2e641e7763748dae0df6
 Overrides:
   Override: 72 h watch — Boss: daily rotation must be live before Monday 2026-10-26 ~6 am.
 ```
+
+## Release record: daily rotation prep (2026-10-25)
+
+```
+Release: HT_SKIP_BUILD=1 (host change without a rebuild), the API host follows HT_DOMAIN_NUMBER
+  (hostile-takeover-api-N), HT_NEWS_NOTICE in the news box (tomorrow's address), GET /map_weights
+  returns empty overrides (v0.35.3 polled it and logged a 404 every minute), footer Gamble Limited
+  link goes to status.taps-holdings.org. Player note: changelog "From Monday, October 26 ...".
+Lane: Patch (config and ops, no game change). Deployed by: Boss.
+Gates: ht-ci green on fb3952215 [x]  API route tests (map_weights, news notice) [x]  rotate.sh
+  self-test 66/66 and a dry run against the real Cloudflare config [x]  zero open P0/P1 [x]
+Order (the API host becomes hostile-takeover-api-3 on deploy): GATE set-uris release first; then
+  rotate.sh cf-add hostile-takeover-api-3 hostile-takeover-api; then GATE set-uris for HT's new
+  callback; then this deploy; check sign-in; then rotate.sh cf-remove hostile-takeover-api.
+Needs in .env.prod: nothing new (HT_NEWS_NOTICE is written by rotate.sh from Monday).
+Watch period: 2 h (Patch), inside the v0.35.3 watch.
+Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 29621ccfc5fffa0d7fb5f0c3731ab9a8bbd850a4
+  (the API host goes back to hostile-takeover-api: keep that route until sign-in is checked)
+Overrides:
+  Override: 72 h watch (v0.35.3) — Boss: daily rotation must be live before Monday 2026-10-26 ~6 am.
+```
