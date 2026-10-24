@@ -31,7 +31,6 @@ const SWITCHES = [
   "achievements",
   "gameHistory",
   "ranked",
-  "leaderboard",
   "clans",
   "friends",
   "stream",
@@ -57,6 +56,7 @@ describe("Slice 3.5 switches", () => {
     // On since U2.4.
     expect(Features.xp).toBe(true);
     expect(Features.profile).toBe(true);
+    expect(Features.leaderboard).toBe(true);
   });
 });
 
@@ -66,10 +66,10 @@ describe("nav bars", () => {
     window.currentPageId = "page-play";
   });
   for (const tag of ["desktop-nav-bar", "mobile-nav-bar"]) {
-    it(`${tag} hides LEADERBOARD and CLANS but keeps PLAY and INVENTORY`, async () => {
+    it(`${tag} hides CLANS but keeps PLAY and INVENTORY`, async () => {
       const bar = await mount(tag);
       const page = (id: string) => bar.querySelector(`[data-page="${id}"]`);
-      expect(isHidden(page("page-leaderboard"))).toBe(true);
+      expect(isHidden(page("page-leaderboard"))).toBe(false);
       expect(isHidden(page("page-clan"))).toBe(true);
       expect(isHidden(page("page-play"))).toBe(false);
       expect(isHidden(page("page-inventory"))).toBe(false);

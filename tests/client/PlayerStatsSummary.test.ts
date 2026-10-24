@@ -1,5 +1,14 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 
+// Upstream behaviour: HT turns this off in Features.
+vi.mock("../../src/client/Features", async (importOriginal) => ({
+  Features: {
+    ...(await importOriginal<typeof import("../../src/client/Features")>())
+      .Features,
+    gameStatDetails: true,
+  },
+}));
+
 vi.mock("../../src/client/Utils", async (importOriginal) => {
   const actual =
     await importOriginal<typeof import("../../src/client/Utils")>();

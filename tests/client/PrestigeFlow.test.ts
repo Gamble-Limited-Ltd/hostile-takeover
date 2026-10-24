@@ -11,6 +11,15 @@ import {
 const { copyToClipboard } = vi.hoisted(() => ({
   copyToClipboard: vi.fn(async () => undefined),
 }));
+// Upstream behaviour: HT turns this off in Features.
+vi.mock("../../src/client/Features", async (importOriginal) => ({
+  Features: {
+    ...(await importOriginal<typeof import("../../src/client/Features")>())
+      .Features,
+    socialShare: true,
+  },
+}));
+
 vi.mock("../../src/client/Utils", () => ({
   translateText: (key: string, params?: Record<string, string | number>) =>
     params ? `${key}:${JSON.stringify(params)}` : key,

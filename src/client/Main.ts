@@ -17,6 +17,7 @@ import {
 } from "@openfront/shared/WireSchemas";
 import { ClientEnv } from "src/client/ClientEnv";
 import { renderNavVersion } from "src/client/GameVersion";
+import { syncAccountFlag } from "./AccountFlag";
 import { responseHasLinkedIdentity } from "./AccountIdentity";
 import { adGatekeeper } from "./AdGatekeeper";
 import { loadAdmiral, onAdmiralMeasured } from "./Admiral";
@@ -854,6 +855,7 @@ class Client {
       );
 
       if (userMeResponse !== false) {
+        void syncAccountFlag(this.userSettings);
         console.log(
           `Your player ID is ${userMeResponse.player.publicId}\n` +
             "Sharing this ID will allow others to view your game history and stats.",
