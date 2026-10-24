@@ -44,7 +44,7 @@ record and the vault.
 
 1. Clean tree on `main`, `git fetch upstream --tags`, `git switch -c sync/upstream-YYYY-MM-DD main`.
 2. `git merge <tag>` (a stable tag, not `upstream/main`). Resolve conflicts per `references/conflicts.md`.
-3. `npm run inst` (the lockfile may have changed), then `npm run typecheck`, `npm run lint`, `npx prettier --check` on touched files.
+3. `npm run inst` (the lockfile may have changed), then `npm run typecheck`, `npm run lint`, `npm run format:check` (Oxfmt).
 4. Run **targeted** tests for touched areas (`npx vitest <file> --run`). Fix tests by updating them, never by weakening assertions. If a bad merge gets tangled, `git merge --abort` or delete the branch; main is untouched.
 
 ## Phase 2: post-merge checklist
@@ -59,7 +59,7 @@ record and the vault.
 
 ## Phase 3: verify
 
-1. Push the `sync/` branch (after Boss's OK). Wait for `ht-ci.yml` green (typecheck, lint, Prettier, 4 test shards plus `tests/server`).
+1. Push the `sync/` branch (after Boss's OK). Wait for `ht-ci.yml` green (typecheck, lint, Oxfmt check, 4 test shards plus `tests/server`).
 2. **Smoke test** with the `run-openfront` skill: lobby loads, singleplayer starts and plays a few ticks, a multiplayer join works, sign-in works. For a Major, also a longer game and a replay of determinism-sensitive paths.
 3. **Screenshots, minimal:** only if the diff touches the UI (the triage "UI changed" line is a hint, but judge by what really renders). Take a few core screens (home/lobby, sign-in modal, in-game HUD) and compare with the previous prod look under the strict UI rules. Skip them otherwise.
 4. Lane gates from the release procedure, then a release record: lane, what changed, player note, known issues, kill switches, **rollback sha and the exact rollback command**.

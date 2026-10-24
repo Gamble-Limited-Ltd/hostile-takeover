@@ -25,18 +25,18 @@ Turnstile or other-login entry point. Then it survives its 72 h watch in prod.
 
 ## Known items to handle
 
-| Item                                                    | Action                                                                                                   |
-| ------------------------------------------------------- | -------------------------------------------------------------------------------------------------------- |
-| AdShield re-enabled (`b8f0fca50`)                       | Hide the entry point again; check `AdGatekeeper` paths                                                   |
-| Prettier replaced by Oxfmt (`48ede83b6`)                | Update `ht-ci.yml` and the `prettier --check` step in the skill to whatever the tag now uses              |
-| New/changed workflows (`cherry-pick-milestone.yml`, `ci.yml`, `deploy.yml`, `release.yml`) | `gh workflow disable` each on the fork; only `ht-ci.yml` and `ht-upstream-watch.yml` run                  |
-| "Kick every connected session of a kicked account"      | Check whether our API / admin tools need a matching change                                               |
-| Halloween homepage theme (Oct 25 to Nov 1) and a toggle | Strip any store/Discord links; keep the toggle                                                           |
-| Store/Steam/portal paths (19 files flagged)             | Re-hide new entry points; new screens count                                                              |
-| Schema changes                                          | Diff `/users/@me`, JWT, `cosmetics.json`, `cluster.json`; `/users/@me` parses strictly                  |
-| `src/server/Censor.ts`                                  | If changed, mirror into `packages/api/src/censor.ts` (parity test)                                       |
-| `package.json` / lockfile                               | `npm run inst`                                                                                           |
-| New "OpenFront" strings, `news.json`, `changelog.md`    | Rebrand in `en.json` only; strip store/Discord/paid links                                                |
+| Item                                                                                       | Action                                                                                       |
+| ------------------------------------------------------------------------------------------ | -------------------------------------------------------------------------------------------- |
+| AdShield re-enabled (`b8f0fca50`)                                                          | Hide the entry point again; check `AdGatekeeper` paths                                       |
+| Prettier replaced by Oxfmt (`48ede83b6`)                                                   | Update `ht-ci.yml` and the `prettier --check` step in the skill to whatever the tag now uses |
+| New/changed workflows (`cherry-pick-milestone.yml`, `ci.yml`, `deploy.yml`, `release.yml`) | `gh workflow disable` each on the fork; only `ht-ci.yml` and `ht-upstream-watch.yml` run     |
+| "Kick every connected session of a kicked account"                                         | Check whether our API / admin tools need a matching change                                   |
+| Halloween homepage theme (Oct 25 to Nov 1) and a toggle                                    | Strip any store/Discord links; keep the toggle                                               |
+| Store/Steam/portal paths (19 files flagged)                                                | Re-hide new entry points; new screens count                                                  |
+| Schema changes                                                                             | Diff `/users/@me`, JWT, `cosmetics.json`, `cluster.json`; `/users/@me` parses strictly       |
+| `src/server/Censor.ts`                                                                     | If changed, mirror into `packages/api/src/censor.ts` (parity test)                           |
+| `package.json` / lockfile                                                                  | `npm run inst`                                                                               |
+| New "OpenFront" strings, `news.json`, `changelog.md`                                       | Rebrand in `en.json` only; strip store/Discord/paid links                                    |
 
 ## Schedule
 
@@ -59,7 +59,7 @@ back once, then log `Override: <gate> — Boss: <reason>`.
 
 ## Decision log
 
-| Date       | Decision                                                                                          |
-| ---------- | ------------------------------------------------------------------------------------------------- |
-| 2026-10-23 | Sync first, to v0.35.3 (re-check on the day). Major lane. No work starts until Boss says go.      |
-| 2026-10-24 | Target moved to v0.35.3 (troop duplication fix), Boss approved. |
+| Date       | Decision                                                                                     |
+| ---------- | -------------------------------------------------------------------------------------------- |
+| 2026-10-23 | Sync first, to v0.35.3 (re-check on the day). Major lane. No work starts until Boss says go. |
+| 2026-10-24 | Target moved to v0.35.3 (troop duplication fix), Boss approved.                              |

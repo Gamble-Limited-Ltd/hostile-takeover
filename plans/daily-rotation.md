@@ -16,15 +16,15 @@ to yesterday's names and alerts Boss.
 
 ## Decided (owner, 2026-10-23)
 
-| Area            | Decision                                                                                                                                                                       |
-| --------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Scope           | HT, HT API, GATE (`id`), GLL (`icantstopwinning`) and Meridian. Everything on the gamble tunnel on this VM. nodeterm and Limitless are excluded                                 |
-| Counter         | One shared counter N for all projects, +1 each day. The start number is Boss's call; he is moving HT by hand first and will say when it's ready                                |
-| Cloudflare      | Wildcard DNS record + wildcard tunnel route for `*.taps-holdings.org`; nginx routes by Host and rejects unknown names. Existing explicit records keep precedence               |
-| Old hosts       | Die immediately (nginx rejects them)                                                                                                                                           |
-| Notice          | In every game, the **existing news/notice banner** says "Tomorrow's URL is GAME-URL-N+1" (no new UI)                                                                           |
-| Status page     | A plain static site on a name that never rotates (e.g. `uptime.taps-holdings.org`), brand colors, links to today's URL for each game, Limitless left out                       |
-| Timing          | Systemd user timer, America/Chicago. Staggered 7:00 to 7:30: GATE first, then APIs, then games                                                                                 |
+| Area        | Decision                                                                                                                                                         |
+| ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope       | HT, HT API, GATE (`id`), GLL (`icantstopwinning`) and Meridian. Everything on the gamble tunnel on this VM. nodeterm and Limitless are excluded                  |
+| Counter     | One shared counter N for all projects, +1 each day. The start number is Boss's call; he is moving HT by hand first and will say when it's ready                  |
+| Cloudflare  | Wildcard DNS record + wildcard tunnel route for `*.taps-holdings.org`; nginx routes by Host and rejects unknown names. Existing explicit records keep precedence |
+| Old hosts   | Die immediately (nginx rejects them)                                                                                                                             |
+| Notice      | In every game, the **existing news/notice banner** says "Tomorrow's URL is GAME-URL-N+1" (no new UI)                                                             |
+| Status page | A plain static site on a name that never rotates (e.g. `uptime.taps-holdings.org`), brand colors, links to today's URL for each game, Limitless left out         |
+| Timing      | Systemd user timer, America/Chicago. Staggered 7:00 to 7:30: GATE first, then APIs, then games                                                                   |
 
 ## Risks (raised once, Boss chose to include GATE)
 
@@ -75,7 +75,7 @@ code change that ships with it follows the normal lanes.
 
 ## Decision log
 
-| Date       | Decision                                                                                       |
-| ---------- | ---------------------------------------------------------------------------------------------- |
-| 2026-10-23 | Rotate everything on the gamble tunnel incl. GATE; wildcard route; old hosts die at once       |
-| 2026-10-23 | Shared counter; banner via the existing notice slot; static status page; Limitless excluded     |
+| Date       | Decision                                                                                    |
+| ---------- | ------------------------------------------------------------------------------------------- |
+| 2026-10-23 | Rotate everything on the gamble tunnel incl. GATE; wildcard route; old hosts die at once    |
+| 2026-10-23 | Shared counter; banner via the existing notice slot; static status page; Limitless excluded |

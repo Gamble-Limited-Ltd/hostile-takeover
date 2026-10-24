@@ -33,6 +33,7 @@ vi.mock("../../src/client/Utils", () => ({
 
 import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { NavAccountMenu } from "../../src/client/components/NavAccountMenu";
+import { gamePortal } from "../../src/client/GamePortal";
 import { updateAccountNavButton } from "../../src/client/NavAccountButton";
 
 // Hostile Takeover: the store entry points are off by default; these tests
@@ -179,9 +180,7 @@ describe("nav-account-menu", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(copyToClipboard).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(copyToClipboard).mock.calls[0][0]).toContain(
-      "modal=profile&publicID=p",
-    );
+    expect(vi.mocked(copyToClipboard).mock.calls[0][0]).toContain("/player/p");
     expect(showToast).toHaveBeenCalledWith("common.copied", "green");
 
     // No publicId (older backend / unresolved player) — nothing to share.
@@ -189,6 +188,19 @@ describe("nav-account-menu", () => {
     await el.updateComplete;
     await click(trigger());
     expect(itemKeys()).not.toContain("copy-profile-url");
+  });
+
+  it("drops the profile link on Poki, which it would lead players off", async () => {
+    vi.spyOn(gamePortal, "name").mockReturnValue("poki");
+    try {
+      fireUserMe(userMe());
+      await el.updateComplete;
+      await click(trigger());
+      expect(itemKeys()).toContain("view-account");
+      expect(itemKeys()).not.toContain("copy-profile-url");
+    } finally {
+      vi.mocked(gamePortal.name).mockRestore();
+    }
   });
 
   it("keeps the menu on CrazyGames, minus the log-out they own", async () => {

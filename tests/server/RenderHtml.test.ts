@@ -448,4 +448,16 @@ describe("RenderHtml environment-only render", () => {
       for (const host of hosts) expect(html).not.toContain(host);
     }
   });
+
+  it("renders valid Schema.org VideoGame JSON-LD", async () => {
+    const html = await renderHtmlContent(REAL_TEMPLATE);
+    const match = html.match(
+      /<script type="application\/ld\+json">([\s\S]*?)<\/script>/,
+    );
+    expect(match).not.toBeNull();
+    const data = JSON.parse(match![1]);
+    expect(data["@type"]).toBe("VideoGame");
+    expect(data.name).toBe("Hostile Takeover");
+    expect(data.publisher.name).toBe("Gamble Limited Ltd.");
+  });
 });
