@@ -49,10 +49,11 @@ services:
       HT_DB_HOST: ht-db
       HT_DB_PORT: "5432"
       HT_DB_MIGRATE_ON_BOOT: "false" # ht-deploy.sh runs the migrations
-      API_URL: https://hostile-takeover-api.taps-holdings.org
+      API_URL: https://hostile-takeover-api${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
       DOMAIN: hostile-takeover${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
       GAME_ORIGIN: https://hostile-takeover${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
       HT_GAME_HOST: hostile-takeover${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
+      HT_NEWS_NOTICE: ${HT_NEWS_NOTICE:-}
       HT_JWT_PRIVATE_KEY_FILE: /run/keys/jwt-ed25519.pem
       # The tunnel reaches us from the Docker bridge gateway, so trust X-Forwarded-For from
       # private ranges too; otherwise every player would share one rate-limit bucket.
@@ -96,7 +97,7 @@ services:
     environment:
       GAME_ENV: prod
       DOMAIN: hostile-takeover${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
-      API_URL: https://hostile-takeover-api.taps-holdings.org
+      API_URL: https://hostile-takeover-api${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
       GAME_HOST: hostile-takeover${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
       NUM_WORKERS: "2"
       INSTANCE_LETTER: a

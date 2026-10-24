@@ -58,6 +58,10 @@ export interface ApiEnv {
    * The id_token `iss` must still equal `gateIssuer`.
    */
   gateDirectUrl: string;
+  /** Plain-text notice shown first in the news box (daily URL rotation); "" = none. */
+  newsNotice: string;
+  /** Stable id for the notice, so a dismissed one stays dismissed; "" = hash of the text. */
+  newsNoticeId: string;
   /** Whether username/password sign-in and sign-up are still allowed. */
   legacyLogin: boolean;
 }
@@ -136,6 +140,8 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
       "",
     ),
     gateDirectUrl: str(source.GATE_DIRECT_URL, "").replace(/\/+$/, ""),
+    newsNotice: str(source.HT_NEWS_NOTICE, "").trim(),
+    newsNoticeId: str(source.HT_NEWS_NOTICE_ID, "").trim(),
     legacyLogin: str(source.LEGACY_LOGIN, "on").toLowerCase() !== "off",
   };
 }

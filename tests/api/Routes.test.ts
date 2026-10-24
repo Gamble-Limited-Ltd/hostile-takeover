@@ -22,6 +22,7 @@ import { censorPlayer as serverCensor } from "../../src/server/Censor";
 import { sendCheckin } from "../../src/server/ClusterCheckin";
 import { fetchCustomTribes } from "../../src/server/CustomTribes";
 import { verifyJoin } from "../../src/server/JoinVerify";
+import { fetchMapWeights } from "../../src/server/MapWeights";
 import { ServerEnv } from "../../src/server/ServerEnv";
 
 const KEY = "secret";
@@ -126,6 +127,39 @@ describe("server callers parse the real responses", () => {
     const items = z.array(NewsItemSchema).parse(await res.json());
     expect(items.length).toBeGreaterThan(0);
     expect(items).toEqual(newsFile);
+  });
+
+  test("map_weights: fetchMapWeights() gets empty overrides, and a missing key is refused", async () => {
+    await expect(fetchMapWeights()).resolves.toEqual({});
+    expect((await fetch(base + "/map_weights")).status).toBe(401);
+  });
+
+  test("HT_NEWS_NOTICE adds one warning item first; unset leaves the list alone", async () => {
+    const keys = await keysFromPem(generatePrivateKeyPem());
+    const withNotice = readEnv({
+      API_KEY: KEY,
+      HT_NEWS_NOTICE: "Tomorrow's URL is hostile-takeover-5",
+    });
+    const server = createApp(
+      { query: async () => ({}) },
+      { env: withNotice, keys, store: {} as Store },
+    ).listen(0, "127.0.0.1");
+    await new Promise((r) => server.once("listening", r));
+    try {
+      const port = (server.address() as AddressInfo).port;
+      const res = await fetch(`http://127.0.0.1:${port}/news.json`);
+      const items = z.array(NewsItemSchema).parse(await res.json());
+      expect(items.slice(1)).toEqual(newsFile);
+      expect(items[0]).toMatchObject({
+        title: "Tomorrow's URL is hostile-takeover-5",
+        description: "Tomorrow's URL is hostile-takeover-5",
+        url: null,
+        type: "warning",
+      });
+      expect(items[0].id).toMatch(/^url-notice-./);
+    } finally {
+      server.close();
+    }
   });
 
   test("cluster.json parses as the client's ServerList and picks server a", async () => {

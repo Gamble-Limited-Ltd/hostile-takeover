@@ -41,7 +41,7 @@ docker exec -i ht-db sh -c 'exec pg_restore -U "$POSTGRES_USER" -d "$POSTGRES_DB
 $DC start ht-api ht-game
 sleep 40
 docker inspect -f '{{.Name}} {{.State.Health.Status}}' ht-db ht-api ht-game
-curl -s -o /dev/null -w '%{http_code}\n' https://hostile-takeover-api.taps-holdings.org/cluster.json # 200
+curl -s -o /dev/null -w '%{http_code}\n' http://127.0.0.1:8287/cluster.json # 200
 ```
 
 Never use `docker compose down -v`: it deletes the database volume. If `ht-db` itself is gone, run
