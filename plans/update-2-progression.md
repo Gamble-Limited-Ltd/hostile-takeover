@@ -1,173 +1,182 @@
-# Update 2 — Progression (XP, levels, leaderboard)
+# Update 2 — Progression (XP, levels, profile, leaderboard)
 
-**Status:** Prep. Waiting for the owner to approve this plan. Nothing here is built yet.
+**Status:** Planned 2026-10-24. Waiting for Boss to approve the brief. Nothing here is built yet.
+**Lane:** Minor (new migration, new stored data, legal change): CI + targeted tests + a migration
+rehearsal on a throwaway stack, then a **24 h watch**.
+**Ships after:** the daily rotation (live Mon 2026-10-26) and the v0.35.3 watch (ends ~2026-10-27).
+**Target:** Thu 2026-10-29 or Fri 2026-10-30, daytime Chicago. The date moves with the work (Boss,
+2026-10-24): slices land as time allows, and the release goes out once every slice is green.
 
-**Goal:** players earn XP from finished games, level up from 1 to 100, and see their level badge in
-lobbies, in game, on the win screen and in the account menu. A leaderboard ranks players by
-lifetime XP. Everything shown is upstream UI that Slice 3.5 hid. This update builds the API behind
-it and turns the switches back on.
+**Goal:** players earn XP from finished games, level 1 to 100, and see their level in lobbies, in game,
+on the win screen, in the account menu and on a public profile. The leaderboard ranks by XP, wins,
+games and win rate. Players can change their username and save their flag to the account. Root can
+view and fix anyone's XP. Almost all of the UI is upstream's, hidden by Slice 3.5; we build the API
+behind it and turn the switches on.
 
-**Exit test:** two accounts finish a multiplayer game. Both see an XP breakdown on the win screen,
-their new level in the nav menu and lobby, and each other on the leaderboard. Playing a
-singleplayer game gives half XP. Reloading keeps everything.
+**Exit test:** two accounts finish a multiplayer game. Both see the XP breakdown on the win screen,
+their new level in the nav menu and lobby, each other on every leaderboard tab, and each other's
+profile (stats per mode, level bar, join date, flag). A singleplayer game gives half XP. A rename
+shows everywhere after reload. Root fixes one player's XP and it appears in `admin_audit`.
 
 ---
 
 ## Decided (owner, 2026-10-12)
 
-| Area        | Decision                                                                                                                                                                                                                |
-| ----------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scope       | XP + levels and an XP leaderboard. **Not in this update:** profile/stats page, game history, achievements, prestige, ranked                                                                                             |
-| Prestige    | Levels 1–100 now. The data model keeps a `prestige` column (always 0) so prestige can follow as a small update. `canPrestige` is always false and `POST /users/@me/prestige` stays a 404                                |
-| XP sources  | Multiplayer (public and private lobbies), reported by the game server with the API key. Singleplayer too, at **half XP, with no daily cap**                                                                             |
-| Storage     | A per-game summary: one `games` row and one `game_players` row per account player (placement, won, time alive, left early, the stats feats need). No turns and no replays. This reverses the "no game records" decision |
-| XP rules    | Played + time alive, placement + win, first game of the day, feats. Leaving early while still alive forfeits the played, placement and win XP (upstream's rule, already in `XpBreakdownSchema`)                         |
-| Pace        | A regular player reaches level 100 in about **300 games**                                                                                                                                                               |
-| Leaderboard | One tab ranked by lifetime XP, reusing the existing player list: rank, name, level, games, wins, win rate                                                                                                               |
-| Rewards     | Levels are a badge only. No Caps, Plutonium, flares or cosmetics (the store is gone)                                                                                                                                    |
-| Old games   | No backfill. Records were never stored, so everyone starts at level 1 on launch day                                                                                                                                     |
+| Area       | Decision                                                                                                                            |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| Prestige   | Levels 1-100 now. Keep a `prestige` column (always 0). `canPrestige` is always false and `POST /users/@me/prestige` stays a 404     |
+| XP sources | Multiplayer (public and private), reported by the game server with the API key. Singleplayer at **half XP, no daily cap**           |
+| Storage    | Per-game summaries (`games`, `game_players`), no turns, no replays. Reverses "no game records"                                      |
+| XP rules   | Played + time alive, placement + win, first game of the day, feats. Leaving early while alive forfeits played, placement and win XP |
+| Pace       | A regular player reaches level 100 in about **300 games**                                                                           |
+| Rewards    | Levels are a badge only. No Caps, Plutonium, flares or cosmetics                                                                    |
+| Old games  | No backfill. Everyone starts at level 1                                                                                             |
 
-## Decided (owner, 2026-10-19): next update's scope
+## Decided (owner, 2026-10-19)
 
-These widen and override the 2026-10-12 scope above where they conflict. Size and date are open:
-the owner is still collecting what goes in.
+| Area             | Decision                                                                                                                                                      |
+| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Scope            | XP + levels **plus** profile page, username change, profile flag, admin XP tools, leaderboard tabs. Out: achievements, prestige, game history, friends, clans |
+| Private farming  | A private game with fewer than 3 humans scores at 500 permille, like singleplayer                                                                             |
+| Feats            | Most territory at the end, eliminated a player, survived to the end. 5 XP each (cap 15). No nuke feat                                                         |
+| Visibility       | No opt-out. Every account is on the leaderboard and has a public profile                                                                                      |
+| XP numbers       | As proposed below, **after a simulation** that checks the ~300-games pace                                                                                     |
+| Profile page     | `Features.profile` on: stats per mode (Singleplayer/Public/Private), level + XP bar, join date. No recent-games list                                          |
+| Opening profiles | From a leaderboard row, the lobby roster and the win screen                                                                                                   |
+| Username change  | `Features.usernameChange`. Once per 7 days, censor + uniqueness checks, old name freed at once. Root renames anyone any time. Never pushed to GATE            |
+| Profile flag     | A signed-in player's flag pick is saved to the account and shown on the profile and leaderboard rows                                                          |
+| Admin XP         | Root views, fixes or resets a player's XP from the admin tools; each change goes to `admin_audit`                                                             |
+| Leaderboard tabs | Level/XP, Wins, Games played, Win rate (minimum 10 games)                                                                                                     |
 
-| Area             | Decision                                                                                                                                                                                                |
-| ---------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Scope            | Update 2 **plus the profile page**, username change, profile flag, admin XP tools, and more leaderboard tabs. Still out: achievements, prestige, game history, friends, clans                           |
-| Upstream         | Merge the latest stable tag (`v0.35.3` today) **first**, then build the features on top. The triage runs later in the week                                                                              |
-| Private farming  | A private game with fewer than 3 humans scores at 500 permille, like singleplayer (answers open question 2)                                                                                             |
-| Feats            | Most territory at the end, eliminated a player, survived to the end. 5 XP each, so the cap is 15 (answers open question 1; no nuke feat)                                                                |
-| Visibility       | No opt-out. Every account is on the leaderboard and has a public profile, `thestrongest` too (answers open question 4)                                                                                  |
-| XP numbers       | As proposed above, **after a simulation** of the curve and per-game XP that checks the ~300-games-to-100 pace                                                                                           |
-| Profile page     | Turn on `Features.profile`. It shows stats per mode (Singleplayer/Public/Private), the level + XP bar (read-only for other players) and the join date. No recent-games list                             |
-| Opening profiles | From a leaderboard row, the lobby roster and the win screen                                                                                                                                             |
-| Username change  | `Features.usernameChange`. Once per 7 days, with the censor and uniqueness checks. The old name is free right away. Root can rename anyone at any time                                                  |
-| HT vs GLL ID     | HT username and display name belong to HT, and changing them never touches GATE. Email/password stay with GATE for linked accounts and with HT for legacy ones. Every change must be possible inside HT |
-| Profile flag     | When a signed-in player picks a flag, it's saved to the account and shown on the profile and on leaderboard rows                                                                                        |
-| Admin XP         | Root can view a player's progress and fix or reset their XP from the admin tools, and each change is written to `admin_audit`                                                                           |
-| Leaderboard tabs | Level/XP, Wins, Games played, Win rate (with a minimum of 10 games)                                                                                                                                     |
-| Migration number | `004`/`005` are taken by GLL ID, so the progression migration is `006_progression.sql`                                                                                                                  |
+## Decided (owner, 2026-10-24)
 
-## What already exists (don't rebuild)
+| Area           | Decision                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| Release cut    | One release with the full scope; the date moves with the work                                                                |
+| Provisional XP | Skipped. The config never publishes `formula`/`xp`, so the win screen waits for the server's number (no client formula copy) |
+| Reward track   | Hidden. The Progression tab shows the level and XP bar only (passed levels would read as "claimed" with no rewards)          |
+| Target         | Thu 2026-10-29 / Fri 2026-10-30, Minor lane                                                                                  |
 
-- **Client UI, hidden behind `Features.xp`:** level badges (`LobbyPlayerView`, `PlayerPanel`,
-  `LobbyRosterLevels`), the win-screen XP panel and its polling (`WinModal`), the nav-menu level
-  (`NavAccountMenu`), the level card and prestige flow in `AccountModal`, and `ProgressionApi.ts`. The
-  full list is in `FORK_CHANGES.md` under Slice 3.5.
-- **Contract:** `packages/shared/src/ApiSchemas.ts` has `ProgressSchema`, `XpBreakdownSchema`,
-  `GameXpResponseSchema`, `PublicProgressSchema`, `ProgressionConfigSchema` and the `progress` field
-  on `/users/@me`. Our API answers in exactly these shapes. **Don't edit them.**
-- **Trusted results:** the game server already POSTs a full `GameRecord` to `POST /game/:id`
-  (`src/server/Archive.ts`) once the winner vote settles (or the replay settles a dispute). Each
-  player's `persistentID` is their JWT `sub`, so it maps straight to `users.id`. Today
-  `gameRoutes.ts` throws it away.
-- **Singleplayer:** the browser POSTs its record to `/archive_singleplayer_game`
-  (`src/client/LocalServer.ts`). Today that's a no-op. It can be faked, which is why it gets half XP.
+---
 
-## Proposed numbers (owner to confirm or tweak)
+## What already exists (reuse, don't rebuild)
 
-These live in one versioned rules module, and `GET /public/progression/config` publishes the curve.
-Each game stores its breakdown under the rules version it was scored with.
+- **Client UI** behind `Features.xp` / `profile` / `leaderboard` / `usernameChange` (`src/client/Features.ts`;
+  every gate is ours, listed in `FORK_CHANGES.md` Slice 3.5): badges (`LobbyPlayerView`, `PlayerPanel`),
+  win-screen XP panel + polling (`WinModal`, `ProvisionalProgress.ts`), nav menu level and "Change
+  username" (`NavAccountMenu`), `AccountModal` Progression tab, `PlayerProfileModal`, `ChangeUsernameModal`,
+  `LeaderboardModal` + `LeaderboardPlayerList` (shows level badges when rows carry `level`).
+- **In-game badges** come from `src/server/LevelBadge.ts`, which reads `/users/@me` `progress`. No work.
+- **Contract (don't edit):** `packages/shared/src/ApiSchemas.ts`: `ProgressSchema` :146, `XpBreakdownSchema`
+  :196, `GameXpResponseSchema` :271, `PublicProgressSchema` :280, `ProgressionConfigSchema` :387,
+  `PlayerProfileSchema` :1158, `PublicPlayerGamesResponseSchema` :1216, `PutUsernameResponseSchema`,
+  `RowLevelFields` :340, `UserMeResponse.player.progress` :574.
+- **Client calls our API must answer:** `GET /users/@me/xp/:gameId` (404 = keep polling),
+  `GET /public/progression/config` (404 = progression off), `GET /public/player/:id/progress`,
+  `GET /public/player/:id`, `GET /player/:id` (auth), `GET /public/player/:id/games`,
+  `PUT /users/@me/username`.
+- **Trusted results:** `src/server/Archive.ts` POSTs `{info: GameEndInfo, ...}` to `POST /game/:id` with the
+  API key after the winner vote. `info.players[].persistentID` is the JWT `sub`.
+- **Singleplayer:** `src/client/LocalServer.ts` POSTs a gzipped record with a Bearer token to
+  `/archive_singleplayer_game`. Forgeable, hence half XP.
+- **API plumbing:** `authenticate()` (`app.ts:206`), `requireApiKey()` (`apiKey.ts`), root check pattern
+  (`accountRoutes.ts:225`), `store.logAdmin()` (`store.ts:450`), `RateLimiter` (`rateLimit.ts`),
+  `buildUserMe` (`userMe.ts`), censor (`censor.ts`), `AdminResetCard.ts` (pattern for the admin XP card).
+- **Footguns:** `gameRoutes.ts` ends with a catch-all 404, so new routes mount **before**
+  `mountGameRoutes`. Every new `Store` method also needs a `tests/api/memoryStore.ts` version.
+  `/users/@me` is parsed strictly: one bad field signs the player out. Don't send `levelHidden` or
+  `searchHidden` (no opt-out, and sending them shows the privacy card). Send no `rewards`.
 
-- **Curve:** `xpToNext(level) = 100 + 4 × (level − 1)`. Level 1→2 takes 100 XP (about one game) and
-  99→100 takes 492 (about five games). Reaching 100 takes 29,304 XP, about 300 games at ~100 XP each.
-- **Per game** (before multipliers):
-  - Played: 20 for finishing.
-  - Time: 3 per minute alive, capped at 60 (20 minutes).
-  - Placement: up to 30, scaled from last place (0) to first.
-  - Win: 50 in FFA, 35 for each member of the winning team.
-  - First game of the day: +50 (by the VM's day, America/Chicago).
-  - Feats: up to +20 in total, chosen from `PlayerStatsSchema` (see open questions).
-- **Multipliers (`gamePermille`):** 1000 for multiplayer and 500 for singleplayer.
-  `subscriberPermille` is always 1000.
-- **Not eligible** (`eligible: false` with a `reason`): games shorter than 2 minutes (`too_short`),
-  players without an account (`no_account`) and spectators.
+## XP numbers (locked 2026-10-24 by Boss after the U2.1 simulation: 10% win rate 348 games to 100, 25% 277, 40% 248; test band 240-360)
+
+- **Curve:** `xpToNext(level) = 100 + 4 * (level - 1)`. 1 to 100 = 29,304 XP.
+- **Per game:** played 20; 3 per minute alive (cap 60); placement up to 30 (last 0, first 30); win 50 in
+  FFA, 35 per winning-team member; first game of the day +50 (America/Chicago day); feats 5 each, cap 15.
+- **Multipliers (`gamePermille`):** 1000 multiplayer; 500 singleplayer and private games with < 3 humans.
+  `subscriberPermille` always 1000.
+- **Not eligible** (`eligible: false`): shorter than 2 min (`too_short`), no account (`no_account`),
+  spectators, and multiplayer records with `statsAgreed === false` (`stats_disputed`).
+- One versioned rules module; each award stores its breakdown and rules version.
 
 ---
 
 ## Slices
 
-These run in order because they share the schema and the `/users/@me` contract. Each one lands as
-`slice/u2.<n>` with the usual CI gates.
+Each lands as `slice/u2.<n>` (Sonnet implements and hands back uncommitted; Opus reviews, commits, merges
+on green CI). At most 2 in flight. U2.1-U2.3 run in order; after U2.3, the rest can pair up.
 
-### Slice U2.1 — Store game summaries (Sonnet)
+### U2.1 — XP rules + simulation (Sonnet, pure, no DB)
 
-- Migration `004_progression.sql`:
-  - `games`: id (the game id), type, mode, map, started/ended, duration, winner, `source`
-    (`server` | `singleplayer`).
-  - `game_players`: game id, user id, placement, won, time alive, left early, and feat stats.
-  - `user_progress`: user id, prestige (0), level, xp in level, lifetime xp, `last_xp_day`.
-  - `xp_awards`: game id, user id, rules version, breakdown JSON, before/after position. Unique on
-    (game, user).
-- `POST /game/:id` (API key) parses the record, stores the summary and skips players with no
-  account. It's idempotent: a repeated POST for the same game changes nothing.
-- `GET /game/:id` stays as it is (no replays).
-- Tests: idempotency, unknown `persistentID`, a malformed record, and the real-DB job.
+- `packages/api/src/xp/rules.ts`: curve, `scoreGame(record, player, ctx) -> XpBreakdown`, `applyXp(progress, total)`
+  with `levelsReached`. No DB, no I/O.
+- `tests/api/XpRules.test.ts`: unit cases (leave-early forfeit, team win, permille, caps, level-up over
+  several levels, level 100 stops) plus the **simulation**: typical game mixes (win rates 10-40%, 8-25 min
+  games, ~1 game in 4 first-of-day) assert 250-350 games to level 100. Print the table.
+- **Gate:** Boss OKs the numbers from the printed table before U2.2 merges.
 
-### Slice U2.2 — XP rules (Sonnet)
+### U2.2 — Migration 007 + scoring (Sonnet)
 
-- `packages/api/src/xp/`: a pure module (curve, rules, breakdown), with no DB access and fully
-  unit-tested. It returns `XpBreakdown`-shaped output.
-- Awarding runs in the same transaction as U2.1's insert, so XP is applied exactly once per (game,
-  user), and level-ups fill `levelsReached`.
+- `packages/api/migrations/007_progression.sql` (one migration for the whole update):
+  `games`, `game_players` (placement, won, time alive, left early, feat flags, mode bucket
+  `singleplayer|public|private`), `user_progress` (prestige 0, level, xp_in_level, lifetime_xp, last_xp_day),
+  `xp_awards` (unique game+user, rules version, breakdown jsonb, before/after), and on `users`:
+  `flag text`, `username_changed_at timestamptz`.
+- `POST /game/:id` (API key): parse `GameEndInfo`, insert summary, score and award in **one transaction**,
+  idempotent on game id. Verify first how `persistentID` maps to `users.id` (UUID vs base64url).
+- `/archive_singleplayer_game`: require Bearer JWT; credit only the caller whose `sub` matches the record's
+  player; plausibility checks (duration, turns, unused game id); 500 permille.
+- Tests: idempotency, unknown player, malformed record, disputed stats, forged singleplayer `sub`, real-DB
+  run (`HT_TEST_DB=1`). Update `Routes.test.ts:265` expectations.
 
-### Slice U2.3 — Progression endpoints (Sonnet)
+### U2.3 — Read endpoints (Sonnet)
 
-- `/users/@me` gets `progress` (`ProgressSchema`). Check it against the strict parse.
-- `GET /users/@me/xp/:gameId`: 404 until processed, then eligible or ineligible.
-- `GET /public/player/:publicId/progress` and `GET /public/progression/config` (curve only, with no
-  caps, plutonium or flares).
-- `POST /users/@me/prestige` stays unmounted (404).
+- `/users/@me` `player.progress` (`ProgressSchema`), checked against the strict client parse.
+- `GET /users/@me/xp/:gameId`, `GET /public/progression/config` (curve only, no `formula`/`xp`/rewards),
+  `GET /public/player/:id/progress`, `GET /public/player/:id` + `GET /player/:id` (`PlayerProfileSchema`:
+  createdAt, stats per mode bucket, flag), `GET /public/player/:id/games` returning `{results: [], nextCursor: null}`.
+- Prestige stays unmounted. Tests parse every response with the shared schema.
 
-### Slice U2.4 — Singleplayer XP (Sonnet)
+### U2.4 — Turn the UI on (Sonnet, screenshots)
 
-- `/archive_singleplayer_game` requires the caller's Bearer JWT. It only credits the caller, and
-  only when the record's player `persistentID` matches the JWT `sub`.
-- Sanity checks: the duration and turn count must be plausible and the game id unused. Then it
-  scores at `gamePermille` 500.
+- `Features.ts`: add `prestige` and `achievements` (false) and move those gates (including SOLO achievements);
+  turn on `xp` and `profile`. Hide the reward track in the Progression tab.
+- Profile links: leaderboard row (exists), lobby roster (`LobbyPlayerView`) and win-screen player names. Smallest
+  edit that opens `player-profile-modal` via `whenModalLoaded`.
+- `en.json`: only our ineligible reasons. Update `FORK_CHANGES.md` and `tests/client/FeaturesHidden.test.ts`.
+- Screenshots of every gated spot next to upstream (`run-openfront` skill).
 
-### Slice U2.5 — Turn the UI back on (Sonnet, screenshots)
+### U2.5 — Leaderboard (Sonnet, screenshots)
 
-- Split `Features.xp` so levels can be on while these stay off: add `prestige` and `achievements`
-  switches. The SOLO achievements toggle moves under `achievements`. Record the change in
-  `FORK_CHANGES.md`.
-- Turn `xp` on. Then check every gated spot: badges, win-screen panel, nav menu, account level card
-  (with no prestige button).
-- Follow the strict UI rules: screenshot each screen next to its upstream look. The only new
-  strings are for our ineligible reasons (`too_short`, `no_account`), in `en.json`.
+- API: `GET /public/leaderboard/players?sort=xp|wins|games|winrate&page=` (win rate needs 10+ games), rows with
+  level fields and flag. Schema in a new fork-only file under `packages/shared/src/`.
+- Client: four tabs in `LeaderboardModal` reusing `LeaderboardPlayerList`; ranked/clan/tribe tabs stay hidden.
+  `Features.leaderboard` on. Record in `FORK_CHANGES.md`.
 
-### Slice U2.6 — XP leaderboard (Sonnet, screenshots)
+### U2.6 — Username change (Sonnet)
 
-- API: `GET /public/leaderboard/xp`, with a page of the top players by lifetime XP.
-- Shared: a new fork-only schema file (don't change `PlayerLeaderboardEntrySchema`, whose `elo` is
-  required).
-- Client: `LeaderboardModal` gets one "Levels" tab that reuses `LeaderboardPlayerList`, with the
-  level in place of Elo. The ranked, clan and tribe tabs stay hidden. Turn `Features.leaderboard`
-  back on with only that tab. Keep the edit small and record it in `FORK_CHANGES.md`.
+- `PUT /users/@me/username` (`PutUsernameResponseSchema`): censor + uniqueness, 7-day limit via
+  `username_changed_at`, old name freed at once, rate limited, never sent to GATE. Root bypasses the limit.
+- New tokens carry the new name (check refresh path and game-server join). `Features.usernameChange` on.
 
-### Slice U2.7 — Legal and docs (Opus writes the legal text)
+### U2.7 — Profile flag (Sonnet)
 
-- Privacy policy: we now store per-game results (placement, wins, time played) tied to the account.
-  They're deleted along with the account.
-- `CLAUDE.md` decisions table: "Game records" changes to "Per-game summaries stored; no replays".
-- `plans/README.md`: mark Update 2 in progress, then done.
+- `PUT /users/@me/flag` (validated against the known flag list). Client: when signed in, `UserSettings.setFlag`
+  also saves it; on load the account flag wins. Shown on profile and leaderboard rows.
 
-### Deploy
+### U2.8 — Admin XP (Sonnet)
 
-- `./ht-deploy.sh` runs migration 004. Back up the DB first. The deploy needs the owner's go.
+- `GET /admin/users/:username/progress`, `POST /admin/users/:username/progress` (`set` lifetime XP or `reset`),
+  root only, each change via `store.logAdmin()`. A card next to `AdminResetCard` reusing its markup.
 
----
+### U2.9 — Legal, docs, release record (Opus)
 
-## Open questions (before U2.2 starts)
+- `resources/public/privacy-policy.html:179` and ToS: we store per-game results and the profile flag, public on
+  the profile and leaderboard, deleted with the account (check `DELETE /users/@me` cascades). Boss reviews.
+- `CLAUDE.md` decisions table ("Game records" -> per-game summaries), `plans/README.md`, `resources/changelog.md`,
+  release record in `docs/Deploy.md`, vault, then the company site redeploy.
 
-1. **Feats:** which ones? Proposed: most territory at the end, eliminated another player, launched a
-   nuke that landed, and survived to the end. 5 XP each, up to 20 in total.
-2. **Private-lobby farming:** two friends in a 2-player private lobby earn full XP. Proposed: a
-   private game with fewer than 3 humans scores at 500 permille, like singleplayer. Or leave it
-   alone and trust the group?
-3. **Profile page:** you said "xp/profile" but didn't pick the profile page for this update. Is it
-   meant for a follow-up (Update 2b: stats tab, game history, clicking a name), or should it come in
-   now?
-4. **Leaderboard visibility:** everyone with an account is listed, including `thestrongest`. Should
-   there be an opt-out?
+### Release
+
+- Rehearse on a throwaway stack: back up, run migration 007 on a copy of the prod schema, score a game.
+- Boss runs `./ht-backup.sh` then `./ht-deploy.sh` (exact commands + rollback sha in the release record).
+- Kill switch: `Features.xp`/`profile`/`leaderboard` back to false hides the UI; scoring keeps writing harmlessly.
