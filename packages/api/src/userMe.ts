@@ -1,4 +1,5 @@
 import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
+import { toProgress, type ProgressState } from "./xp/rules";
 
 export interface UserRow {
   id: string;
@@ -23,7 +24,15 @@ export interface UserRow {
  * presence would unlock the free in-game name box and stop the game server
  * forcing the account name; the username panel works without it.
  */
-export function buildUserMe(row: UserRow): UserMeResponse {
+export function buildUserMe(
+  row: UserRow,
+  progress: ProgressState = {
+    prestige: 0,
+    level: 1,
+    xpInLevel: 0,
+    lifetimeXp: 0,
+  },
+): UserMeResponse {
   return {
     user: { email: row.email },
     steamLicence: false,
@@ -45,6 +54,7 @@ export function buildUserMe(row: UserRow): UserMeResponse {
       achievements: { singleplayerMap: [], player: [] },
       friends: [],
       subscription: null,
+      progress: toProgress(progress),
     },
   };
 }

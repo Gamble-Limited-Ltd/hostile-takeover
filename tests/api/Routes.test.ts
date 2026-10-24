@@ -273,11 +273,10 @@ describe("every Stage 1.4 route, in process", () => {
     ],
     ["POST", "/matchmaking/checkin", keyed, "{}", 404],
     ["POST", "/users/@me/lobby_queue", keyed, "{}", 404],
-    ["GET", "/public/player/abc/progress", {}, "", 404],
-    ["GET", "/public/progression/config", {}, "", 404],
+    ["GET", "/public/progression/config", {}, "", 200],
     ["GET", "/public/clans/leaderboard", {}, "", 404],
     ["GET", "/friends", {}, "", 404],
-    ["GET", "/users/@me/xp/abc12345", {}, "", 404],
+    ["GET", "/users/@me/xp/abc12345", {}, "", 401],
     ["POST", "/users/@me/prestige", {}, "", 404],
   ];
   test.each(table)(

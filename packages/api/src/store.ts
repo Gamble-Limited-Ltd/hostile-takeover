@@ -114,6 +114,12 @@ export interface Store {
     username: string,
     opts: { cooldownMs: number | null },
   ): Promise<RenameResult>;
+  /** The account's progress, level 1 / 0 XP when it has no row yet. */
+  getProgress(userId: string): Promise<ProgressState>;
+  /** The caller's stored award for the first of `gameIds` that has one. */
+  getXpAward(gameIds: string[], userId: string): Promise<StoredAward | null>;
+  /** Public profile data; null for an unknown or disabled account. */
+  getProfile(publicId: string): Promise<ProfileData | null>;
 
   logAdmin(entry: {
     actor: string;
@@ -161,6 +167,25 @@ export interface AwardOutcome {
   after: ProgressState;
   levelsReached: number[];
   lastXpDay: string | null;
+}
+
+export interface StoredAward {
+  gameId: string;
+  /** The stored XpResult: a breakdown, or an ineligible reason. */
+  result: XpResult;
+  before: ProgressState;
+  after: ProgressState;
+  levelsReached: number[];
+}
+
+export interface ProfileData {
+  userId: string;
+  username: string;
+  createdAt: Date;
+  flag: string | null;
+  progress: ProgressState;
+  /** Wins and games per (mode bucket, game mode). */
+  buckets: { bucket: string; gameMode: string; games: number; wins: number }[];
 }
 
 export interface Credentials {
@@ -459,6 +484,64 @@ export function pgStore(db: SqlClient): Store {
       } finally {
         conn?.release();
       }
+    },
+    async getProgress(userId) {
+      const r = await db.query(
+        "SELECT level, xp_in_level, lifetime_xp FROM user_progress WHERE user_id = $1",
+        [userId],
+      );
+      const row = r.rows[0];
+      return {
+        prestige: 0,
+        level: row?.level ?? 1,
+        xpInLevel: row?.xp_in_level ?? 0,
+        lifetimeXp: Number(row?.lifetime_xp ?? 0),
+      };
+    },
+    async getXpAward(gameIds, userId) {
+      const r = await db.query(
+        `SELECT game_id, breakdown, before, after, levels_reached FROM xp_awards
+         WHERE user_id = $1 AND game_id = ANY($2::text[]) LIMIT 1`,
+        [userId, gameIds],
+      );
+      const row = r.rows[0];
+      if (!row) return null;
+      return {
+        gameId: row.game_id,
+        result: row.breakdown,
+        before: row.before,
+        after: row.after,
+        levelsReached: row.levels_reached,
+      };
+    },
+    async getProfile(publicId) {
+      const u = await db.query(
+        `SELECT id, username::text AS username, created_at, flag FROM users
+         WHERE public_id = $1 AND disabled_at IS NULL`,
+        [publicId],
+      );
+      const user = u.rows[0];
+      if (!user) return null;
+      const b = await db.query(
+        `SELECT g.mode_bucket, g.game_mode, count(*)::int AS games,
+                count(*) FILTER (WHERE gp.won)::int AS wins
+         FROM game_players gp JOIN games g ON g.id = gp.game_id
+         WHERE gp.user_id = $1 GROUP BY g.mode_bucket, g.game_mode`,
+        [user.id],
+      );
+      return {
+        userId: user.id,
+        username: user.username,
+        createdAt: user.created_at,
+        flag: user.flag,
+        progress: await this.getProgress(user.id),
+        buckets: b.rows.map((r) => ({
+          bucket: r.mode_bucket,
+          gameMode: r.game_mode,
+          games: r.games,
+          wins: r.wins,
+        })),
+      };
     },
     async createReset(r) {
       await db.query(

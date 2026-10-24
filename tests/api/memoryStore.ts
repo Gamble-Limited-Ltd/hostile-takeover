@@ -160,6 +160,57 @@ export function memoryStore(
       }
       return true;
     },
+    getProgress: async (id) =>
+      progress.get(id)?.state ?? {
+        prestige: 0,
+        level: 1,
+        xpInLevel: 0,
+        lifetimeXp: 0,
+      },
+    getXpAward: async (gameIds, userId) => {
+      const a = awards.find(
+        (x) => x.userId === userId && gameIds.includes(x.gameId),
+      );
+      return a
+        ? {
+            gameId: a.gameId,
+            result: a.result,
+            before: a.before,
+            after: a.after,
+            levelsReached: a.levelsReached,
+          }
+        : null;
+    },
+    getProfile: async (publicId) => {
+      const u = users.find((x) => x.public_id === publicId);
+      if (!u || u.disabled_at) return null;
+      const buckets = new Map<
+        string,
+        { bucket: string; gameMode: string; games: number; wins: number }
+      >();
+      for (const g of games) {
+        const p = g.players.find((x) => x.userId === u.id);
+        if (!p) continue;
+        const key = `${g.modeBucket}|${g.gameMode}`;
+        const b = buckets.get(key) ?? {
+          bucket: g.modeBucket,
+          gameMode: g.gameMode,
+          games: 0,
+          wins: 0,
+        };
+        b.games++;
+        if (p.won) b.wins++;
+        buckets.set(key, b);
+      }
+      return {
+        userId: u.id,
+        username: u.username,
+        createdAt: new Date("2026-01-02T03:04:05.000Z"),
+        flag: (u as { flag?: string | null }).flag ?? null,
+        progress: await store.getProgress(u.id),
+        buckets: [...buckets.values()],
+      };
+    },
     createReset: async (r) => {
       resets.push({
         user_id: r.userId,
