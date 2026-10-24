@@ -1,4 +1,5 @@
 import type { UserRow } from "./userMe";
+import type { ProgressState, XpResult } from "./xp/rules";
 
 export interface SessionRow {
   id: string;
@@ -92,12 +93,64 @@ export interface Store {
     idToken: string | null;
   }): Promise<CreateGateUserResult>;
 
+  /**
+   * Stores a finished game, its account players and their XP in ONE
+   * transaction. Idempotent: a known game id changes nothing and returns
+   * false. `award` runs per account player (ids with no account are dropped)
+   * with that player's progress row, locked, and returns what to store.
+   */
+  recordGame(
+    game: GameRow,
+    players: GamePlayerRow[],
+    award: (p: GamePlayerRow, progress: ProgressRow) => AwardOutcome,
+  ): Promise<boolean>;
+
   logAdmin(entry: {
     actor: string;
     action: string;
     target: string | null;
     detail?: Record<string, unknown>;
   }): Promise<void>;
+}
+
+export interface GameRow {
+  /** 'sp:<gameID>' for singleplayer, the game id otherwise. */
+  id: string;
+  source: "server" | "singleplayer";
+  modeBucket: "singleplayer" | "public" | "private";
+  gameType: string;
+  gameMode: string;
+  map: string;
+  startedAt: Date;
+  endedAt: Date;
+  durationMs: number;
+  winner: unknown;
+}
+
+export interface GamePlayerRow {
+  userId: string;
+  placement: number;
+  won: boolean;
+  timeAliveMs: number;
+  leftEarly: boolean;
+  mostTerritory: boolean;
+  eliminatedPlayer: boolean;
+  survived: boolean;
+}
+
+export interface ProgressRow {
+  state: ProgressState;
+  /** America/Chicago calendar day (YYYY-MM-DD) of the last eligible award. */
+  lastXpDay: string | null;
+}
+
+export interface AwardOutcome {
+  result: XpResult;
+  rulesVersion: number;
+  before: ProgressState;
+  after: ProgressState;
+  levelsReached: number[];
+  lastXpDay: string | null;
 }
 
 export interface Credentials {
@@ -145,6 +198,11 @@ export interface SqlClient {
     sql: string,
     params?: unknown[],
   ): Promise<{ rows: Record<string, any>[] }>;
+  /** Present on a pool: a transaction needs one connection. */
+  connect?(): Promise<{
+    query: SqlClient["query"];
+    release(): void;
+  }>;
 }
 
 const USER_COLS =
@@ -278,6 +336,114 @@ export function pgStore(db: SqlClient): Store {
     },
     async deleteUser(userId) {
       await db.query("DELETE FROM users WHERE id = $1", [userId]);
+    },
+    async recordGame(game, players, award) {
+      const conn = db.connect ? await db.connect() : null;
+      const q: SqlClient = conn ?? db;
+      try {
+        await q.query("BEGIN");
+        const ins = await q.query(
+          `INSERT INTO games (id, source, mode_bucket, game_type, game_mode, map, started_at, ended_at, duration_ms, winner)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+           ON CONFLICT (id) DO NOTHING RETURNING id`,
+          [
+            game.id,
+            game.source,
+            game.modeBucket,
+            game.gameType,
+            game.gameMode,
+            game.map,
+            game.startedAt,
+            game.endedAt,
+            game.durationMs,
+            JSON.stringify(game.winner ?? null),
+          ],
+        );
+        if (ins.rows.length === 0) {
+          await q.query("ROLLBACK");
+          return false;
+        }
+        const known = await q.query(
+          "SELECT id FROM users WHERE id = ANY($1::uuid[])",
+          [players.map((p) => p.userId)],
+        );
+        const ids = new Set(known.rows.map((r) => r.id as string));
+        const seen = new Set<string>();
+        // Sorted by user id so two games finishing together lock rows in one order.
+        const mine = players
+          .filter(
+            (p) =>
+              ids.has(p.userId) && !seen.has(p.userId) && seen.add(p.userId),
+          )
+          .sort((a, b) => (a.userId < b.userId ? -1 : 1));
+        for (const p of mine) {
+          await q.query(
+            `INSERT INTO game_players (game_id, user_id, placement, won, time_alive_ms, left_early, most_territory, eliminated_player, survived)
+             VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)`,
+            [
+              game.id,
+              p.userId,
+              p.placement,
+              p.won,
+              p.timeAliveMs,
+              p.leftEarly,
+              p.mostTerritory,
+              p.eliminatedPlayer,
+              p.survived,
+            ],
+          );
+          await q.query(
+            "INSERT INTO user_progress (user_id) VALUES ($1) ON CONFLICT DO NOTHING",
+            [p.userId],
+          );
+          const cur = (
+            await q.query(
+              `SELECT level, xp_in_level, lifetime_xp, to_char(last_xp_day, 'YYYY-MM-DD') AS last_xp_day
+               FROM user_progress WHERE user_id = $1 FOR UPDATE`,
+              [p.userId],
+            )
+          ).rows[0];
+          const o = award(p, {
+            state: {
+              prestige: 0,
+              level: cur.level,
+              xpInLevel: cur.xp_in_level,
+              lifetimeXp: Number(cur.lifetime_xp),
+            },
+            lastXpDay: cur.last_xp_day,
+          });
+          await q.query(
+            `UPDATE user_progress SET level = $2, xp_in_level = $3, lifetime_xp = $4, last_xp_day = $5 WHERE user_id = $1`,
+            [
+              p.userId,
+              o.after.level,
+              o.after.xpInLevel,
+              o.after.lifetimeXp,
+              o.lastXpDay,
+            ],
+          );
+          await q.query(
+            `INSERT INTO xp_awards (game_id, user_id, rules_version, breakdown, before, after, levels_reached)
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [
+              game.id,
+              p.userId,
+              o.rulesVersion,
+              JSON.stringify(o.result),
+              JSON.stringify(o.before),
+              JSON.stringify(o.after),
+              o.levelsReached,
+            ],
+          );
+        }
+        await q.query("COMMIT");
+        return true;
+      } catch (e) {
+        await q.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        conn?.release();
+      }
     },
     async createReset(r) {
       await db.query(

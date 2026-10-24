@@ -1,6 +1,10 @@
 import { randomUUID } from "node:crypto";
 import type {
+  AwardOutcome,
   Credentials,
+  GamePlayerRow,
+  GameRow,
+  ProgressRow,
   GatePendingRow,
   SessionRow,
   Store,
@@ -47,6 +51,9 @@ export function memoryStore(
   const gateTokens = new Map<string, string>();
   const pending: (GatePendingRow & { tokenHash: string; expiresAt: Date })[] =
     [];
+  const games: (GameRow & { players: GamePlayerRow[] })[] = [];
+  const progress = new Map<string, ProgressRow>();
+  const awards: (AwardOutcome & { gameId: string; userId: string })[] = [];
   const lower = (s: string) => s.toLowerCase();
   const emailFree = (email: string, exceptId: string) =>
     !users.some((u) => u.id !== exceptId && lower(u.email) === lower(email));
@@ -125,6 +132,33 @@ export function memoryStore(
       );
       for (let i = sessions.length - 1; i >= 0; i--)
         if (sessions[i].user_id === id) sessions.splice(i, 1);
+      // What ON DELETE CASCADE does in Postgres.
+      progress.delete(id);
+      for (const g of games)
+        g.players = g.players.filter((p) => p.userId !== id);
+      for (let i = awards.length - 1; i >= 0; i--)
+        if (awards[i].userId === id) awards.splice(i, 1);
+    },
+    recordGame: async (game, players, award) => {
+      if (games.some((g) => g.id === game.id)) return false;
+      const seen = new Set<string>();
+      const mine = players.filter(
+        (p) =>
+          users.some((u) => u.id === p.userId) &&
+          !seen.has(p.userId) &&
+          seen.add(p.userId),
+      );
+      games.push({ ...game, players: mine });
+      for (const p of mine) {
+        const cur = progress.get(p.userId) ?? {
+          state: { prestige: 0, level: 1, xpInLevel: 0, lifetimeXp: 0 },
+          lastXpDay: null,
+        };
+        const o = award(p, cur);
+        progress.set(p.userId, { state: o.after, lastXpDay: o.lastXpDay });
+        awards.push({ ...o, gameId: game.id, userId: p.userId });
+      }
+      return true;
     },
     createReset: async (r) => {
       resets.push({
@@ -230,5 +264,17 @@ export function memoryStore(
       audit.push(e);
     },
   };
-  return { store, sessions, resets, audit, users, hashes, flows, pending };
+  return {
+    store,
+    sessions,
+    resets,
+    audit,
+    users,
+    hashes,
+    flows,
+    pending,
+    games,
+    progress,
+    awards,
+  };
 }

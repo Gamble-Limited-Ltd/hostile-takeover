@@ -135,6 +135,7 @@ on green CI). At most 2 in flight. U2.1-U2.3 run in order; after U2.3, the rest 
   `GET /public/player/:id/progress`, `GET /public/player/:id` + `GET /player/:id` (`PlayerProfileSchema`:
   createdAt, stats per mode bucket, flag), `GET /public/player/:id/games` returning `{results: [], nextCursor: null}`.
 - Prestige stays unmounted. Tests parse every response with the shared schema.
+- `GET /users/@me/xp/:gameId` looks up both the plain id and `sp:<id>` (U2.2 stores singleplayer games as `sp:<gameID>`).
 
 ### U2.4 — Turn the UI on (Sonnet, screenshots)
 

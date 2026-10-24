@@ -1,3 +1,4 @@
+import { PartialAnalyticsRecordSchema } from "@openfront/shared/WireSchemas";
 import { createHash } from "crypto";
 import express from "express";
 import { z } from "zod";
@@ -5,6 +6,9 @@ import newsItems from "../../../resources/news.json";
 import { requireApiKey } from "./apiKey";
 import { censorPlayer } from "./censor";
 import { isLoopbackHost, type ApiEnv } from "./env";
+import { ingestGame } from "./progression";
+import type { Store } from "./store";
+import type { UserRow } from "./userMe";
 
 const JoinVerifyBodySchema = z.object({
   username: z.string().max(200),
@@ -17,8 +21,44 @@ const JoinVerifyBodySchema = z.object({
  * schema it parses. Anything not mounted here (matchmaking, clans, friends,
  * XP, public profiles, lobby queue) falls through to the 404 below.
  */
-export function mountGameRoutes(app: express.Express, env: ApiEnv): void {
+export function mountGameRoutes(
+  app: express.Express,
+  env: ApiEnv,
+  d: {
+    store: Store;
+    authenticate(
+      req: express.Request,
+    ): Promise<{ user: UserRow; role: unknown } | null>;
+  },
+): void {
   const serverOnly = requireApiKey(env.apiKey);
+
+  // Records carry every turn, so the limit is far above express's 100 kb.
+  // express.json also inflates the singleplayer client's gzip body.
+  const parseJson = express.json({ limit: "64mb" });
+  /** The parsed body, or undefined after answering 4xx. */
+  const readBody = (req: express.Request, res: express.Response) =>
+    new Promise<unknown>((resolve) =>
+      parseJson(req, res, (err) => {
+        if (err) {
+          res
+            .status((err as { status?: number }).status ?? 400)
+            .json({ error: "bad_request" });
+          return resolve(undefined);
+        }
+        resolve(req.body ?? null);
+      }),
+    );
+  const readInfo = async (req: express.Request, res: express.Response) => {
+    const body = await readBody(req, res);
+    if (body === undefined) return null;
+    const parsed = PartialAnalyticsRecordSchema.safeParse(body);
+    if (!parsed.success) {
+      res.status(400).json({ error: "bad_request" });
+      return null;
+    }
+    return parsed.data.info;
+  };
 
   // Server: src/server/JoinVerify.ts verifyJoin(), parsed by its local
   // JoinVerifyVerdictSchema. There is no Turnstile here, so every join is
@@ -111,21 +151,71 @@ export function mountGameRoutes(app: express.Express, env: ApiEnv): void {
     res.json({ state: "open" });
   });
 
-  // We keep no game records. POST: server src/server/Archive.ts archive(),
-  // which only checks response.ok. GET: server Archive.ts readGameRecord()
-  // and GamePreviewRoute.ts (both treat non-ok as "no record"), and client
-  // src/client/JoinLobbyModal.ts checkArchivedGame() (404 -> "not_found")
-  // plus src/client/replay/ReplayRecord.ts. GET is answered by the 404 below.
-  app.post("/game/:id", serverOnly, (req, res) => {
-    req.resume();
-    res.status(204).end();
+  // Game records are not kept (no replays), only a summary and the XP.
+  // POST: server src/server/Archive.ts archive(), which only checks
+  // response.ok (a 4xx counts as final, a 409 after a retry as archived).
+  // GET: server Archive.ts readGameRecord() and GamePreviewRoute.ts (both
+  // treat non-ok as "no record"), and client src/client/JoinLobbyModal.ts
+  // checkArchivedGame() (404 -> "not_found") plus
+  // src/client/replay/ReplayRecord.ts. GET is answered by the 404 below.
+  // A repeated POST changes nothing and is still a 204.
+  app.post("/game/:id", serverOnly, async (req, res, next) => {
+    try {
+      const info = await readInfo(req, res);
+      if (!info) return;
+      if (info.gameID !== req.params.id) {
+        return void res.status(400).json({ error: "bad_request" });
+      }
+      await ingestGame(d.store, info, "server");
+      res.status(204).end();
+    } catch (e) {
+      next(e);
+    }
   });
 
-  // Client: src/client/LocalServer.ts (sends a gzip body with a bearer token,
-  // only checks response.ok). Accepted and discarded without reading.
-  app.post("/archive_singleplayer_game", (req, res) => {
-    req.resume();
-    res.status(204).end();
+  // Client: src/client/LocalServer.ts (gzip body, bearer token, only checks
+  // response.ok). Auth comes before the body is read. Only the caller is
+  // credited, and only when the record's single player is the caller.
+  app.post("/archive_singleplayer_game", async (req, res, next) => {
+    try {
+      const who = await d.authenticate(req);
+      if (!who) return void res.status(401).json({ error: "unauthorized" });
+      const body = await readBody(req, res);
+      if (body === undefined) return;
+      const parsed = PartialAnalyticsRecordSchema.safeParse(body);
+      const info = parsed.success ? parsed.data.info : null;
+      const turns = (body as { turns?: unknown }).turns;
+      const player = info?.players[0];
+      const seconds = info ? info.duration : 0;
+      if (
+        !info ||
+        info.config.gameType !== "Singleplayer" ||
+        info.players.length !== 1 ||
+        player?.persistentID !== who.user.id ||
+        !Array.isArray(turns) ||
+        turns.length > info.num_turns ||
+        // 2 min to 6 h, start/end agreeing with duration and not in the future
+        seconds < 120 ||
+        seconds > 6 * 3600 ||
+        Math.abs(info.end - info.start - seconds * 1000) > 2000 ||
+        info.end > Date.now() + 60_000 ||
+        // turns are 100 ms: allow a wide band around 10 per second
+        info.num_turns < seconds * 3 ||
+        info.num_turns > seconds * 30
+      ) {
+        return void res.status(400).json({ error: "bad_request" });
+      }
+      const stored = await ingestGame(
+        d.store,
+        info,
+        "singleplayer",
+        who.user.id,
+      );
+      if (!stored) return void res.status(409).json({ error: "duplicate" });
+      res.status(204).end();
+    } catch (e) {
+      next(e);
+    }
   });
 
   // Everything else is unimplemented in v1: ranked (/matchmaking/*), the lobby
