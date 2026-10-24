@@ -4,6 +4,7 @@ import { mountAccountRoutes } from "./accountRoutes";
 import { mountAdminXpRoutes } from "./adminXpRoutes";
 import { sameSecret } from "./apiKey";
 import type { ApiEnv } from "./env";
+import { mountFlagRoutes } from "./flagRoutes";
 import { mountGameRoutes } from "./gameRoutes";
 import { createGate, type GateClient } from "./gate";
 import { mountGateRoutes } from "./gateRoutes";
@@ -407,6 +408,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
 
   mountProgressionRoutes(app, { store, authenticate });
   mountAdminXpRoutes(app, { store, authenticate });
+  mountFlagRoutes(app, { store, authenticate });
   mountGameRoutes(app, env, { store, authenticate });
 
   app.use(

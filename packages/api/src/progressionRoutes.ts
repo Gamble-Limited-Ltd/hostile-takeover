@@ -133,6 +133,8 @@ export function mountProgressionRoutes(
     res.json({
       createdAt: p.createdAt.toISOString(),
       username: p.username,
+      // Not in PlayerProfileSchema (zod strips it); read the raw response.
+      flag: p.flag,
       stats,
       clans: [],
       displayClanTag: null,

@@ -342,6 +342,13 @@ export function memoryStore(
       if (opts.cooldownMs !== null) u.username_changed_at = new Date();
       return { ok: true, user: u };
     },
+    getFlag: async (id) =>
+      (users.find((x) => x.id === id) as { flag?: string | null } | undefined)
+        ?.flag ?? null,
+    setFlag: async (id, flag) => {
+      const u = users.find((x) => x.id === id);
+      if (u) (u as { flag?: string | null }).flag = flag;
+    },
     logAdmin: async (e) => {
       audit.push(e);
     },

@@ -12,6 +12,7 @@ import type { TemplateResult } from "lit";
 import { html, nothing } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import Countries from "resources/countries.json" with { type: "json" };
+import { saveAccountFlag } from "./AccountFlag";
 import { getUserMe } from "./Api";
 import { userAuth } from "./Auth";
 import "./components/baseComponents/Button";
@@ -611,6 +612,7 @@ export class InventoryModal extends BaseModal {
             this.userSettings.setSelectedPatternName(undefined);
           } else if (category === "flags") {
             this.userSettings.clearFlag(true);
+            saveAccountFlag(null);
           } else {
             this.userSettings.setSelectedCrownName(undefined);
           }
@@ -819,6 +821,7 @@ export class InventoryModal extends BaseModal {
 
   private selectFlag(resolved: ResolvedCosmetic) {
     this.userSettings.setFlag(resolved.key);
+    saveAccountFlag(resolved.key);
     this.showSelectedPopup(resolved);
   }
 
