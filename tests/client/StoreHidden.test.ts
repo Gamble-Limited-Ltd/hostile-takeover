@@ -36,7 +36,8 @@ const isHidden = (el: Element | null): boolean =>
 describe("Features", () => {
   it("is frozen and defaults every switch to off", () => {
     expect(Object.isFrozen(Features)).toBe(true);
-    for (const value of Object.values(Features)) expect(value).toBe(false);
+    for (const [key, value] of Object.entries(Features))
+      expect(value).toBe(key === "usernameChange");
     expect(Features.store).toBe(false);
   });
 });

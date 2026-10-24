@@ -422,7 +422,7 @@ export class NavAccountMenu extends LitElement {
       },
     );
 
-    // Hostile Takeover: username changes are out of v1 (Features.usernameChange).
+    // Hostile Takeover: username changes (Features.usernameChange).
     if (Features.usernameChange) {
       items.push({
         key: "change-username",

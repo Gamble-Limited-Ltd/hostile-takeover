@@ -19,7 +19,7 @@ export class ChangeUsernameModal extends ProfileMenuModal {
     const player = userMe.player;
     // Older backends don't return the username fields; the panel renders
     // nothing for them, so say why instead of showing an empty modal.
-    if (player.usernameStatus === undefined) {
+    if (player.username === undefined) {
       return html`
         <div class="p-6">
           <div

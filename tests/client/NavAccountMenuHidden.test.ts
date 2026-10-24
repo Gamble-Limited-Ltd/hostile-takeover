@@ -62,7 +62,12 @@ describe("nav-account-menu with hidden features", () => {
     const keys = Array.from(document.querySelectorAll("[data-menu-item]")).map(
       (n) => n.getAttribute("data-menu-item"),
     );
-    expect(keys).toEqual(["view-account", "account-settings", "log-out"]);
+    expect(keys).toEqual([
+      "view-account",
+      "account-settings",
+      "change-username",
+      "log-out",
+    ]);
     expect(el.querySelector("level-badge")).toBeNull();
   });
 });

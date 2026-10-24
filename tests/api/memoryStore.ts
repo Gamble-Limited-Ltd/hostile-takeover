@@ -320,6 +320,28 @@ export function memoryStore(
       if (n.idToken) gateTokens.set(user.id, n.idToken);
       return { ok: true, user };
     },
+    renameUser: async (id, username, opts) => {
+      const u = users.find((x) => x.id === id);
+      if (!u) return { ok: false, taken: false, retryAt: new Date() };
+      const last = u.username_changed_at?.getTime();
+      if (
+        opts.cooldownMs !== null &&
+        last !== undefined &&
+        last + opts.cooldownMs > Date.now()
+      )
+        return {
+          ok: false,
+          taken: false,
+          retryAt: new Date(last + opts.cooldownMs),
+        };
+      if (
+        users.some((x) => x.id !== id && lower(x.username) === lower(username))
+      )
+        return { ok: false, taken: true };
+      u.username = username;
+      if (opts.cooldownMs !== null) u.username_changed_at = new Date();
+      return { ok: true, user: u };
+    },
     logAdmin: async (e) => {
       audit.push(e);
     },
