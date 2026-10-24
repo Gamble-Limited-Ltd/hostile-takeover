@@ -3,12 +3,22 @@ import {
   PlayerLeaderboardEntry,
   RankedLeaderboardEntry,
 } from "@openfront/shared/ApiSchemas";
+import { assetUrl } from "@openfront/shared/AssetUrls";
 import { html, LitElement, nothing, PropertyValues } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { fetchPlayerLeaderboard, getUserMe } from "../../Api";
+import {
+  fetchHtLeaderboard,
+  HT_LEADERBOARD_TABS,
+  htLeaderboardValue,
+} from "../../HtLeaderboardApi";
 import { loadModal } from "../../LazyModals";
 import { translateText } from "../../Utils";
-import { isPrestigedOrLegend, levelBadgeSlot } from "../LevelBadgeSlot";
+import {
+  hasLevel,
+  isPrestigedOrLegend,
+  levelBadgeSlot,
+} from "../LevelBadgeSlot";
 import "../PlayerName";
 
 /** One ranked ladder's loaded rows. */
@@ -59,6 +69,12 @@ export class LeaderboardPlayerList extends LitElement {
    * their own tabs.
    */
   @property({ attribute: false }) rankedType: PlayerLadder = RankedType.OneVOne;
+  /**
+   * Hostile Takeover: a key of HT_LEADERBOARD_TABS. Set, the list shows our
+   * XP / wins / games / win rate board (one ladder slot, our endpoint, the
+   * value column in place of ELO) instead of the ranked ladders.
+   */
+  @property({ attribute: false }) htTab: string | null = null;
 
   @state() private ladders: Record<PlayerLadder, LadderState> = emptyLadders();
   @state() private showStickyUser = false;
@@ -85,6 +101,26 @@ export class LeaderboardPlayerList extends LitElement {
 
   private get playerHasMore(): boolean {
     return this.ladders[this.rankedType].hasMore;
+  }
+
+  private get htConfig() {
+    return this.htTab ? HT_LEADERBOARD_TABS[this.htTab] : undefined;
+  }
+
+  // Ranked boards badge only prestiged players and Legends; ours badges every level.
+  private showBadge(row: PlayerLeaderboardEntry) {
+    return this.htConfig ? hasLevel(row) : isPrestigedOrLegend(row);
+  }
+
+  // Same flag source as the lobby and inventory: flags/<code>.svg.
+  private flagImg(flag: string | undefined) {
+    if (!flag?.startsWith("country:")) return nothing;
+    return html`<img
+      src=${assetUrl(`flags/${flag.slice("country:".length)}.svg`)}
+      alt=""
+      draggable="false"
+      class="size-6 shrink-0 object-contain"
+    />`;
   }
 
   private mapLadders(
@@ -137,9 +173,13 @@ export class LeaderboardPlayerList extends LitElement {
     }
 
     try {
-      const result = await fetchPlayerLeaderboard(this.currentPage);
+      const ht = this.htConfig;
+      const htRows = ht
+        ? await fetchHtLeaderboard(ht.sort, this.currentPage)
+        : null;
+      const result = ht ? null : await fetchPlayerLeaderboard(this.currentPage);
 
-      if (result === false) {
+      if (htRows === false || result === false) {
         throw new Error("Failed to load player leaderboard");
       }
 
@@ -165,7 +205,25 @@ export class LeaderboardPlayerList extends LitElement {
       const nextLadders = { ...this.ladders };
       for (const rankedType of RANKED_TYPES) {
         const ladder = this.ladders[rankedType];
-        const nextPlayers = (result[rankedType] ?? []).map(toPlayerEntry);
+        // Our board fills the one 1v1 slot; the other slots stay empty.
+        const nextPlayers: PlayerLeaderboardEntry[] = ht
+          ? rankedType === RankedType.OneVOne
+            ? (htRows ?? []).map((e) => ({
+                rank: e.rank,
+                playerId: e.publicId,
+                accountUsername: e.username,
+                flag: e.flag ?? undefined,
+                elo: htLeaderboardValue(ht.sort, e),
+                games: e.games,
+                wins: e.wins,
+                losses: e.games - e.wins,
+                winRate: e.winRate,
+                level: e.level,
+                prestige: e.prestige,
+                legend: false,
+              }))
+            : []
+          : ((result ?? {})[rankedType] ?? []).map(toPlayerEntry);
         if (nextPlayers.length > 0) receivedAny = true;
 
         const existingIds = new Set(
@@ -329,7 +387,8 @@ export class LeaderboardPlayerList extends LitElement {
                 >${translateText("leaderboard_modal.your_ranking")}</span
               >
               <div class="flex items-center gap-2 min-w-0">
-                ${levelBadgeSlot(entry, isPrestigedOrLegend(entry), badgeSlot)}
+                ${this.flagImg(entry.flag)}
+                ${levelBadgeSlot(entry, this.showBadge(entry), badgeSlot)}
                 <player-name
                   class="min-w-0"
                   .username=${entry.accountUsername}
@@ -396,7 +455,8 @@ export class LeaderboardPlayerList extends LitElement {
         </td>
         <td class="py-3 px-4">
           <div class="flex items-center gap-2">
-            ${levelBadgeSlot(player, isPrestigedOrLegend(player), badgeSlot)}
+            ${this.flagImg(player.flag)}
+            ${levelBadgeSlot(player, this.showBadge(player), badgeSlot)}
             <player-name
               class="min-w-0"
               .username=${player.accountUsername}
@@ -538,7 +598,11 @@ export class LeaderboardPlayerList extends LitElement {
           ${translateText("leaderboard_modal.no_data_yet")}
         </h3>
         <p class="text-white/30 text-sm">
-          ${translateText("leaderboard_modal.ranked_no_stats")}
+          ${translateText(
+            this.htTab
+              ? "leaderboard_modal.ht_no_stats"
+              : "leaderboard_modal.ranked_no_stats",
+          )}
         </p>
       </div>
     `;
@@ -555,7 +619,7 @@ export class LeaderboardPlayerList extends LitElement {
     // isPrestigedOrLegend for why). Rows without one keep an empty slot so
     // names line up — but only once some loaded row in this ladder has a
     // badge, so the board is unchanged until then.
-    const badgeSlot = this.playerData.some(isPrestigedOrLegend);
+    const badgeSlot = this.playerData.some((p) => this.showBadge(p));
 
     return html`
       <div class="h-full">
@@ -590,7 +654,9 @@ export class LeaderboardPlayerList extends LitElement {
                     ${translateText("leaderboard_modal.player")}
                   </th>
                   <th class="py-4 px-4 text-right font-bold">
-                    ${translateText("leaderboard_modal.elo")}
+                    ${translateText(
+                      this.htConfig?.valueKey ?? "leaderboard_modal.elo",
+                    )}
                   </th>
                   <th class="py-4 px-4 text-right font-bold">
                     ${translateText("leaderboard_modal.games")}

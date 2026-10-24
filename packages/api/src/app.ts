@@ -9,6 +9,7 @@ import { mountGameRoutes } from "./gameRoutes";
 import { createGate, type GateClient } from "./gate";
 import { mountGateRoutes } from "./gateRoutes";
 import type { SigningKeys } from "./keys";
+import { mountLeaderboardRoutes } from "./leaderboardRoutes";
 import { mountProgressionRoutes } from "./progressionRoutes";
 import { defaultRateLimits, type RateLimits } from "./rateLimit";
 import type { SessionRow, Store } from "./store";
@@ -409,6 +410,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   mountProgressionRoutes(app, { store, authenticate });
   mountAdminXpRoutes(app, { store, authenticate });
   mountFlagRoutes(app, { store, authenticate });
+  mountLeaderboardRoutes(app, { store });
   mountGameRoutes(app, env, { store, authenticate });
 
   app.use(

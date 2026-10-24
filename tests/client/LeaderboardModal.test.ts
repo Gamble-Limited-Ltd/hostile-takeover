@@ -7,6 +7,15 @@ vi.mock("@lit-labs/virtualizer/virtualize.js", async () => {
   };
 });
 
+// Upstream's ranked tabs: Hostile Takeover turns them off (Features.ranked).
+vi.mock("../../src/client/Features", async (importOriginal) => ({
+  Features: {
+    ...(await importOriginal<typeof import("../../src/client/Features")>())
+      .Features,
+    ranked: true,
+  },
+}));
+
 vi.mock("../../src/client/Utils", () => ({
   translateText: vi.fn((key: string) => {
     const translations: Record<string, string> = {

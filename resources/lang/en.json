@@ -1465,6 +1465,8 @@
     "elo": "ELO",
     "error": "Error loading leaderboard",
     "games": "Games",
+    "games_tab": "Games played",
+    "ht_no_stats": "No one has finished a game yet",
     "loss_score": "Loss Score",
     "loss_score_tooltip": "Weighted losses based on clan participation and match difficulty",
     "no_data_yet": "No Data Yet",
@@ -1492,8 +1494,14 @@
     "tribes_window": "Rolling {days}-day window ({start} – {end})",
     "try_again": "Try Again",
     "win_loss_ratio": "Win/Loss",
+    "win_rate": "Win rate",
+    "win_rate_tab": "Win rate",
     "win_score": "Win Score",
     "win_score_tooltip": "Weighted wins based on clan participation and match difficulty",
+    "wins": "Wins",
+    "wins_tab": "Wins",
+    "xp": "XP",
+    "xp_tab": "Level / XP",
     "your_ranking": "Your Ranking"
   },
   "legend_ceremony": {

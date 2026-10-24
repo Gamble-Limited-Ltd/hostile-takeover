@@ -1,3 +1,4 @@
+import { HT_LEADERBOARD_MIN_GAMES } from "@openfront/shared/HtLeaderboardSchemas";
 import { randomUUID } from "node:crypto";
 import type {
   AwardOutcome,
@@ -341,6 +342,51 @@ export function memoryStore(
       u.username = username;
       if (opts.cooldownMs !== null) u.username_changed_at = new Date();
       return { ok: true, user: u };
+    },
+    listLeaderboard: async (sort, limit, offset) => {
+      const rows = users
+        .filter((u) => !u.disabled_at)
+        .map((u) => {
+          const mine = games.flatMap((g) =>
+            g.players.filter((p) => p.userId === u.id),
+          );
+          return {
+            publicId: u.public_id,
+            username: u.username,
+            flag: (u as { flag?: string | null }).flag ?? null,
+            has: progress.has(u.id),
+            progress: progress.get(u.id)?.state ?? {
+              prestige: 0 as const,
+              level: 1,
+              xpInLevel: 0,
+              lifetimeXp: 0,
+            },
+            games: mine.length,
+            wins: mine.filter((p) => p.won).length,
+          };
+        })
+        .filter((r) =>
+          sort === "xp"
+            ? r.has
+            : sort === "winrate"
+              ? r.games >= HT_LEADERBOARD_MIN_GAMES
+              : r.games > 0,
+        );
+      const key = (r: (typeof rows)[number]) =>
+        sort === "xp"
+          ? r.progress.lifetimeXp
+          : sort === "wins"
+            ? r.wins
+            : sort === "games"
+              ? r.games
+              : r.wins / r.games;
+      rows.sort(
+        (a, b) =>
+          key(b) - key(a) ||
+          lower(a.username).localeCompare(lower(b.username)) ||
+          a.publicId.localeCompare(b.publicId),
+      );
+      return rows.slice(offset, offset + limit).map(({ has: _has, ...r }) => r);
     },
     getFlag: async (id) =>
       (users.find((x) => x.id === id) as { flag?: string | null } | undefined)
