@@ -15,7 +15,7 @@ Turnstile or other-login entry point. Then it survives its 72 h watch in prod.
 
 ## Triage (2026-10-23, read-only)
 
-- Target **v0.35.2** (08b63c054, 2026-10-16). Merge base a15138358 (2026-10-10). 99 upstream commits to
+- Target **v0.35.3** (a2d20f8e5, 2026-10-23). Merge base a15138358 (2026-10-10). 99 upstream commits to
   take, 110 of ours since the base. Commits on `upstream/main` after the tag are skipped.
 - 18 predicted conflicts (16 client UI/auth/server files plus two tests). Only
   `tests/client/components/LobbyPlayerView.levelBadge.test.ts` is missing from `FORK_CHANGES.md`.

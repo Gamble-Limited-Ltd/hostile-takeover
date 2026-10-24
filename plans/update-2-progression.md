@@ -35,7 +35,7 @@ the owner is still collecting what goes in.
 | Area              | Decision                                                                                                                                                                                       |
 | ----------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | Scope             | Update 2 **plus the profile page**, username change, profile flag, admin XP tools, and more leaderboard tabs. Still out: achievements, prestige, game history, friends, clans                  |
-| Upstream          | Merge the latest stable tag (`v0.35.2` today) **first**, then build the features on top. The triage runs later in the week                                                                     |
+| Upstream          | Merge the latest stable tag (`v0.35.3` today) **first**, then build the features on top. The triage runs later in the week                                                                     |
 | Private farming   | A private game with fewer than 3 humans scores at 500 permille, like singleplayer (answers open question 2)                                                                                    |
 | Feats             | Most territory at the end, eliminated a player, survived to the end. 5 XP each, so the cap is 15 (answers open question 1; no nuke feat)                                                       |
 | Visibility        | No opt-out. Every account is on the leaderboard and has a public profile, `thestrongest` too (answers open question 4)                                                                         |
