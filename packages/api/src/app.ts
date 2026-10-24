@@ -403,7 +403,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     cookieFlags: { secure, sameSite: cookieOpts.sameSite },
   });
 
-  mountGameRoutes(app, env);
+  mountGameRoutes(app, env, { store, authenticate });
 
   app.use(
     (
