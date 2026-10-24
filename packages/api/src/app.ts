@@ -7,6 +7,7 @@ import { mountGameRoutes } from "./gameRoutes";
 import { createGate, type GateClient } from "./gate";
 import { mountGateRoutes } from "./gateRoutes";
 import type { SigningKeys } from "./keys";
+import { mountProgressionRoutes } from "./progressionRoutes";
 import { defaultRateLimits, type RateLimits } from "./rateLimit";
 import type { SessionRow, Store } from "./store";
 import {
@@ -356,7 +357,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       if (!user || user.disabled_at) {
         return void res.status(401).json({ error: "unauthorized" });
       }
-      res.json(buildUserMe(user));
+      res.json(buildUserMe(user, await store.getProgress(user.id)));
     } catch (e) {
       next(e);
     }
@@ -403,6 +404,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     cookieFlags: { secure, sameSite: cookieOpts.sameSite },
   });
 
+  mountProgressionRoutes(app, { store, authenticate });
   mountGameRoutes(app, env, { store, authenticate });
 
   app.use(

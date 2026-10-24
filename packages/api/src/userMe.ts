@@ -1,4 +1,5 @@
 import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
+import { toProgress, type ProgressState } from "./xp/rules";
 
 export interface UserRow {
   id: string;
@@ -20,7 +21,15 @@ export interface UserRow {
  * Optional fields are left out. usernameStatus is left out on purpose: its
  * presence turns on the custom-username UI, which Stage 2 decides on.
  */
-export function buildUserMe(row: UserRow): UserMeResponse {
+export function buildUserMe(
+  row: UserRow,
+  progress: ProgressState = {
+    prestige: 0,
+    level: 1,
+    xpInLevel: 0,
+    lifetimeXp: 0,
+  },
+): UserMeResponse {
   return {
     user: { email: row.email },
     steamLicence: false,
@@ -37,6 +46,7 @@ export function buildUserMe(row: UserRow): UserMeResponse {
       achievements: { singleplayerMap: [], player: [] },
       friends: [],
       subscription: null,
+      progress: toProgress(progress),
     },
   };
 }
