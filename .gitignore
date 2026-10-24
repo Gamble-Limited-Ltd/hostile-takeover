@@ -39,3 +39,5 @@ packages/api/.keys/
 
 # Hostile Takeover: written by ht-deploy.sh
 .last-deploy-hash
+# Added by code-review-graph
+.code-review-graph/
