@@ -114,6 +114,9 @@ export interface Store {
     username: string,
     opts: { cooldownMs: number | null },
   ): Promise<RenameResult>;
+  /** The account's saved flag ref (`country:<code>`), null when none. */
+  getFlag(userId: string): Promise<string | null>;
+  setFlag(userId: string, flag: string | null): Promise<void>;
   /** The account's progress, level 1 / 0 XP when it has no row yet. */
   getProgress(userId: string): Promise<ProgressState>;
   /** Admin XP fix: upserts the row; `clearDay` also nulls last_xp_day. */
@@ -766,6 +769,18 @@ export function pgStore(db: SqlClient): Store {
           return { ok: false, taken: true };
         throw e;
       }
+    },
+    async getFlag(userId) {
+      const r = await db.query("SELECT flag FROM users WHERE id = $1", [
+        userId,
+      ]);
+      return r.rows[0]?.flag ?? null;
+    },
+    async setFlag(userId, flag) {
+      await db.query("UPDATE users SET flag = $2 WHERE id = $1", [
+        userId,
+        flag,
+      ]);
     },
     async logAdmin(e) {
       await db.query(
