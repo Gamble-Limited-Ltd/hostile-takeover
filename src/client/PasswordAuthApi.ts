@@ -227,6 +227,62 @@ export function adminResetErrorKey(code: string): string {
   }
 }
 
+export type AdminXpResult =
+  | { ok: true; level: number; xpInLevel: number; lifetimeXp: number }
+  | { ok: false; status: number; code: string };
+
+/** GET (no action) or POST /admin/users/:username/progress (root only). */
+export async function adminXp(
+  username: string,
+  action?: { action: "set"; lifetimeXp: number } | { action: "reset" },
+): Promise<AdminXpResult> {
+  const authorization = await getAuthHeader();
+  if (!authorization) return { ok: false, status: 401, code: "unauthorized" };
+  let response: Response;
+  try {
+    response = await fetch(
+      `${getApiBase()}/admin/users/${encodeURIComponent(username)}/progress`,
+      {
+        method: action ? "POST" : "GET",
+        credentials: "include",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: authorization,
+        },
+        body: action ? JSON.stringify(action) : undefined,
+      },
+    );
+  } catch (e) {
+    console.warn("/admin/users progress request failed", e);
+    return { ok: false, status: 0, code: "network" };
+  }
+  const parsed = (await response.json().catch(() => null)) as {
+    error?: unknown;
+    progress?: { level?: unknown; xpInLevel?: unknown; lifetimeXp?: unknown };
+  } | null;
+  const p = parsed?.progress;
+  if (
+    response.ok &&
+    typeof p?.level === "number" &&
+    typeof p.xpInLevel === "number" &&
+    typeof p.lifetimeXp === "number"
+  ) {
+    return {
+      ok: true,
+      level: p.level,
+      xpInLevel: p.xpInLevel,
+      lifetimeXp: p.lifetimeXp,
+    };
+  }
+  const code =
+    typeof parsed?.error === "string"
+      ? parsed.error
+      : response.status === 429
+        ? "rate_limited"
+        : "unknown";
+  return { ok: false, status: response.status, code };
+}
+
 export type RegisterField =
   | "firstName"
   | "lastName"

@@ -17,6 +17,7 @@ import { refreshOwnHiddenLevelBadge } from "../OwnLevelBadge";
 import { steamSDK } from "../SteamSDK";
 import { translateText } from "../Utils";
 import "./account/AdminResetCard";
+import "./account/AdminXpCard";
 import "./account/ChangePasswordCard";
 import "./baseComponents/Button";
 import "./DeleteAccountDialog";
@@ -103,6 +104,7 @@ export class AccountSettingsPanel extends LitElement {
           <identity-token-card></identity-token-card>
         </div>
         <admin-reset-card></admin-reset-card>
+        <admin-xp-card></admin-xp-card>
         <change-password-card></change-password-card>
         ${this.renderDeleteAccountCard()}
       </div>

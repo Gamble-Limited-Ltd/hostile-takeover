@@ -9,6 +9,7 @@ import {
   applyXp,
   buildLevels,
   MAX_LEVEL,
+  progressFromLifetime,
   RULES_VERSION,
   scoreGame,
   toProgress,
@@ -213,4 +214,26 @@ describe("pace simulation", () => {
       expect(games).toBeLessThanOrEqual(360);
     });
   }
+});
+
+describe("progressFromLifetime", () => {
+  const levels = buildLevels();
+  test("matches the cumulative curve at every boundary", () => {
+    expect(progressFromLifetime(0)).toMatchObject({ level: 1, xpInLevel: 0 });
+    for (const l of levels.slice(1)) {
+      expect(progressFromLifetime(l.cumulativeXp)).toMatchObject({
+        level: l.level,
+        xpInLevel: 0,
+        lifetimeXp: l.cumulativeXp,
+      });
+      expect(progressFromLifetime(l.cumulativeXp - 1).level).toBe(l.level - 1);
+    }
+  });
+  test("caps at max level with 0 xpInLevel", () => {
+    expect(progressFromLifetime(10_000_000)).toMatchObject({
+      level: MAX_LEVEL,
+      xpInLevel: 0,
+      lifetimeXp: 10_000_000,
+    });
+  });
 });
