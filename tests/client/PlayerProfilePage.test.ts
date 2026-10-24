@@ -9,6 +9,17 @@ import {
   vi,
 } from "vitest";
 
+// U2.4: this file covers tabs and flows that are off in the real Features.
+vi.mock("../../src/client/Features", async (importOriginal) => ({
+  Features: {
+    ...(await importOriginal<typeof import("../../src/client/Features")>())
+      .Features,
+    gameHistory: true,
+    clans: true,
+    prestige: true,
+  },
+}));
+
 const fetchPublicPlayerProfileMock = vi.hoisted(() => vi.fn());
 const viewer = vi.hoisted(() => ({ kind: "unknown" as string }));
 

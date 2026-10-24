@@ -3,6 +3,7 @@ import type { PlayerStatsLeaf } from "@openfront/shared/ApiSchemas";
 import { assetUrl } from "@openfront/shared/AssetUrls";
 import { LitElement, html, nothing } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { Features } from "../../../Features";
 import { translateText } from "../../../Utils";
 
 type PlayerSummaryMetricKey =
@@ -464,7 +465,7 @@ export class PlayerStatsSummary extends LitElement {
         </div>
 
         <div class="space-y-3">
-          ${METRIC_GROUPS.map(
+          ${(Features.gameStatDetails ? METRIC_GROUPS : []).map(
             (group) => html`
               <div data-metric-group=${group.heading}>
                 <div

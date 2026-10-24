@@ -1,5 +1,6 @@
 import { html, LitElement, nothing, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { Features } from "../Features";
 import { gamePortal } from "../GamePortal";
 import { Platform } from "../Platform";
 import { copyToClipboard, showToast, translateText } from "../Utils";
@@ -152,19 +153,21 @@ interface ShareAction {
   labelKey: string;
 }
 
-const ACTIONS: readonly ShareAction[] = [
-  {
-    action: "copy",
-    icon: linkIcon,
-    labelKey: "player_profile.share_copy_link",
-  },
-  { action: "x", icon: xIcon, labelKey: "player_profile.share_x" },
-  {
-    action: "discord",
-    icon: chatIcon,
-    labelKey: "player_profile.share_discord",
-  },
-];
+const ACTIONS: readonly ShareAction[] = (
+  [
+    {
+      action: "copy",
+      icon: linkIcon,
+      labelKey: "player_profile.share_copy_link",
+    },
+    { action: "x", icon: xIcon, labelKey: "player_profile.share_x" },
+    {
+      action: "discord",
+      icon: chatIcon,
+      labelKey: "player_profile.share_discord",
+    },
+  ] satisfies ShareAction[]
+).filter((a) => a.action === "copy" || Features.socialShare);
 
 @customElement("profile-share")
 export class ProfileShare extends LitElement {

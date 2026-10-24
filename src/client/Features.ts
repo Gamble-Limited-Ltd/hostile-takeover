@@ -40,16 +40,25 @@ export const Features = Object.freeze({
    */
   ads: false,
   /**
-   * XP, levels, prestige and achievements: the SOLO modal's achievements
-   * toggle / "sign in for achievements" button, the XP panel and Legend ceremony
-   * in the win box, `PastGameXpCard`, `PrestigeFlow`, the level badge on
-   * player names (lobby roster, player panel) and in the account menu, and
-   * the account modal's level card. Also gates the request layer
-   * (`ProgressionApi`: `/users/@me/xp*`, `/users/@me/prestige`,
-   * `/public/progression/config`, `/public/player/<id>/progress`), so with
-   * this off none of them is ever called.
+   * XP and levels (on since U2.4): the XP panel in the win box, the level
+   * badge on player names (lobby roster, player panel) and in the account
+   * menu, the account modal's level card and Progression tab (level and XP
+   * bar only). Also gates the request layer (`ProgressionApi`:
+   * `/users/@me/xp*`, `/public/progression/config`,
+   * `/public/player/<id>/progress`), so with this off none of them is called.
    */
-  xp: false,
+  xp: true,
+  /**
+   * Prestige: the Prestige button and `PrestigeFlow` in the account modal,
+   * the Legend ceremony in the win box, `/users/@me/prestige`, and (with it
+   * off) the Progression tab's reward track, prestige history and milestones.
+   */
+  prestige: false,
+  /**
+   * Achievements: the SOLO modal's achievements toggle / "sign in for
+   * achievements" button.
+   */
+  achievements: false,
   /**
    * Ranked and matchmaking: the homepage RANKED button, `#modal=ranked`,
    * the `?requeue=` reopen and the win box's requeue button. With no way in,
@@ -72,12 +81,27 @@ export const Features = Object.freeze({
    */
   friends: false,
   /**
-   * Public profiles and stats: the account modal's STATS and GAMES tabs and
-   * "Share Profile" button (and the `/player/<id>` fetch behind them), the
-   * account menu's "Copy profile URL", `#modal=profile` and `#modal=stats`,
-   * and `TribeStatsView` (`/public/tribe/*`).
+   * Public profiles and stats (on since U2.4): the account modal's STATS tab
+   * and "Share Profile" button (and the `/player/<id>` fetch behind them), the
+   * account menu's "Copy profile URL", `#modal=profile` and the `/player/<id>`
+   * route, and `TribeStatsView` (`/public/tribe/*`).
    */
-  profile: false,
+  profile: true,
+  /**
+   * Game history: the GAMES tab (account modal and profile) and
+   * `#modal=stats` (per-game stats). We store no games, so the list is empty.
+   * The profile's CLANS tab follows `clans`.
+   */
+  gameHistory: false,
+  /**
+   * The profile's per-game detail groups (buildings, naval, combat, gold).
+   * We store none of those stats, so they would always read 0.
+   */
+  gameStatDetails: false,
+  /**
+   * The "Share on X" and "Copy for Discord" share buttons. "Copy link" stays.
+   */
+  socialShare: false,
   /**
    * Username changes (on since U2.6): the account menu's "Change username" row
    * and `#modal=change-username`.

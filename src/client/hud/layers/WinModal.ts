@@ -32,12 +32,14 @@ import {
 import { isDesktopShell } from "../../DesktopShell";
 import { Features } from "../../Features";
 import { gamePortal } from "../../GamePortal";
+import { lobbyPublicId } from "../../LobbyRosterLevels";
 import {
   gameShareMoment,
   momentShareLabel,
   momentShareText,
   momentShareUrl,
 } from "../../MomentShare";
+import { openPlayerProfile } from "../../OpenPlayerProfile";
 import { Platform } from "../../Platform";
 import { MAX_PRESTIGE, reachedLegendThisGame } from "../../Progression";
 import { resolveXpAccount } from "../../ProgressionAccount";
@@ -151,6 +153,8 @@ export class WinModal extends LitElement implements Controller {
     import("../../components/LegendCeremony");
 
   private _title: string;
+  // The winning player's publicId, when the lobby roster gave it: the title opens their profile.
+  private _titleProfileId: string | undefined;
 
   private rand = Math.random();
 
@@ -170,7 +174,13 @@ export class WinModal extends LitElement implements Controller {
           ? "fixed top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-gray-800/70 p-4 md:p-6 shrink-0 rounded-lg z-[10010] shadow-2xl backdrop-blur-xs text-white w-[min(90vw,700px)] max-w-[90%] max-h-[90dvh] overflow-hidden flex flex-col"
           : "hidden"}"
       >
-        <h2 class="m-0 mb-4 text-[26px] text-center text-white shrink-0">
+        <h2
+          class="m-0 mb-4 text-[26px] text-center text-white shrink-0 ${this
+            ._titleProfileId && Features.profile
+            ? "cursor-pointer hover:underline"
+            : ""}"
+          @click=${() => openPlayerProfile(this._titleProfileId)}
+        >
           ${this._title || ""}
         </h2>
         <div class="min-h-0 flex-1 overflow-y-auto pr-0.5">
@@ -216,7 +226,7 @@ export class WinModal extends LitElement implements Controller {
         </div>
         ${this.renderActionStyles()}
       </div>
-      ${Features.xp
+      ${Features.prestige
         ? html`<legend-ceremony
             @legend-ceremony-closed=${this.onLegendCeremonyClosed}
           ></legend-ceremony>`
@@ -1031,6 +1041,10 @@ export class WinModal extends LitElement implements Controller {
           this._title = translateText("win_modal.other_won", {
             player: winner.displayName(),
           });
+          this._titleProfileId = lobbyPublicId(
+            this.game.gameID(),
+            winnerClient,
+          );
           this.isWin = false;
         }
         this.playEndOfGameSound();

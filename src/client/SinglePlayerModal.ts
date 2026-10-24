@@ -336,8 +336,8 @@ export class SinglePlayerModal extends BaseModal {
       title: translateText("main.solo") || "Solo",
       onBack: () => this.close(),
       ariaLabel: translateText("common.back"),
-      // Hostile Takeover: achievements belong to Features.xp.
-      rightContent: !Features.xp
+      // Hostile Takeover: achievements belong to Features.achievements.
+      rightContent: !Features.achievements
         ? undefined
         : responseHasLinkedIdentity(this.userMeResponse)
           ? html`<button

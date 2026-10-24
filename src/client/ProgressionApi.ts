@@ -179,7 +179,7 @@ export type PrestigeResult =
 export async function prestigeMe(
   idempotencyKey: string,
 ): Promise<PrestigeResult> {
-  if (!Features.xp) return { ok: false, reason: "failed" };
+  if (!Features.prestige) return { ok: false, reason: "failed" };
   try {
     const authorization = await getAuthHeader();
     if (authorization === "") return { ok: false, reason: "signed_out" };

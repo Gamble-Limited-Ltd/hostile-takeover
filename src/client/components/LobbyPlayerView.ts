@@ -22,6 +22,7 @@ import { LitElement, html } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
 import { repeat } from "lit/directives/repeat.js";
 import { Features } from "../Features";
+import { openPlayerProfile } from "../OpenPlayerProfile";
 import {
   ownHiddenLevelBadge,
   refreshOwnHiddenLevelBadge,
@@ -685,9 +686,15 @@ export class LobbyTeamView extends LitElement {
           ></span>`
         : html``;
     }
+    // The badge opens the player's profile (only with a publicId, which the
+    // server sends beside the badge).
     return html`<level-badge
       stagger
-      class="inline-block align-[-7px] shrink-0 mr-1.5"
+      class="inline-block align-[-7px] shrink-0 mr-1.5 ${client.publicId &&
+      Features.profile
+        ? "cursor-pointer"
+        : ""}"
+      @click=${() => openPlayerProfile(client.publicId)}
       .level=${badge.level}
       .prestige=${badge.prestige}
       ?legend=${badge.legend}
