@@ -27,7 +27,7 @@ upstream), or `git diff main...<tag> -- <file>` to see upstream's change alone, 
 ## After resolving
 
 - `git grep -n '<<<<<<<\|>>>>>>>'` is empty.
-- Typecheck, lint and Prettier clean; targeted tests for each resolved file pass.
+- Typecheck, lint and the Oxfmt check clean; targeted tests for each resolved file pass.
 - `FORK_CHANGES.md` updated for every file whose fork edit changed, was dropped, or is new.
 - Re-check UI strict rules 1 to 5 on any resolved UI file (no new colors, fonts or nav items; strings via `translateText()`).
 

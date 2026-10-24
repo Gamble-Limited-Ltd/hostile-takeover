@@ -1,4 +1,5 @@
 import { clientPlatform } from "./ClientPlatform";
+import { Features } from "./Features";
 import { Platform } from "./Platform";
 import type { UserSettings } from "./UserSettings";
 
@@ -31,7 +32,12 @@ export function launchSteamJoin(gameId: string): () => void {
 }
 
 export function canHandOffToSteam(): boolean {
-  return clientPlatform() === "web" && !Platform.isIOS && !Platform.isAndroid;
+  return (
+    Features.steam &&
+    clientPlatform() === "web" &&
+    !Platform.isIOS &&
+    !Platform.isAndroid
+  );
 }
 
 // Decided from local state only: this runs ahead of every network call on a

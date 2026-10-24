@@ -634,7 +634,7 @@ export class InventoryModal extends BaseModal {
           rightContent: html`<o-button
             data-inventory-header-action
             ?hidden=${isLoggedIn && !Features.store}
-            class="no-crazygames"
+            class="no-game-portal"
             variant=${isLoggedIn ? "primary" : "danger"}
             size="sm"
             .translationKey=${isLoggedIn

@@ -17,9 +17,9 @@ vi.mock("@openfront/shared/AssetUrls", () => ({
   assetUrl: (path: string) => path,
 }));
 
-import { crazyGamesSDK } from "../../src/client/CrazyGamesSDK";
 import { Footer } from "../../src/client/components/Footer";
 import { PlayPage } from "../../src/client/components/PlayPage";
+import { crazyGamesSDK } from "../../src/client/CrazyGamesSDK";
 
 describe("index.html CrazyGames SDK", () => {
   const html = readFileSync(resolve(__dirname, "../../index.html"), "utf8");

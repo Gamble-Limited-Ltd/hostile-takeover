@@ -23,6 +23,9 @@ export interface UserRow {
 export function buildUserMe(row: UserRow): UserMeResponse {
   return {
     user: { email: row.email },
+    steamLicence: false,
+    steamLicenceSince: null,
+    noticesSeen: [],
     player: {
       publicId: row.public_id,
       adfree: true,

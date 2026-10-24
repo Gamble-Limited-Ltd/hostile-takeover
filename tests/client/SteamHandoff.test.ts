@@ -1,9 +1,13 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  canHandOffToSteam,
   launchSteamJoin,
   steamHandoffMode,
   steamJoinUrl,
 } from "../../src/client/SteamHandoff";
+
+const { features } = vi.hoisted(() => ({ features: { steam: true } }));
+vi.mock("../../src/client/Features", () => ({ Features: features }));
 
 const { onCrazyGames } = vi.hoisted(() => ({ onCrazyGames: { value: false } }));
 vi.mock("../../src/client/CrazyGamesSDK", () => ({
@@ -80,5 +84,16 @@ describe("launchSteamJoin", () => {
     readyState.mockRestore();
     add.mockRestore();
     remove.mockRestore();
+  });
+});
+
+describe("canHandOffToSteam", () => {
+  afterEach(() => {
+    features.steam = true;
+  });
+
+  it("is off while Features.steam is off (no Steam build shipped)", () => {
+    features.steam = false;
+    expect(canHandOffToSteam()).toBe(false);
   });
 });

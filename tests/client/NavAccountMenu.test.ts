@@ -33,6 +33,8 @@ vi.mock("../../src/client/Utils", () => ({
 
 import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { NavAccountMenu } from "../../src/client/components/NavAccountMenu";
+import { gamePortal } from "../../src/client/GamePortal";
+import { stashGateLogoutUrl } from "../../src/client/GateHash";
 import { updateAccountNavButton } from "../../src/client/NavAccountButton";
 
 // Hostile Takeover: the store entry points are off by default; these tests
@@ -179,9 +181,7 @@ describe("nav-account-menu", () => {
     await new Promise((r) => setTimeout(r, 0));
 
     expect(copyToClipboard).toHaveBeenCalledTimes(1);
-    expect(vi.mocked(copyToClipboard).mock.calls[0][0]).toContain(
-      "modal=profile&publicID=p",
-    );
+    expect(vi.mocked(copyToClipboard).mock.calls[0][0]).toContain("/player/p");
     expect(showToast).toHaveBeenCalledWith("common.copied", "green");
 
     // No publicId (older backend / unresolved player) — nothing to share.
@@ -189,6 +189,19 @@ describe("nav-account-menu", () => {
     await el.updateComplete;
     await click(trigger());
     expect(itemKeys()).not.toContain("copy-profile-url");
+  });
+
+  it("drops the profile link on Poki, which it would lead players off", async () => {
+    vi.spyOn(gamePortal, "name").mockReturnValue("poki");
+    try {
+      fireUserMe(userMe());
+      await el.updateComplete;
+      await click(trigger());
+      expect(itemKeys()).toContain("view-account");
+      expect(itemKeys()).not.toContain("copy-profile-url");
+    } finally {
+      vi.mocked(gamePortal.name).mockRestore();
+    }
   });
 
   it("keeps the menu on CrazyGames, minus the log-out they own", async () => {
@@ -241,6 +254,39 @@ describe("nav-account-menu", () => {
     await click(document.querySelector('[data-menu-item="log-out"]')!);
     await new Promise((r) => setTimeout(r, 0));
     expect(logOut).toHaveBeenCalledTimes(1);
+  });
+
+  it("ends the GLL ID session on log-out when a logout URL is stored, else reloads", async () => {
+    const real = window.location;
+    const loc = { href: "http://localhost/", reload: vi.fn() };
+    Object.defineProperty(window, "location", {
+      value: loc,
+      configurable: true,
+    });
+    try {
+      for (const url of ["https://id.example/logout", null]) {
+        stashGateLogoutUrl(url);
+        loc.reload.mockClear();
+        loc.href = "http://localhost/";
+        fireUserMe(userMe());
+        await el.updateComplete;
+        await click(trigger());
+        await click(document.querySelector('[data-menu-item="log-out"]')!);
+        await new Promise((r) => setTimeout(r, 0));
+        if (url) {
+          expect(loc.href).toBe(url);
+          expect(loc.reload).not.toHaveBeenCalled();
+        } else {
+          expect(loc.href).toBe("http://localhost/");
+          expect(loc.reload).toHaveBeenCalledTimes(1);
+        }
+      }
+    } finally {
+      Object.defineProperty(window, "location", {
+        value: real,
+        configurable: true,
+      });
+    }
   });
 
   it("seeds itself from the cached auth state when created late", async () => {

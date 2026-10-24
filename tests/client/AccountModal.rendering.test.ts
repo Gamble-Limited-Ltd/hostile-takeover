@@ -22,7 +22,7 @@ vi.mock("../../src/client/Auth", () => ({
   linkSteam: vi.fn(async () => true),
   steamLogin: vi.fn(),
   logOut: vi.fn(async () => true),
-  reauthAfterCrazyGamesChange: vi.fn(async () => false),
+  reauthAfterPortalChange: vi.fn(async () => false),
   sendMagicLink: vi.fn(async () => true),
   getAuthHeader: vi.fn(async () => "Bearer test-token"),
 }));
@@ -73,6 +73,9 @@ function makeUserMe(
 ): UserMeResponse {
   return {
     user: { ...overrides },
+    steamLicence: false,
+    steamLicenceSince: null,
+    noticesSeen: [],
     player: {
       publicId: "test-player",
       adfree: false,

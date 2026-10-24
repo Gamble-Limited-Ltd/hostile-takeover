@@ -39,6 +39,7 @@ import {
   getDefaultKeybinds,
   GRAPHICS_KEY,
   keysMayBeShared,
+  MAP_LAYERS_KEY,
   USER_SETTINGS_CHANGED_EVENT,
   UserSettings,
 } from "./UserSettings";
@@ -79,6 +80,11 @@ const PREVIEWABLE: readonly CueCategory[] = ["effects", "alerts", "interface"];
  * the longest preview cue; it only ever fires when a preview cannot settle.
  */
 const PREVIEW_CEILING_MS = 10_000;
+
+// Set by the inline script at the top of <body> in index.html.
+function isHalloweenSeason(): boolean {
+  return document.body.dataset.halloweenSeason !== undefined;
+}
 
 @customElement("user-setting")
 export class UserSettingModal extends BaseModal {
@@ -167,11 +173,19 @@ export class UserSettingModal extends BaseModal {
       `${USER_SETTINGS_CHANGED_EVENT}:${GRAPHICS_KEY}`,
       this.onGraphicsChanged,
     );
+    globalThis.addEventListener(
+      `${USER_SETTINGS_CHANGED_EVENT}:${MAP_LAYERS_KEY}`,
+      this.onGraphicsChanged,
+    );
   }
 
   disconnectedCallback() {
     globalThis.removeEventListener(
       `${USER_SETTINGS_CHANGED_EVENT}:${GRAPHICS_KEY}`,
+      this.onGraphicsChanged,
+    );
+    globalThis.removeEventListener(
+      `${USER_SETTINGS_CHANGED_EVENT}:${MAP_LAYERS_KEY}`,
       this.onGraphicsChanged,
     );
     window.removeEventListener("keydown", this.handleEasterEggKey);
@@ -192,7 +206,7 @@ export class UserSettingModal extends BaseModal {
    */
   private readonly onGraphicsChanged = () => {
     pushMapLayerState(
-      this.userSettings.graphicsOverrides(),
+      this.userSettings,
       this.mapLayers,
       this.onLayerVisibilityChange,
       this.onLayerAlphaChange,
@@ -408,6 +422,15 @@ export class UserSettingModal extends BaseModal {
     );
   }
 
+  private toggleSnapBuildPreview() {
+    this.userSettings.toggleSnapBuildPreview();
+
+    console.log(
+      "🧲 Snap build preview:",
+      this.userSettings.snapBuildPreview() ? "ON" : "OFF",
+    );
+  }
+
   private toggleAnonymousNames() {
     this.userSettings.toggleRandomName();
 
@@ -520,8 +543,20 @@ export class UserSettingModal extends BaseModal {
     );
   }
 
+  private toggleHalloweenTheme() {
+    this.userSettings.toggleHalloweenTheme();
+    document.body.classList.toggle(
+      "halloween-theme",
+      isHalloweenSeason() && this.userSettings.halloweenTheme(),
+    );
+  }
+
   private togglePerformanceOverlay() {
     this.userSettings.togglePerformanceOverlay();
+  }
+
+  private toggleMapLayers() {
+    this.userSettings.toggleMapLayers();
   }
 
   private toggleHelpMessages() {
@@ -1590,12 +1625,52 @@ export class UserSettingModal extends BaseModal {
       ></setting-keybind>
 
       <setting-keybind
+        action="zoomOutMinus"
+        label=${translateText("user_setting.zoom_out")}
+        description=${translateText("user_setting.zoom_out_desc")}
+        defaultKey=${this.defaultKeybinds.zoomOutMinus}
+        .value=${this.getKeyValue("zoomOutMinus")}
+        .display=${this.getKeyChar("zoomOutMinus")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="zoomOutNumpad"
+        label=${translateText("user_setting.zoom_out")}
+        description=${translateText("user_setting.zoom_out_desc")}
+        defaultKey=${this.defaultKeybinds.zoomOutNumpad}
+        .value=${this.getKeyValue("zoomOutNumpad")}
+        .display=${this.getKeyChar("zoomOutNumpad")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
         action="zoomIn"
         label=${translateText("user_setting.zoom_in")}
         description=${translateText("user_setting.zoom_in_desc")}
         defaultKey=${this.defaultKeybinds.zoomIn}
         .value=${this.getKeyValue("zoomIn")}
         .display=${this.getKeyChar("zoomIn")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="zoomInEqual"
+        label=${translateText("user_setting.zoom_in")}
+        description=${translateText("user_setting.zoom_in_desc")}
+        defaultKey=${this.defaultKeybinds.zoomInEqual}
+        .value=${this.getKeyValue("zoomInEqual")}
+        .display=${this.getKeyChar("zoomInEqual")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="zoomInNumpad"
+        label=${translateText("user_setting.zoom_in")}
+        description=${translateText("user_setting.zoom_in_desc")}
+        defaultKey=${this.defaultKeybinds.zoomInNumpad}
+        .value=${this.getKeyValue("zoomInNumpad")}
+        .display=${this.getKeyChar("zoomInNumpad")}
         @change=${this.handleKeybindChange}
       ></setting-keybind>
 
@@ -1626,12 +1701,32 @@ export class UserSettingModal extends BaseModal {
       ></setting-keybind>
 
       <setting-keybind
+        action="moveUpArrow"
+        label=${translateText("user_setting.move_up")}
+        description=${translateText("user_setting.move_up_desc")}
+        .defaultKey=${this.defaultKeybinds.moveUpArrow}
+        .value=${this.getKeyValue("moveUpArrow")}
+        .display=${this.getKeyChar("moveUpArrow")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
         action="moveLeft"
         label=${translateText("user_setting.move_left")}
         description=${translateText("user_setting.move_left_desc")}
         defaultKey=${this.defaultKeybinds.moveLeft}
         .value=${this.getKeyValue("moveLeft")}
         .display=${this.getKeyChar("moveLeft")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="moveLeftArrow"
+        label=${translateText("user_setting.move_left")}
+        description=${translateText("user_setting.move_left_desc")}
+        .defaultKey=${this.defaultKeybinds.moveLeftArrow}
+        .value=${this.getKeyValue("moveLeftArrow")}
+        .display=${this.getKeyChar("moveLeftArrow")}
         @change=${this.handleKeybindChange}
       ></setting-keybind>
 
@@ -1646,12 +1741,32 @@ export class UserSettingModal extends BaseModal {
       ></setting-keybind>
 
       <setting-keybind
+        action="moveDownArrow"
+        label=${translateText("user_setting.move_down")}
+        description=${translateText("user_setting.move_down_desc")}
+        .defaultKey=${this.defaultKeybinds.moveDownArrow}
+        .value=${this.getKeyValue("moveDownArrow")}
+        .display=${this.getKeyChar("moveDownArrow")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
         action="moveRight"
         label=${translateText("user_setting.move_right")}
         description=${translateText("user_setting.move_right_desc")}
         defaultKey=${this.defaultKeybinds.moveRight}
         .value=${this.getKeyValue("moveRight")}
         .display=${this.getKeyChar("moveRight")}
+        @change=${this.handleKeybindChange}
+      ></setting-keybind>
+
+      <setting-keybind
+        action="moveRightArrow"
+        label=${translateText("user_setting.move_right")}
+        description=${translateText("user_setting.move_right_desc")}
+        .defaultKey=${this.defaultKeybinds.moveRightArrow}
+        .value=${this.getKeyValue("moveRightArrow")}
+        .display=${this.getKeyChar("moveRightArrow")}
         @change=${this.handleKeybindChange}
       ></setting-keybind>
     `;
@@ -1664,6 +1779,19 @@ export class UserSettingModal extends BaseModal {
    */
   private renderGraphicsSettings() {
     return html`
+      <setting-slider
+        label=${translateText("user_setting.hud_opacity_label")}
+        description=${translateText("user_setting.hud_opacity_desc")}
+        id="hud-opacity-slider"
+        .value=${this.userSettings.hudOpacity() * 100}
+        @change=${(e: CustomEvent<{ value: number }>) => {
+          this.userSettings.setHudOpacity(e.detail.value / 100);
+          document.documentElement.style.setProperty(
+            "--hud-opacity",
+            String(this.userSettings.hudOpacity()),
+          );
+        }}
+      ></setting-slider>
       <!-- 🎨 Graphics preset -->
       <div
         class="flex flex-col w-full p-4 bg-white/5 border border-white/10 rounded-xl hover:bg-white/10 transition-all gap-3"
@@ -1701,6 +1829,15 @@ export class UserSettingModal extends BaseModal {
         @change=${this.togglePerformanceOverlay}
       ></setting-toggle>
 
+      <!-- 🗺️ Map Layers -->
+      <setting-toggle
+        label="${translateText("user_setting.map_layers_label")}"
+        description="${translateText("user_setting.map_layers_desc")}"
+        id="map-layers-toggle"
+        .checked=${this.userSettings.mapLayers()}
+        @change=${this.toggleMapLayers}
+      ></setting-toggle>
+
       <!-- 🔧 Advanced -->
       <setting-toggle
         label="${translateText("graphics_setting.advanced_label")}"
@@ -1734,6 +1871,15 @@ export class UserSettingModal extends BaseModal {
         id="cursor_cost_label-toggle"
         .checked=${this.userSettings.cursorCostLabel()}
         @change=${this.toggleCursorCostLabel}
+      ></setting-toggle>
+
+      <!-- 🧲 Snap Build Preview -->
+      <setting-toggle
+        label="${translateText("user_setting.snap_build_preview_label")}"
+        description="${translateText("user_setting.snap_build_preview_desc")}"
+        id="snap-build-preview-toggle"
+        .checked=${this.userSettings.snapBuildPreview()}
+        @change=${this.toggleSnapBuildPreview}
       ></setting-toggle>
 
       <!-- 🖱️ Left Click Menu -->
@@ -1801,6 +1947,16 @@ export class UserSettingModal extends BaseModal {
         .checked=${this.userSettings.goToPlayer()}
         @change=${this.toggleGoToPlayer}
       ></setting-toggle>
+
+      ${isHalloweenSeason()
+        ? html`<setting-toggle
+            label="${translateText("user_setting.halloween_theme_label")}"
+            description="${translateText("user_setting.halloween_theme_desc")}"
+            id="halloween-theme-toggle"
+            .checked=${this.userSettings.halloweenTheme()}
+            @change=${this.toggleHalloweenTheme}
+          ></setting-toggle>`
+        : null}
 
       <!-- Help messages (moved here from the in-game menu) -->
       <setting-toggle

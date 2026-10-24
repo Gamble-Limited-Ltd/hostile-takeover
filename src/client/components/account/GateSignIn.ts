@@ -61,9 +61,9 @@ export class GateSignIn extends LitElement {
           @click=${() =>
             whenModalLoaded("gate-direct-modal", () =>
               document
-                .querySelector<
-                  HTMLElement & { open(): void }
-                >("gate-direct-modal")
+                .querySelector<HTMLElement & { open(): void }>(
+                  "gate-direct-modal",
+                )
                 ?.open(),
             )}
         >
