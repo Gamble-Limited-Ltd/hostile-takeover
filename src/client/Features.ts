@@ -90,7 +90,8 @@ export const Features = Object.freeze({
   stream: false,
   /**
    * Steam wishlist promos: the footer banner, the mobile play-page widget
-   * and the win box promo (and the Steam iframe behind them).
+   * and the win box promo (and the Steam iframe behind them). Also gates the
+   * "Open Lobby Links in Steam" setting and the lobby-link Steam handoff.
    */
   steam: false,
   /**

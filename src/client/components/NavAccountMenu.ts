@@ -13,6 +13,7 @@ import { hasLinkedIdentity } from "../AccountIdentity";
 import { logOut } from "../Auth";
 import { Features } from "../Features";
 import { gamePortal, type PortalUser } from "../GamePortal";
+import { takeGateLogoutUrl } from "../GateHash";
 import { showInGameConfirm } from "../InGameModal";
 import {
   latestUserMeResponse,
@@ -492,6 +493,12 @@ export class NavAccountMenu extends LitElement {
     );
     if (!confirmed) return;
     await logOut();
+    // Signed in through GLL ID: end that session too (the API hands us the URL).
+    const gateLogoutUrl = takeGateLogoutUrl();
+    if (gateLogoutUrl) {
+      window.location.href = gateLogoutUrl;
+      return;
+    }
     // Reload so every consumer of the session starts from a signed-out state.
     window.location.reload();
   }
