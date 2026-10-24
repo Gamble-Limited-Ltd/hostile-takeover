@@ -107,6 +107,14 @@ export interface Store {
 
   /** The account's progress, level 1 / 0 XP when it has no row yet. */
   getProgress(userId: string): Promise<ProgressState>;
+  /** Admin XP fix: upserts the row; `clearDay` also nulls last_xp_day. */
+  setProgress(
+    userId: string,
+    state: ProgressState,
+    clearDay: boolean,
+  ): Promise<void>;
+  /** How many stored games the account played. */
+  countGames(userId: string): Promise<number>;
   /** The caller's stored award for the first of `gameIds` that has one. */
   getXpAward(gameIds: string[], userId: string): Promise<StoredAward | null>;
   /** Public profile data; null for an unknown or disabled account. */
@@ -483,6 +491,22 @@ export function pgStore(db: SqlClient): Store {
         xpInLevel: row?.xp_in_level ?? 0,
         lifetimeXp: Number(row?.lifetime_xp ?? 0),
       };
+    },
+    async setProgress(userId, s, clearDay) {
+      await db.query(
+        `INSERT INTO user_progress (user_id, level, xp_in_level, lifetime_xp)
+         VALUES ($1, $2, $3, $4)
+         ON CONFLICT (user_id) DO UPDATE SET level = $2, xp_in_level = $3, lifetime_xp = $4,
+           last_xp_day = CASE WHEN $5 THEN NULL ELSE user_progress.last_xp_day END`,
+        [userId, s.level, s.xpInLevel, s.lifetimeXp, clearDay],
+      );
+    },
+    async countGames(userId) {
+      const r = await db.query(
+        "SELECT count(*)::int AS n FROM game_players WHERE user_id = $1",
+        [userId],
+      );
+      return r.rows[0].n;
     },
     async getXpAward(gameIds, userId) {
       const r = await db.query(

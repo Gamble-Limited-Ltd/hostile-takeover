@@ -167,6 +167,15 @@ export function memoryStore(
         xpInLevel: 0,
         lifetimeXp: 0,
       },
+    setProgress: async (id, state, clearDay) => {
+      const cur = progress.get(id);
+      progress.set(id, {
+        state,
+        lastXpDay: clearDay ? null : (cur?.lastXpDay ?? null),
+      });
+    },
+    countGames: async (id) =>
+      games.filter((g) => g.players.some((p) => p.userId === id)).length,
     getXpAward: async (gameIds, userId) => {
       const a = awards.find(
         (x) => x.userId === userId && gameIds.includes(x.gameId),

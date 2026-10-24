@@ -139,6 +139,14 @@ export function applyXp(
   };
 }
 
+/** Level and XP-in-level for a lifetime XP total, from level 1 on the curve. */
+export function progressFromLifetime(lifetimeXp: number): ProgressState {
+  return applyXp(
+    { prestige: 0, level: 1, xpInLevel: 0, lifetimeXp: 0 },
+    lifetimeXp,
+  ).progress;
+}
+
 export function toProgress(p: ProgressState): Progress {
   return {
     prestige: p.prestige,

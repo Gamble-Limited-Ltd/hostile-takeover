@@ -1,6 +1,7 @@
 import { base64urlToUuid, uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
 import { mountAccountRoutes } from "./accountRoutes";
+import { mountAdminXpRoutes } from "./adminXpRoutes";
 import { sameSecret } from "./apiKey";
 import type { ApiEnv } from "./env";
 import { mountGameRoutes } from "./gameRoutes";
@@ -405,6 +406,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   });
 
   mountProgressionRoutes(app, { store, authenticate });
+  mountAdminXpRoutes(app, { store, authenticate });
   mountGameRoutes(app, env, { store, authenticate });
 
   app.use(
