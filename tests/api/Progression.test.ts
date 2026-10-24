@@ -438,7 +438,6 @@ describe.skipIf(process.env.HT_TEST_DB !== "1")("real database", () => {
       expect(after.rows[0].level).toBe(4);
       expect(Number(after.rows[0].lifetime_xp)).toBe(340);
 
-
       await pool.query("DELETE FROM users WHERE id = $1", [a.id]);
       for (const t of ["game_players", "user_progress", "xp_awards"]) {
         const r = await pool.query(
