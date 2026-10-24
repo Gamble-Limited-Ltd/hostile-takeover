@@ -105,6 +105,15 @@ export interface Store {
     award: (p: GamePlayerRow, progress: ProgressRow) => AwardOutcome,
   ): Promise<boolean>;
 
+  /**
+   * Renames a user. `cooldownMs` null skips the limit (root). Self-service
+   * renames stamp username_changed_at; root renames leave it alone.
+   */
+  renameUser(
+    userId: string,
+    username: string,
+    opts: { cooldownMs: number | null },
+  ): Promise<RenameResult>;
   /** The account's progress, level 1 / 0 XP when it has no row yet. */
   getProgress(userId: string): Promise<ProgressState>;
   /** The caller's stored award for the first of `gameIds` that has one. */
@@ -215,6 +224,11 @@ export type CreateUserResult =
   | { ok: true; user: UserRow }
   | { ok: false; taken: "username" | "email" };
 
+export type RenameResult =
+  | { ok: true; user: UserRow }
+  | { ok: false; taken: true }
+  | { ok: false; taken: false; retryAt: Date };
+
 export type CreateGateUserResult =
   | { ok: true; user: UserRow }
   | { ok: false; taken: "username" | "email" | "gate" };
@@ -232,7 +246,7 @@ export interface SqlClient {
 }
 
 const USER_COLS =
-  "id, public_id, username::text AS username, first_name, last_name, email::text AS email, rank, disabled_at, gate_sub";
+  "id, public_id, username::text AS username, first_name, last_name, email::text AS email, rank, disabled_at, gate_sub, username_changed_at";
 
 export function pgStore(db: SqlClient): Store {
   return {
@@ -694,6 +708,38 @@ export function pgStore(db: SqlClient): Store {
                 : "username",
           };
         }
+        throw e;
+      }
+    },
+    async renameUser(userId, username, opts) {
+      try {
+        const r = await db.query(
+          `UPDATE users
+              SET username = $2,
+                  username_changed_at = CASE WHEN $3::bigint IS NULL
+                                             THEN username_changed_at ELSE now() END
+            WHERE id = $1
+              AND ($3::bigint IS NULL OR username_changed_at IS NULL
+                   OR username_changed_at <= now() - ($3::bigint * interval '1 millisecond'))
+            RETURNING ${USER_COLS}`,
+          [userId, username, opts.cooldownMs],
+        );
+        if (r.rows[0]) return { ok: true, user: r.rows[0] as UserRow };
+        const cur = await db.query(
+          "SELECT username_changed_at FROM users WHERE id = $1",
+          [userId],
+        );
+        const at = cur.rows[0]?.username_changed_at as Date | undefined;
+        return {
+          ok: false,
+          taken: false,
+          retryAt: new Date(
+            (at?.getTime() ?? Date.now()) + (opts.cooldownMs ?? 0),
+          ),
+        };
+      } catch (e) {
+        if ((e as { code?: string }).code === "23505")
+          return { ok: false, taken: true };
         throw e;
       }
     },

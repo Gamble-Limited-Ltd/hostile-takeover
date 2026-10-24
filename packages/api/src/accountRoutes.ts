@@ -36,6 +36,26 @@ function str(v: unknown): string | null {
   return typeof v === "string" ? v : null;
 }
 
+/** Format + censor check shared by register and rename; returns the trimmed name. */
+export function checkUsername(
+  raw: unknown,
+): { error: "username_invalid" | "username_censored" } | { username: string } {
+  const username = str(raw)?.trim() ?? "";
+  if (
+    username.length < 3 ||
+    username.length > 20 ||
+    !USERNAME_RE.test(username)
+  ) {
+    return { error: "username_invalid" };
+  }
+  if (profanityMatcher.hasMatch(username))
+    return { error: "username_censored" };
+  return { username };
+}
+
+/** Self-service rename: once per 7 days. */
+export const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
+
 /** Validates the register body; returns a stable error code or the clean values. */
 export function validateRegister(body: Record<string, unknown>):
   | { error: string }
@@ -58,16 +78,9 @@ export function validateRegister(body: Record<string, unknown>):
   if (email.length > MAX_EMAIL || !EMAIL_RE.test(email)) {
     return { error: "email_domain" };
   }
-  const username = str(body.username)?.trim() ?? "";
-  if (
-    username.length < 3 ||
-    username.length > 20 ||
-    !USERNAME_RE.test(username)
-  ) {
-    return { error: "username_invalid" };
-  }
-  if (profanityMatcher.hasMatch(username))
-    return { error: "username_censored" };
+  const checked = checkUsername(body.username);
+  if ("error" in checked) return checked;
+  const username = checked.username;
   const pw = checkPassword(body.password);
   if (pw) return { error: pw };
   if (body.ageConfirmed !== true) return { error: "age_unconfirmed" };
@@ -239,6 +252,87 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
         link: r.link,
         expiresAt: r.expiresAt.toISOString(),
       });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // The client (src/client/Api.ts updateUsername) maps 400 USERNAME_PROFANE ->
+  // profane, other 400 -> invalid (+reason), 409 -> taken, 429 + Retry-After ->
+  // cooldown. HT has no numbered-suffix names, so a taken name is a plain 409.
+  // GATE (GLL ID) is never told: HT owns the username.
+  app.put("/users/@me/username", json, async (req, res, next) => {
+    try {
+      const auth = await d.authenticate(req);
+      if (!auth) return void res.status(401).json({ error: "unauthorized" });
+      if (!d.limits.usernameChange.hit(auth.user.id)) return tooMany(res);
+      const checked = checkUsername(bodyOf(req).username);
+      if ("error" in checked) {
+        return void res.status(400).json(
+          checked.error === "username_censored"
+            ? { code: "USERNAME_PROFANE" }
+            : {
+                code: "USERNAME_INVALID",
+                reason:
+                  "Usernames are 3-20 characters: letters, numbers, spaces, - and _.",
+              },
+        );
+      }
+      const r = await store.renameUser(auth.user.id, checked.username, {
+        cooldownMs: USERNAME_COOLDOWN_MS,
+      });
+      if (!r.ok) {
+        if (r.taken)
+          return void res.status(409).json({ code: "USERNAME_TAKEN" });
+        res.set(
+          "Retry-After",
+          String(
+            Math.max(1, Math.ceil((r.retryAt.getTime() - Date.now()) / 1000)),
+          ),
+        );
+        return void res.status(429).json({ code: "USERNAME_COOLDOWN" });
+      }
+      res.json({
+        username: r.user.username,
+        base: r.user.username,
+        discriminator: "",
+        usernameStatus: "unclaimed",
+        nextUsernameChangeAt: new Date(
+          (r.user.username_changed_at ?? new Date()).getTime() +
+            USERNAME_COOLDOWN_MS,
+        ).toISOString(),
+      });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // Root renames any player, any time (no cooldown, and theirs is not spent).
+  app.post("/admin/users/:username/rename", json, async (req, res, next) => {
+    try {
+      const auth = await d.authenticate(req);
+      if (!auth) return void res.status(401).json({ error: "unauthorized" });
+      if (auth.role !== "root" || auth.user.rank !== "THE_STRONGEST") {
+        return void res.status(403).json({ error: "forbidden" });
+      }
+      const target = await store.findUserByUsername(req.params.username);
+      if (!target) return void res.status(404).json({ error: "no_such_user" });
+      const checked = checkUsername(bodyOf(req).username);
+      if ("error" in checked) {
+        return void res.status(400).json({ error: checked.error });
+      }
+      const from = target.username;
+      const r = await store.renameUser(target.id, checked.username, {
+        cooldownMs: null,
+      });
+      if (!r.ok) return void res.status(409).json({ error: "username_taken" });
+      await store.logAdmin({
+        actor: auth.user.username,
+        action: "user.rename",
+        target: from,
+        detail: { userId: target.id, to: r.user.username },
+      });
+      res.json({ username: r.user.username });
     } catch (e) {
       next(e);
     }
