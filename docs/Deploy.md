@@ -101,3 +101,28 @@ Watch period: 2 h
 Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 2ea2a7f00aebf4f8a94c346f9c3db8c086d8122e
   (works with the new GATE too: GATE keeps code mode for one release)
 ```
+
+## Release record: upstream sync to OpenFront v0.35.3 (2026-10-24)
+
+```
+Release: merge of OpenFront v0.35.3 (99 upstream commits, incl. the server troop-duplication fix
+  #6089 and the Halloween homepage theme, Oct 25 to Nov 1, with a toggle). Fork changes kept: new
+  store/ad/Steam/portal entry points hidden behind Features, OpenFront strings rebranded in en.json,
+  /users/@me sends the new required fields (steamLicence, steamLicenceSince, noticesSeen), censor
+  mirrored, CI format step on Oxfmt. Also: the account menu's "Log out" now ends the GLL ID session
+  (same as the account modal), and "Open Lobby Links in Steam" is hidden (Features.steam).
+Lane: Major (engine, wire and API schemas changed). Deployed by: Boss.
+Gates: ht-ci green on fb49eea1a (typecheck, lint, Oxfmt check, 4 shards, tests/server, API on
+  Postgres, prod build) [x]  engine identical to the v0.35.3 tag [x]  rehearsal on a throwaway dev
+  stack, no fakes: password sign-in, /dev/login, GLL ID (new tab + direct fallback) against GATE
+  dev, singleplayer, two-client multiplayer to the win screen, no store/ad/Turnstile/other-login
+  entry point [x]  zero open P0/P1 [x]  in-game menu and win screen not compared with main [ ]
+Known issues: none open. Dependabot: 3 alerts on vite (upstream dev dependency, not ours), left for
+  a later upstream sync.
+Needs in .env.prod: nothing new.
+Kill switch: none new (Features flags are build-time; rollback below).
+Watch period: 72 h (Major)
+Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 2168da6d5f2e641e7763748dae0df600f8474082
+Overrides:
+  Override: 72 h watch — Boss: daily rotation must be live before Monday 2026-10-26 ~6 am.
+```

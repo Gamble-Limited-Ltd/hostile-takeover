@@ -2,6 +2,10 @@
 
 🆕 **What's new**
 
+- Updated to OpenFront v0.35.3: the latest engine, gameplay and interface fixes from OpenFront, including a fix for troops being duplicated.
+  → A Halloween look for the homepage from October 25 to November 1, with a setting to turn it off.
+- Fixed: "Log out" in the account menu now also signs you out of GLL ID.
+- Removed the "Open Lobby Links in Steam" setting. Hostile Takeover has no Steam version.
 - Sign in with GLL ID, the one Gamble Limited Ltd. login for all our games.
   → Already have an account? Sign in with GLL ID and link it. If your GLL ID uses the same email, it's one click. Otherwise enter your old password once.
   → New players sign up with a GLL ID. GLL ID checks the school email rule for us.

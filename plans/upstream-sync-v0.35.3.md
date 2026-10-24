@@ -1,6 +1,6 @@
 # Upstream sync — OpenFront v0.35.3
 
-**Status:** In progress on `sync/upstream-2026-10-24` (target moved to v0.35.3; merge, no push, no deploy yet). Runbook: the
+**Status:** Ready to deploy (2026-10-24): `sync/upstream-2026-10-24` merged into `main`, CI green, rehearsal passed; release record in `docs/Deploy.md`. Runbook: the
 `ht-upstream-sync` skill (`.claude/skills/ht-upstream-sync/`). This file is the plan for the sync that
 opens next week's update, before the Update 2 features are built on top (see `update-2-progression.md`).
 
@@ -59,7 +59,9 @@ back once, then log `Override: <gate> — Boss: <reason>`.
 
 ## Decision log
 
-| Date       | Decision                                                                                     |
-| ---------- | -------------------------------------------------------------------------------------------- |
-| 2026-10-23 | Sync first, to v0.35.3 (re-check on the day). Major lane. No work starts until Boss says go. |
-| 2026-10-24 | Target moved to v0.35.3 (troop duplication fix), Boss approved.                              |
+| Date       | Decision                                                                                       |
+| ---------- | ---------------------------------------------------------------------------------------------- |
+| 2026-10-23 | Sync first, to v0.35.3 (re-check on the day). Major lane. No work starts until Boss says go.   |
+| 2026-10-24 | Target moved to v0.35.3 (troop duplication fix), Boss approved.                                |
+| 2026-10-24 | Folded in: nav-menu log-out ends the GLL ID session; "Open Lobby Links in Steam" hidden. Boss. |
+| 2026-10-24 | Override: 72 h watch — Boss: daily rotation must be live before Monday 2026-10-26 ~6 am.       |
