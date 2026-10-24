@@ -12,12 +12,23 @@ import type {
 import "./components/leaderboard/LeaderboardTribeTable";
 import type { LeaderboardTribeTable } from "./components/leaderboard/LeaderboardTribeTable";
 import { modalHeader } from "./components/ui/ModalHeader";
+import { Features } from "./Features";
 import { HT_LEADERBOARD_TABS } from "./HtLeaderboardApi";
 import { translateText } from "./Utils";
 
-// Hostile Takeover: the ranked, clan and tribe tabs are hidden (their elements
-// stay below, never loaded); the four XP/wins/games/win-rate tabs replace them.
-const TAB_KEYS = Object.keys(HT_LEADERBOARD_TABS);
+const TAB_KEYS = [
+  "players",
+  "players2v2",
+  "playersFfa",
+  "clans",
+  "tribes",
+] as const;
+
+// Hostile Takeover: with Features.ranked off (our setting) the ranked, clan and
+// tribe tabs are not offered (their elements stay below, never loaded) and the
+// four XP/wins/games/win-rate tabs replace them. With it on, upstream's tabs.
+const htTabs = (): Record<string, (typeof HT_LEADERBOARD_TABS)[string]> =>
+  Features.ranked ? {} : HT_LEADERBOARD_TABS;
 
 // Tab key -> ladder. "players" predates the 2v2 ladder and stays the 1v1 tab
 // so existing `#modal=leaderboard&tab=players` links keep working. The ladder
@@ -47,10 +58,33 @@ export class LeaderboardModal extends BaseModal {
 
   protected modalConfig() {
     return {
-      tabs: Object.entries(HT_LEADERBOARD_TABS).map(([key, t]) => ({
-        key,
-        label: translateText(t.tabKey),
-      })),
+      tabs: Features.ranked
+        ? [
+            {
+              key: "players",
+              label: translateText("leaderboard_modal.ranked_tab"),
+            },
+            {
+              key: "players2v2",
+              label: translateText("leaderboard_modal.ranked_2v2_tab"),
+            },
+            {
+              key: "playersFfa",
+              label: translateText("leaderboard_modal.ranked_ffa_tab"),
+            },
+            {
+              key: "clans",
+              label: translateText("leaderboard_modal.clans_tab"),
+            },
+            {
+              key: "tribes",
+              label: translateText("leaderboard_modal.tribes_tab"),
+            },
+          ]
+        : Object.entries(HT_LEADERBOARD_TABS).map(([key, t]) => ({
+            key,
+            label: translateText(t.tabKey),
+          })),
     };
   }
 
@@ -65,7 +99,7 @@ export class LeaderboardModal extends BaseModal {
   }
 
   private tabComponent(tab: string) {
-    if (tab in HT_LEADERBOARD_TABS) return this.htList(tab);
+    if (tab in htTabs()) return this.htList(tab);
     if (this.rankedTypeFor(tab) !== null) return this.playerList;
     if (tab === "clans") return this.clanTable;
     return this.tribeTable;
@@ -105,7 +139,7 @@ export class LeaderboardModal extends BaseModal {
 
       queueMicrotask(() => {
         if (token !== this.loadToken) return;
-        for (const key of TAB_KEYS) {
+        for (const key of [...TAB_KEYS, ...Object.keys(htTabs())]) {
           if (key !== active) void this.tabComponent(key)?.ensureLoaded();
         }
       });
@@ -164,7 +198,7 @@ export class LeaderboardModal extends BaseModal {
   protected renderBody() {
     return html`
       <div class="flex-1 min-h-0 h-full">
-        ${Object.keys(HT_LEADERBOARD_TABS).map(
+        ${Object.keys(htTabs()).map(
           (tab) => html`<leaderboard-player-list
             data-ht-tab=${tab}
             class=${this.activeTab === tab ? "h-full" : "hidden"}
