@@ -12,15 +12,12 @@ import type {
 import "./components/leaderboard/LeaderboardTribeTable";
 import type { LeaderboardTribeTable } from "./components/leaderboard/LeaderboardTribeTable";
 import { modalHeader } from "./components/ui/ModalHeader";
+import { HT_LEADERBOARD_TABS } from "./HtLeaderboardApi";
 import { translateText } from "./Utils";
 
-const TAB_KEYS = [
-  "players",
-  "players2v2",
-  "playersFfa",
-  "clans",
-  "tribes",
-] as const;
+// Hostile Takeover: the ranked, clan and tribe tabs are hidden (their elements
+// stay below, never loaded); the four XP/wins/games/win-rate tabs replace them.
+const TAB_KEYS = Object.keys(HT_LEADERBOARD_TABS);
 
 // Tab key -> ladder. "players" predates the 2v2 ladder and stays the 1v1 tab
 // so existing `#modal=leaderboard&tab=players` links keep working. The ladder
@@ -50,22 +47,10 @@ export class LeaderboardModal extends BaseModal {
 
   protected modalConfig() {
     return {
-      tabs: [
-        {
-          key: "players",
-          label: translateText("leaderboard_modal.ranked_tab"),
-        },
-        {
-          key: "players2v2",
-          label: translateText("leaderboard_modal.ranked_2v2_tab"),
-        },
-        {
-          key: "playersFfa",
-          label: translateText("leaderboard_modal.ranked_ffa_tab"),
-        },
-        { key: "clans", label: translateText("leaderboard_modal.clans_tab") },
-        { key: "tribes", label: translateText("leaderboard_modal.tribes_tab") },
-      ],
+      tabs: Object.entries(HT_LEADERBOARD_TABS).map(([key, t]) => ({
+        key,
+        label: translateText(t.tabKey),
+      })),
     };
   }
 
@@ -73,7 +58,14 @@ export class LeaderboardModal extends BaseModal {
     return PLAYER_TABS[tab] ?? null;
   }
 
+  private htList(tab: string) {
+    return this.querySelector<LeaderboardPlayerList>(
+      `leaderboard-player-list[data-ht-tab="${tab}"]`,
+    );
+  }
+
   private tabComponent(tab: string) {
+    if (tab in HT_LEADERBOARD_TABS) return this.htList(tab);
     if (this.rankedTypeFor(tab) !== null) return this.playerList;
     if (tab === "clans") return this.clanTable;
     return this.tribeTable;
@@ -99,7 +91,11 @@ export class LeaderboardModal extends BaseModal {
     const run = async () => {
       if (token !== this.loadToken) return;
 
-      if (this.rankedTypeFor(active) !== null) {
+      if (active in HT_LEADERBOARD_TABS) {
+        await this.htList(active)?.ensureLoaded();
+        if (token !== this.loadToken) return;
+        this.htList(active)?.handleTabActivated();
+      } else if (this.rankedTypeFor(active) !== null) {
         await this.playerList?.ensureLoaded();
         if (token !== this.loadToken) return;
         this.playerList?.handleTabActivated();
@@ -153,7 +149,8 @@ export class LeaderboardModal extends BaseModal {
             ${translateText("leaderboard_modal.title")}
           </span>
           ${this.activeTab === "clans" ? dateRange : ""}
-          ${this.rankedTypeFor(this.activeTab) !== null ||
+          ${this.activeTab in HT_LEADERBOARD_TABS ||
+          this.rankedTypeFor(this.activeTab) !== null ||
           this.activeTab === "tribes"
             ? refreshTime
             : ""}
@@ -167,6 +164,13 @@ export class LeaderboardModal extends BaseModal {
   protected renderBody() {
     return html`
       <div class="flex-1 min-h-0 h-full">
+        ${Object.keys(HT_LEADERBOARD_TABS).map(
+          (tab) => html`<leaderboard-player-list
+            data-ht-tab=${tab}
+            class=${this.activeTab === tab ? "h-full" : "hidden"}
+            .htTab=${tab}
+          ></leaderboard-player-list>`,
+        )}
         <leaderboard-player-list
           class=${this.rankedTypeFor(this.activeTab) !== null
             ? "h-full"

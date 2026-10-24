@@ -1,3 +1,7 @@
+import {
+  HT_LEADERBOARD_MIN_GAMES,
+  type HtLeaderboardSort,
+} from "@openfront/shared/HtLeaderboardSchemas";
 import type { UserRow } from "./userMe";
 import type { ProgressState, XpResult } from "./xp/rules";
 
@@ -115,6 +119,15 @@ export interface Store {
     opts: { cooldownMs: number | null },
   ): Promise<RenameResult>;
   /** The account's saved flag ref (`country:<code>`), null when none. */
+  /**
+   * One page of the public player leaderboard (U2.5). Disabled accounts are
+   * out; wins and games count every bucket. Ties break on username, then id.
+   */
+  listLeaderboard(
+    sort: HtLeaderboardSort,
+    limit: number,
+    offset: number,
+  ): Promise<LeaderboardRow[]>;
   getFlag(userId: string): Promise<string | null>;
   setFlag(userId: string, flag: string | null): Promise<void>;
   /** The account's progress, level 1 / 0 XP when it has no row yet. */
@@ -187,6 +200,15 @@ export interface StoredAward {
   before: ProgressState;
   after: ProgressState;
   levelsReached: number[];
+}
+
+export interface LeaderboardRow {
+  publicId: string;
+  username: string;
+  flag: string | null;
+  progress: ProgressState;
+  games: number;
+  wins: number;
 }
 
 export interface ProfileData {
@@ -769,6 +791,48 @@ export function pgStore(db: SqlClient): Store {
           return { ok: false, taken: true };
         throw e;
       }
+    },
+    async listLeaderboard(sort, limit, offset) {
+      const where = {
+        xp: "p.user_id IS NOT NULL",
+        wins: "COALESCE(s.games, 0) > 0",
+        games: "COALESCE(s.games, 0) > 0",
+        winrate: `COALESCE(s.games, 0) >= ${HT_LEADERBOARD_MIN_GAMES}`,
+      }[sort];
+      const order = {
+        xp: "COALESCE(p.lifetime_xp, 0) DESC",
+        wins: "COALESCE(s.wins, 0) DESC",
+        games: "COALESCE(s.games, 0) DESC",
+        winrate: "COALESCE(s.wins, 0)::float / COALESCE(s.games, 1) DESC",
+      }[sort];
+      const r = await db.query(
+        `SELECT u.public_id, u.username::text AS username, u.flag,
+                COALESCE(p.level, 1) AS level, COALESCE(p.xp_in_level, 0) AS xp_in_level,
+                COALESCE(p.lifetime_xp, 0)::float8 AS lifetime_xp,
+                COALESCE(s.games, 0) AS games, COALESCE(s.wins, 0) AS wins
+         FROM users u
+         LEFT JOIN user_progress p ON p.user_id = u.id
+         LEFT JOIN (SELECT user_id, count(*)::int AS games,
+                           count(*) FILTER (WHERE won)::int AS wins
+                    FROM game_players GROUP BY user_id) s ON s.user_id = u.id
+         WHERE u.disabled_at IS NULL AND ${where}
+         ORDER BY ${order}, lower(u.username::text), u.public_id
+         LIMIT $1 OFFSET $2`,
+        [limit, offset],
+      );
+      return r.rows.map((x) => ({
+        publicId: x.public_id,
+        username: x.username,
+        flag: x.flag,
+        progress: {
+          prestige: 0 as const,
+          level: x.level,
+          xpInLevel: x.xp_in_level,
+          lifetimeXp: x.lifetime_xp,
+        },
+        games: x.games,
+        wins: x.wins,
+      }));
     },
     async getFlag(userId) {
       const r = await db.query("SELECT flag FROM users WHERE id = $1", [

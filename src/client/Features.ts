@@ -58,9 +58,10 @@ export const Features = Object.freeze({
   ranked: false,
   /**
    * Leaderboards: the LEADERBOARD item in the desktop and mobile nav and
-   * the `#modal=leaderboard` route (player, clan and tribe boards).
+   * the `#modal=leaderboard` route. On (U2.5): the modal shows only our XP, wins,
+   * games and win-rate tabs; the ranked, clan and tribe tabs are not offered.
    */
-  leaderboard: false,
+  leaderboard: true,
   /**
    * Clans: the CLANS nav item (desktop and mobile), `#modal=clan`, and the
    * clan TAG box in `UsernameInput` (also keeps a stored tag from being
