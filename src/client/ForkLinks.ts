@@ -5,7 +5,7 @@ export const UPSTREAM_SOURCE_URL = "https://github.com/openfrontio/openfrontio";
 export const FORK_SOURCE_URL =
   "https://github.com/Gamble-Limited-Ltd/hostile-takeover";
 export const COMPANY_SITE_URL = "https://gll.taps-holdings.org";
-export const GAMBLE_LIMITED_URL = "https://icantstopwinning.taps-holdings.org";
+export const GAMBLE_LIMITED_URL = "https://status.taps-holdings.org";
 
 /** An http(s) URL, or "" for anything else (unset, blank, or a script URL). */
 export function safeHttpUrl(raw: string | undefined): string {

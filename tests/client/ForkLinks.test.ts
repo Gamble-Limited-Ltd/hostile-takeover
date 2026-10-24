@@ -29,8 +29,6 @@ describe("ForkLinks", () => {
     expect(UPSTREAM_SOURCE_URL).toBe(
       "https://github.com/openfrontio/openfrontio",
     );
-    expect(GAMBLE_LIMITED_URL).toBe(
-      "https://icantstopwinning.taps-holdings.org",
-    );
+    expect(GAMBLE_LIMITED_URL).toBe("https://status.taps-holdings.org");
   });
 });

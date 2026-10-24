@@ -6,7 +6,7 @@ Short and practical. Details: [Deploy.md](Deploy.md), [restore.md](restore.md).
 
 - Containers (compose project `hostile_takeover`, file `docker-compose.prod.yml`): `ht-game`, `ht-api`, `ht-db`.
 - Ports, loopback only: game `127.0.0.1:8280`, API `127.0.0.1:8287`. The database has no host port.
-- Public: `https://hostile-takeover.taps-holdings.org` and `https://hostile-takeover-api.taps-holdings.org`
+- Public: `https://hostile-takeover-N.taps-holdings.org` and `https://hostile-takeover-api-N.taps-holdings.org` (N rotates daily from 2026-10-26; today's N: `~/gll-planning/rotation/rotate.sh status` or https://status.taps-holdings.org)
   (cloudflared tunnel, host nginx not involved).
 - Secrets: `~/hostile-takeover/.env.prod` (mode 600). JWT key: `~/.config/hostile-takeover/keys/`.
 - Backups: `~/backups/hostile-takeover/` (VM only, 14 days, `backup.log` inside).

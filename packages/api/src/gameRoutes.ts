@@ -1,3 +1,4 @@
+import { createHash } from "crypto";
 import express from "express";
 import { z } from "zod";
 import newsItems from "../../../resources/news.json";
@@ -47,7 +48,26 @@ export function mountGameRoutes(app: express.Express, env: ApiEnv): void {
   // means the homepage load is not a 404 in the network log (Slice 3.5b).
   app.get("/news.json", (_req, res) => {
     res.setHeader("Cache-Control", "public, max-age=60");
-    res.json(newsItems);
+    if (!env.newsNotice) return void res.json(newsItems);
+    const id =
+      env.newsNoticeId ||
+      createHash("sha256").update(env.newsNotice).digest("hex").slice(0, 8);
+    res.json([
+      {
+        id: `url-notice-${id}`,
+        title: env.newsNotice,
+        description: env.newsNotice,
+        url: null,
+        type: "warning",
+      },
+      ...newsItems,
+    ]);
+  });
+
+  // Server only: src/server/MapWeights.ts fetchMapWeights() (polled every 60 s).
+  // Empty `maps` keeps the build's own weights.
+  app.get("/map_weights", serverOnly, (_req, res) => {
+    res.json({ maps: {} });
   });
 
   // Server: src/server/PrivilegeRefresher.ts (ReservedClanTagsResponseSchema,

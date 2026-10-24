@@ -3,9 +3,10 @@
 #
 #   ./ht-deploy.sh            git pull --ff-only, build images tagged with the git hash, migrate, up, wait healthy
 #   ./ht-deploy.sh <hash>     roll back to the images already built for that commit (no pull, no build)
+#   HT_SKIP_BUILD=1 ./ht-deploy.sh   same, for the current HEAD's images (host change only; no pull, no build)
 #
 # Only touches the compose project `hostile_takeover` (containers ht-db, ht-api, ht-game). Fails loudly.
-# Env knobs: HT_SKIP_PULL=1 (no git pull), HT_ALLOW_DIRTY=1 (build a tree with uncommitted changes; the
+# Env knobs: HT_SKIP_PULL=1 (no git pull), HT_SKIP_BUILD=1 (reuse HEAD's images; implies no pull), HT_ALLOW_DIRTY=1 (build a tree with uncommitted changes; the
 # image is still tagged with HEAD's hash, so only for testing).
 set -Eeuo pipefail
 cd "$(dirname "$0")"
@@ -30,7 +31,10 @@ KEYS_DIR="${HT_KEYS_DIR:-$HOME/.config/hostile-takeover/keys}"
 # MERIDIAN_URL is optional and only used at build time; .env.prod is not sourced wholesale.
 MERIDIAN_URL="$(sed -n 's/^MERIDIAN_URL=//p' .env.prod | tail -n 1)"
 export MERIDIAN_URL
-# HT_DOMAIN_NUMBER=N moves the game to hostile-takeover-N.taps-holdings.org (the API host stays put).
+# HT_NEWS_NOTICE is optional runtime text for the news box (e.g. "Tomorrow's URL is ...").
+HT_NEWS_NOTICE="$(sed -n 's/^HT_NEWS_NOTICE=//p' .env.prod | tail -n 1)"
+export HT_NEWS_NOTICE
+# HT_DOMAIN_NUMBER=N moves the game to hostile-takeover-N and the API to hostile-takeover-api-N (.taps-holdings.org).
 # Empty/unset = hostile-takeover.taps-holdings.org. docker-compose.prod.yml reads HT_DOMAIN_SUFFIX.
 HT_DOMAIN_NUMBER="$(sed -n 's/^HT_DOMAIN_NUMBER=//p' .env.prod | tail -n 1)"
 case "$HT_DOMAIN_NUMBER" in
@@ -60,13 +64,13 @@ wait_healthy() {
     fail "timed out after ${WAIT_SECONDS}s waiting for: $*"
 }
 
-if [ $# -ge 1 ]; then
-    HASH="$1"
+if [ $# -ge 1 ] || [ -n "${HT_SKIP_BUILD:-}" ]; then
+    HASH="${1:-$(git rev-parse HEAD)}"
     [[ "$HASH" =~ ^[0-9a-f]{7,40}$ ]] || fail "'$HASH' is not a commit hash"
     for img in "$GAME_IMAGE" "$API_IMAGE"; do
         docker image inspect "$img:$HASH" > /dev/null 2>&1 || fail "no image $img:$HASH on this machine (images are only kept for commits that were deployed here)"
     done
-    echo "Rolling back to $HASH"
+    echo "Reusing images for $HASH"
 else
     if [ -z "${HT_ALLOW_DIRTY:-}" ] && ! git diff --quiet HEAD --; then
         fail "tracked files have uncommitted changes; commit them (or HT_ALLOW_DIRTY=1 for a test build)"
