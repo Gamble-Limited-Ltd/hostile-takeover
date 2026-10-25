@@ -82,6 +82,18 @@ export function mountProgressionRoutes(
     res.json(body);
   });
 
+  // Before the :publicId routes, so a username like "progress" can't match them.
+  app.get(
+    "/public/player/by-username/:username",
+    wrap(async (req, res) => {
+      const publicId = await store.getPublicIdByUsername(
+        String(req.params.username),
+      );
+      if (!publicId) return notFound(res);
+      res.json({ publicId });
+    }),
+  );
+
   app.get(
     "/public/player/:publicId/progress",
     wrap(async (req, res) => {

@@ -244,6 +244,12 @@ async function scenario(store: Store, a: UserRow, disabled?: UserRow) {
     expect(await (await get(`/player/${pid}`, auth)).json()).toEqual(pub);
     expect((await get(`/player/${pid}`)).status).toBe(401);
     expect((await get("/public/player/nobody")).status).toBe(404);
+    expect(
+      await (
+        await get(`/public/player/by-username/${a.username.toUpperCase()}`)
+      ).json(),
+    ).toEqual({ publicId: pid });
+    expect((await get("/public/player/by-username/nobody")).status).toBe(404);
 
     const games = PublicPlayerGamesResponseSchema.parse(
       await (await get(`/public/player/${pid}/games`)).json(),
@@ -255,6 +261,9 @@ async function scenario(store: Store, a: UserRow, disabled?: UserRow) {
         expect(
           (await get(`/public/player/${disabled.public_id}${p}`)).status,
         ).toBe(404);
+      expect(
+        (await get(`/public/player/by-username/${disabled.username}`)).status,
+      ).toBe(404);
     }
     const prestige = await fetch(`${h.base}/users/@me/prestige`, {
       method: "POST",

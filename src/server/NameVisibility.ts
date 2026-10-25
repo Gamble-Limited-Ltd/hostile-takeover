@@ -215,8 +215,6 @@ export class NameVisibility {
         // level beside an anonymous name would point out the veterans. Kept on
         // a teammate reveal: it describes the teammate alone, like `verified`.
         levelBadge: c.wireLevelBadge,
-        // With the badge: a player who hides their level has no profile link.
-        publicId: c.wireLevelBadge === undefined ? undefined : c.publicId,
       };
     });
   }

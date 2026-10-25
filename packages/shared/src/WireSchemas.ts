@@ -228,15 +228,13 @@ export const ClientInfoSchema = z.object({
   // from themselves: their own client draws its own badge from its local
   // /users/@me instead), when the API has progression off or the lookup
   // failed, and on anonymized entries (a badge beside an anonymous name would
-  // point out the veterans). No range check here on purpose: one bad value must
+  // point out the veterans). Must stay the LAST field: its one presence
+  // bit is the eighth and last bit of this object's one-byte header, so an
+  // entry without it encodes byte-identically to one from before it existed,
+  // and a pre-badge frame still decodes. Another field here would need a
+  // second header byte. No range check here on purpose: one bad value must
   // not fail the whole roster's parse, so unpackLevelBadge drops it instead.
   levelBadge: zb.uint().optional(),
-  // Signed-in players' account publicId, so the roster and win screen can open
-  // their profile (Hostile Takeover, U2.4). Stamped by the game server from its
-  // own /users/@me lookup; public already (profile links). Absent for guests
-  // for players who hide their level (it would show it), and on anonymized
-  // entries. A ninth optional field, so the header is two bytes.
-  publicId: z.string().optional(),
 });
 
 export const GameInfoSchema = z.object({
@@ -363,8 +361,6 @@ export interface ClientInfo {
   // Server-stamped level for the name badge, packed (packLevelBadge); read it
   // with unpackLevelBadge. Display-only; never set on anonymized entries.
   levelBadge?: number;
-  // Account publicId (profile links); never set on anonymized entries.
-  publicId?: string;
 }
 
 export enum LogSeverity {

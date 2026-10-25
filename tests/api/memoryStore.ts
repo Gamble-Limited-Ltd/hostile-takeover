@@ -191,6 +191,12 @@ export function memoryStore(
           }
         : null;
     },
+    getPublicIdByUsername: async (username) => {
+      const u = users.find(
+        (x) => x.username.toLowerCase() === username.toLowerCase(),
+      );
+      return u && !u.disabled_at ? u.public_id : null;
+    },
     getProfile: async (publicId) => {
       const u = users.find((x) => x.public_id === publicId);
       if (!u || u.disabled_at) return null;

@@ -15,8 +15,6 @@ let rosterGameID: GameID | null = null;
 let badges = new Map<ClientID, number>();
 // The viewer's own clientID when they were on that roster.
 let rosterSelf: ClientID | null = null;
-// Profile links for the win screen: clientID to account publicId.
-let publicIds = new Map<ClientID, string>();
 
 export function rememberLobbyRoster(
   gameID: GameID,
@@ -24,11 +22,9 @@ export function rememberLobbyRoster(
   myClientID?: ClientID,
 ): void {
   const next = new Map<ClientID, number>();
-  const ids = new Map<ClientID, string>();
   let self: ClientID | null = null;
   for (const c of clients ?? []) {
     if (c.levelBadge !== undefined) next.set(c.clientID, c.levelBadge);
-    if (c.publicId !== undefined) ids.set(c.clientID, c.publicId);
     if (c.clientID === myClientID) self = myClientID;
   }
   if (gameID !== rosterGameID) {
@@ -38,7 +34,6 @@ export function rememberLobbyRoster(
   }
   rosterGameID = gameID;
   badges = next;
-  publicIds = ids;
   rosterSelf = self;
 }
 
@@ -56,15 +51,4 @@ export function lobbyLevelBadge(
     unpackLevelBadge(badges.get(clientID)) ??
     (clientID === rosterSelf ? ownHiddenLevelBadge() : undefined)
   );
-}
-
-// The player's account publicId in game `gameID`, for opening their profile;
-// undefined for guests, anonymized or level-hidden players, or a tab that
-// never saw that game's lobby.
-export function lobbyPublicId(
-  gameID: GameID,
-  clientID: ClientID | null,
-): string | undefined {
-  if (clientID === null || gameID !== rosterGameID) return undefined;
-  return publicIds.get(clientID);
 }

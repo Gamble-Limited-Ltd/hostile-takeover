@@ -686,15 +686,14 @@ export class LobbyTeamView extends LitElement {
           ></span>`
         : html``;
     }
-    // The badge opens the player's profile (only with a publicId, which the
-    // server sends beside the badge).
+    // The badge opens the player's profile, found by username (only signed-in
+    // players have a badge, and they play under their account username).
     return html`<level-badge
       stagger
-      class="inline-block align-[-7px] shrink-0 mr-1.5 ${client.publicId &&
-      Features.profile
+      class="inline-block align-[-7px] shrink-0 mr-1.5 ${Features.profile
         ? "cursor-pointer"
         : ""}"
-      @click=${() => openPlayerProfile(client.publicId)}
+      @click=${() => openPlayerProfile(client.username)}
       .level=${badge.level}
       .prestige=${badge.prestige}
       ?legend=${badge.legend}

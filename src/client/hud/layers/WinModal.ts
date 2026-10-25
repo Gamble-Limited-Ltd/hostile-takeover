@@ -32,7 +32,7 @@ import {
 import { isDesktopShell } from "../../DesktopShell";
 import { Features } from "../../Features";
 import { gamePortal } from "../../GamePortal";
-import { lobbyPublicId } from "../../LobbyRosterLevels";
+import { lobbyLevelBadge } from "../../LobbyRosterLevels";
 import {
   gameShareMoment,
   momentShareLabel,
@@ -153,8 +153,8 @@ export class WinModal extends LitElement implements Controller {
     import("../../components/LegendCeremony");
 
   private _title: string;
-  // The winning player's publicId, when the lobby roster gave it: the title opens their profile.
-  private _titleProfileId: string | undefined;
+  // The winning player's account username, when they wore a level badge: the title opens their profile.
+  private _titleProfileName: string | undefined;
 
   private rand = Math.random();
 
@@ -176,10 +176,10 @@ export class WinModal extends LitElement implements Controller {
       >
         <h2
           class="m-0 mb-4 text-[26px] text-center text-white shrink-0 ${this
-            ._titleProfileId && Features.profile
+            ._titleProfileName && Features.profile
             ? "cursor-pointer hover:underline"
             : ""}"
-          @click=${() => openPlayerProfile(this._titleProfileId)}
+          @click=${() => openPlayerProfile(this._titleProfileName)}
         >
           ${this._title || ""}
         </h2>
@@ -1041,10 +1041,11 @@ export class WinModal extends LitElement implements Controller {
           this._title = translateText("win_modal.other_won", {
             player: winner.displayName(),
           });
-          this._titleProfileId = lobbyPublicId(
-            this.game.gameID(),
-            winnerClient,
-          );
+          // Only a winner who wore a level badge is a signed-in player.
+          this._titleProfileName =
+            lobbyLevelBadge(this.game.gameID(), winnerClient) === undefined
+              ? undefined
+              : winner.name();
           this.isWin = false;
         }
         this.playEndOfGameSound();
