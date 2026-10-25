@@ -1495,7 +1495,6 @@
     "tribes_window": "Rolling {days}-day window ({start} – {end})",
     "try_again": "Try Again",
     "win_loss_ratio": "Win/Loss",
-    "win_rate": "Win rate",
     "win_rate_tab": "Win rate",
     "win_score": "Win Score",
     "win_score_tooltip": "Weighted wins based on clan participation and match difficulty",
