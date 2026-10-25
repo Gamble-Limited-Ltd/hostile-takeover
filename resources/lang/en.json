@@ -1467,6 +1467,7 @@
     "games": "Games",
     "games_tab": "Games played",
     "ht_no_stats": "No one has finished a game yet",
+    "ht_no_win_rate": "Players show up here after {games} finished games",
     "loss_score": "Loss Score",
     "loss_score_tooltip": "Weighted losses based on clan participation and match difficulty",
     "no_data_yet": "No Data Yet",

@@ -38,11 +38,11 @@ describe("HT leaderboard tabs", () => {
     ]);
   });
 
-  it("show the number each tab ranks by", () => {
+  it("show XP on the XP tab and wins on the others", () => {
     expect(htLeaderboardValue("xp", entry)).toBe(400);
     expect(htLeaderboardValue("wins", entry)).toBe(5);
-    expect(htLeaderboardValue("games", entry)).toBe(8);
-    expect(htLeaderboardValue("winrate", entry)).toBe(62.5);
+    expect(htLeaderboardValue("games", entry)).toBe(5);
+    expect(htLeaderboardValue("winrate", entry)).toBe(5);
   });
 });
 

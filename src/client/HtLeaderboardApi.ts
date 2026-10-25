@@ -24,24 +24,24 @@ export const HT_LEADERBOARD_TABS: Record<
   htGames: {
     sort: "games",
     tabKey: "leaderboard_modal.games_tab",
-    valueKey: "leaderboard_modal.games",
+    valueKey: "leaderboard_modal.wins",
   },
   htWinrate: {
     sort: "winrate",
     tabKey: "leaderboard_modal.win_rate_tab",
-    valueKey: "leaderboard_modal.win_rate",
+    valueKey: "leaderboard_modal.wins",
   },
 };
 
-/** The number a tab ranks by, shown in the row's value column. */
+/**
+ * The row's value column: XP on the XP tab, wins elsewhere. The games and
+ * win rate tabs already show their number in the Games and W/L columns.
+ */
 export function htLeaderboardValue(
   sort: HtLeaderboardSort,
   e: HtLeaderboardEntry,
 ): number {
-  if (sort === "xp") return e.lifetimeXp;
-  if (sort === "wins") return e.wins;
-  if (sort === "games") return e.games;
-  return Math.round(e.winRate * 1000) / 10;
+  return sort === "xp" ? e.lifetimeXp : e.wins;
 }
 
 /** One page, or false on any failure. An empty page is the end of the list. */

@@ -18,6 +18,7 @@ import {
 } from "@openfront/shared/ApiSchemas";
 import { LitElement, PropertyValues, TemplateResult, html, nothing } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { Features } from "../../../Features";
 import { translateText } from "../../../Utils";
 import "./PlayerStatsSummary";
 import "./PlayerStatsTable";
@@ -562,11 +563,13 @@ export class PlayerStatsTreeView extends LitElement {
                   <player-stats-summary .leaf=${leaf}></player-stats-summary>
                 </div>
 
-                <div class="border-t border-white/10 pt-6">
-                  <player-stats-table
-                    .stats=${leaf?.stats ?? null}
-                  ></player-stats-table>
-                </div>
+                ${Features.gameStatDetails
+                  ? html`<div class="border-t border-white/10 pt-6">
+                      <player-stats-table
+                        .stats=${leaf?.stats ?? null}
+                      ></player-stats-table>
+                    </div>`
+                  : nothing}
               </div>
             `
           : html`
