@@ -23,6 +23,7 @@ import { describeFlareCosmetic, type FlareCosmeticView } from "./FlareCosmetic";
 import "./LevelBadge";
 import { SECTION, SECTION_TITLE } from "./ProgressionSection";
 import type { RewardsChangedDetail } from "./RewardsPanel";
+import { xpBar, xpProgressText } from "./XpBar";
 
 // The profile's Progression tab: the reward track of the current prestige
 // run, when each prestige rank was entered, and the milestone levels reached
@@ -203,6 +204,9 @@ export class ProfileProgression extends LitElement {
   @property({ attribute: false }) confirmedLevel: number | null = null;
   // The level counts XP from games the API hasn't scored yet.
   @property({ type: Boolean }) provisional = false;
+  // Hostile Takeover: no reward track, prestige history or milestones (we have
+  // no rewards or prestige): just the level and XP bar, and no config fetch.
+  @property({ type: Boolean }) levelOnly = false;
   // Names one opening of the profile: the tab pops in once per key, however
   // often it's shown again (a tab switch builds a new element). Without a
   // key it pops in once per element.
@@ -254,6 +258,7 @@ export class ProfileProgression extends LitElement {
 
   protected willUpdate(changed: PropertyValues<this>): void {
     super.willUpdate(changed);
+    if (this.levelOnly) return;
     if (this.progress !== null && this.publicId !== this.loadedFor) {
       this.loadedFor = this.publicId;
       void this.loadTrack(this.publicId);
@@ -475,6 +480,22 @@ export class ProfileProgression extends LitElement {
 
   render() {
     const progress = this.progress;
+    if (progress !== null && this.levelOnly) {
+      const inLevel = progress.xpInLevel ?? 0;
+      const next = progress.legend ? 0 : (progress.xpForNext ?? 0);
+      const text = xpProgressText(inLevel, next);
+      return html`<section class=${SECTION} data-level-only>
+        <div
+          class="mb-2 text-lg font-black uppercase tracking-widest text-white"
+        >
+          ${translateText("progression.level", { level: progress.level })}
+        </div>
+        ${xpBar(next > 0 ? (inLevel / next) * 100 : 100, {
+          valueText: text,
+        })}
+        <div class="mt-2 text-sm text-white/60">${text}</div>
+      </section>`;
+    }
     if (progress === null || !this.ready) return nothing;
     const track = this.track;
     return html`

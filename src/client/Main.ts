@@ -511,16 +511,18 @@ class Client {
       modalRouter.register("subscription", { tag: "subscription-modal" });
     }
     if (Features.profile) {
-      modalRouter.register("stats", {
-        tag: "game-stats-modal",
-        pageId: "page-stats",
-      });
       modalRouter.register("profile", {
         tag: "player-profile-modal",
         pageId: "page-profile",
       });
       // The canonical profile link, `/player/<id>` (see playerProfileUrl).
       modalRouter.registerPath("profile", playerProfileRouteArgs);
+    }
+    if (Features.gameHistory) {
+      modalRouter.register("stats", {
+        tag: "game-stats-modal",
+        pageId: "page-stats",
+      });
     }
     modalRouter.register("help", { tag: "help-modal", pageId: "page-help" });
     modalRouter.register("news", { tag: "news-modal", pageId: "page-news" });

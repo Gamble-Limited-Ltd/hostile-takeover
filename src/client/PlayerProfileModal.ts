@@ -22,6 +22,7 @@ import "./components/ProfileShare";
 import { modalHeader } from "./components/ui/ModalHeader";
 import { usernameText } from "./components/ui/UsernameText";
 import { verifiedBadge } from "./components/ui/VerifiedBadge";
+import { Features } from "./Features";
 import "./GameStatsModal";
 import "./LeaderboardModal";
 import { modalRouter } from "./ModalRouter";
@@ -131,8 +132,12 @@ export class PlayerProfileModal extends BaseModal {
       maxWidth: "960px",
       tabs: [
         { key: "stats", label: translateText("account_modal.tab_stats") },
-        { key: "games", label: translateText("account_modal.tab_games") },
-        { key: "clans", label: translateText("account_modal.tab_clans") },
+        ...(Features.gameHistory
+          ? [{ key: "games", label: translateText("account_modal.tab_games") }]
+          : []),
+        ...(Features.clans
+          ? [{ key: "clans", label: translateText("account_modal.tab_clans") }]
+          : []),
         // Only for a player with a level: there is nothing to show otherwise.
         ...(this.progress === null
           ? []
@@ -344,6 +349,7 @@ export class PlayerProfileModal extends BaseModal {
       .confirmedLevel=${view.confirmedLevel}
       .provisional=${view.provisional}
       .publicId=${this.publicId}
+      .levelOnly=${!Features.prestige}
       .popKey=${`profile-${this.openCount}`}
     ></profile-progression>`;
   }

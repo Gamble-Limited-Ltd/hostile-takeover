@@ -23,20 +23,16 @@ import { Footer } from "../../src/client/components/Footer";
 import "../../src/client/components/MobileNavBar";
 import { filterNewsByFeatures } from "../../src/client/components/NewsBox";
 import { Features } from "../../src/client/Features";
-import {
-  fetchMyGameXp,
-  fetchProgressionConfig,
-  fetchPublicPlayerProgress,
-  prestigeMe,
-} from "../../src/client/ProgressionApi";
+import { prestigeMe } from "../../src/client/ProgressionApi";
 import { streamsFeed } from "../../src/client/StreamsFeed";
 
 const SWITCHES = [
-  "xp",
+  "prestige",
+  "achievements",
+  "gameHistory",
   "ranked",
   "clans",
   "friends",
-  "profile",
   "stream",
   "steam",
   "discord",
@@ -57,6 +53,9 @@ describe("Slice 3.5 switches", () => {
   it("exist and default to off", () => {
     for (const name of SWITCHES) expect(Features[name]).toBe(false);
     expect(Features.usernameChange).toBe(true);
+    // On since U2.4.
+    expect(Features.xp).toBe(true);
+    expect(Features.profile).toBe(true);
     expect(Features.leaderboard).toBe(true);
   });
 });
@@ -118,13 +117,10 @@ describe("no requests while hidden", () => {
     expect(getStreams).not.toHaveBeenCalled();
   });
 
-  it("never calls an XP, prestige or progression endpoint", async () => {
+  it("never calls the prestige endpoint", async () => {
     const fetchSpy = vi.fn();
     vi.stubGlobal("fetch", fetchSpy);
-    expect(await fetchMyGameXp("g")).toEqual({ status: "unavailable" });
-    expect(await fetchPublicPlayerProgress("p")).toBe(false);
     expect(await prestigeMe("k")).toEqual({ ok: false, reason: "failed" });
-    expect(await fetchProgressionConfig()).toBe(false);
     expect(fetchSpy).not.toHaveBeenCalled();
     vi.unstubAllGlobals();
   });

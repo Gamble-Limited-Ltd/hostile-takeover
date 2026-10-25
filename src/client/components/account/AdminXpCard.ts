@@ -108,6 +108,7 @@ export class AdminXpCard extends LitElement {
             class=${INPUT_CLASS}
           />
           <o-button
+            class="block"
             variant="primary"
             width="block"
             size="md"
@@ -139,6 +140,7 @@ export class AdminXpCard extends LitElement {
               </p>`
             : nothing}
           <o-button
+            class="block"
             variant="primary"
             width="block"
             size="md"
@@ -147,6 +149,7 @@ export class AdminXpCard extends LitElement {
             @click=${() => this.setXp()}
           ></o-button>
           <o-button
+            class="block"
             variant="danger"
             width="block"
             size="md"

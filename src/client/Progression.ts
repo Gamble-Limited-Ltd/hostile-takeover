@@ -279,6 +279,9 @@ const INELIGIBLE_REASON_KEYS: Record<string, string> = {
   custom_settings: "progression.ineligible_custom_settings",
   too_few_humans: "progression.ineligible_too_few_humans",
   daily_cap: "progression.ineligible_daily_cap",
+  // Hostile Takeover API reasons.
+  no_account: "progression.ineligible_no_account",
+  stats_disputed: "progression.ineligible_stats_disputed",
   // The game's stats were not agreed on by the players' votes.
   unverified: "progression.ineligible_unverified",
   // Played before player levels launched: never scored.

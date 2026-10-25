@@ -23,8 +23,9 @@ vi.mock("../../src/client/Utils", () => ({
 import type { UserMeResponse } from "@openfront/shared/ApiSchemas";
 import { NavAccountMenu } from "../../src/client/components/NavAccountMenu";
 
-// Slice 3.5: with the real (all-off) Features the signed-in menu has no
-// "Copy profile URL" and no "Change username", and no level badge.
+// With the real Features (U2.4: profile, xp and usernameChange on) the signed-in
+// menu has "Copy profile URL", "Change username" and the level badge, and
+// nothing for the features that stay off.
 describe("nav-account-menu with hidden features", () => {
   let el: NavAccountMenu;
 
@@ -38,7 +39,7 @@ describe("nav-account-menu with hidden features", () => {
   });
   afterEach(() => el.remove());
 
-  it("lists only view account, account settings and log out", async () => {
+  it("lists the supported rows only", async () => {
     document.dispatchEvent(
       new CustomEvent("userMeResponse", {
         detail: {
@@ -63,11 +64,12 @@ describe("nav-account-menu with hidden features", () => {
       (n) => n.getAttribute("data-menu-item"),
     );
     expect(keys).toEqual([
+      "copy-profile-url",
       "view-account",
       "account-settings",
       "change-username",
       "log-out",
     ]);
-    expect(el.querySelector("level-badge")).toBeNull();
+    expect(el.querySelector("level-badge")).not.toBeNull();
   });
 });

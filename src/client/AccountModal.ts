@@ -255,10 +255,16 @@ export class AccountModal extends BaseModal {
       { key: "account", label: translateText("account_modal.tab_account") },
     ];
     if (Features.profile) {
-      tabs.push(
-        { key: "stats", label: translateText("account_modal.tab_stats") },
-        { key: "games", label: translateText("account_modal.tab_games") },
-      );
+      tabs.push({
+        key: "stats",
+        label: translateText("account_modal.tab_stats"),
+      });
+    }
+    if (Features.gameHistory) {
+      tabs.push({
+        key: "games",
+        label: translateText("account_modal.tab_games"),
+      });
     }
     // Only for a player with a level, so never with Features.xp off.
     if (Features.xp && this.hasProgress()) {
@@ -298,7 +304,7 @@ export class AccountModal extends BaseModal {
       <div class="custom-scrollbar mr-1">
         <div class="p-6">${this.renderTab(tab)}</div>
       </div>
-      ${Features.xp
+      ${Features.prestige
         ? html`<prestige-flow
             .publicId=${this.userMeResponse?.player?.publicId ?? ""}
             @prestiged=${this.handlePrestiged}
@@ -314,7 +320,7 @@ export class AccountModal extends BaseModal {
         if (Features.profile) return this.renderStatsTab();
         return this.renderAccountTab();
       case "games":
-        if (Features.profile) return this.renderGamesTab();
+        if (Features.gameHistory) return this.renderGamesTab();
         return this.renderAccountTab();
       case "progression":
         if (Features.xp) return this.renderProgressionTab();
@@ -581,6 +587,7 @@ export class AccountModal extends BaseModal {
       .confirmedLevel=${view.confirmedLevel}
       .provisional=${view.provisional}
       .publicId=${publicId}
+      .levelOnly=${!Features.prestige}
       .popKey=${`account-${this.openCount}`}
       @rewards-changed=${this.handleTrackRewardsChanged}
     ></profile-progression>`;
@@ -724,7 +731,7 @@ export class AccountModal extends BaseModal {
       .progress=${view.progress}
       .provisional=${view.provisional}
       .openKey=${`account-${this.openCount}`}
-      prestigeable
+      .prestigeable=${Features.prestige}
       @prestige-request=${this.handlePrestigeRequest}
     ></profile-card>`;
   }
@@ -732,7 +739,7 @@ export class AccountModal extends BaseModal {
   // Fetches the prestige flow when /users/@me says the card will offer
   // Prestige, so it's there by the press.
   private prefetchPrestigeFlow(): void {
-    if (!Features.xp) return;
+    if (!Features.prestige) return;
     if (!this.userMeResponse?.player?.progress?.canPrestige) return;
     this.loadPrestigeFlow().catch((err: unknown) =>
       console.warn("AccountModal: prestige flow failed to load", err),

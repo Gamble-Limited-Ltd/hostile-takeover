@@ -4,6 +4,15 @@ const copyToClipboardMock = vi.hoisted(() => vi.fn(async () => undefined));
 const showToastMock = vi.hoisted(() => vi.fn());
 const platform = vi.hoisted(() => ({ isTouch: false }));
 
+// Upstream behaviour: HT turns this off in Features.
+vi.mock("../../src/client/Features", async (importOriginal) => ({
+  Features: {
+    ...(await importOriginal<typeof import("../../src/client/Features")>())
+      .Features,
+    socialShare: true,
+  },
+}));
+
 vi.mock("../../src/client/Utils", () => ({
   translateText: (key: string, params?: Record<string, string | number>) =>
     params ? `${key}:${JSON.stringify(params)}` : key,

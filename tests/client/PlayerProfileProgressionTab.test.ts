@@ -1,5 +1,16 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 
+// U2.4: this file covers tabs and flows that are off in the real Features.
+vi.mock("../../src/client/Features", async (importOriginal) => ({
+  Features: {
+    ...(await importOriginal<typeof import("../../src/client/Features")>())
+      .Features,
+    gameHistory: true,
+    clans: true,
+    prestige: true,
+  },
+}));
+
 const fetchPublicPlayerProgressMock = vi.hoisted(() => vi.fn());
 
 vi.mock("../../src/client/Api", () => ({

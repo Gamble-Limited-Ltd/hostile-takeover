@@ -37,7 +37,9 @@ describe("Features", () => {
   it("is frozen and defaults every switch to off", () => {
     expect(Object.isFrozen(Features)).toBe(true);
     for (const [key, value] of Object.entries(Features))
-      expect(value).toBe(key === "usernameChange" || key === "leaderboard");
+      expect(value).toBe(
+        ["usernameChange", "xp", "profile", "leaderboard"].includes(key),
+      );
     expect(Features.store).toBe(false);
   });
 });

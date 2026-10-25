@@ -144,6 +144,8 @@ export interface Store {
   getXpAward(gameIds: string[], userId: string): Promise<StoredAward | null>;
   /** Public profile data; null for an unknown or disabled account. */
   getProfile(publicId: string): Promise<ProfileData | null>;
+  /** The publicId of the enabled account with this username (case-insensitive), or null. */
+  getPublicIdByUsername(username: string): Promise<string | null>;
 
   logAdmin(entry: {
     actor: string;
@@ -562,6 +564,14 @@ export function pgStore(db: SqlClient): Store {
         after: row.after,
         levelsReached: row.levels_reached,
       };
+    },
+    async getPublicIdByUsername(username) {
+      const r = await db.query(
+        `SELECT public_id FROM users
+         WHERE username = $1 AND disabled_at IS NULL`,
+        [username],
+      );
+      return r.rows[0]?.public_id ?? null;
     },
     async getProfile(publicId) {
       const u = await db.query(
