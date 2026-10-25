@@ -66,13 +66,13 @@ Ranked/matchmaking is not planned. Revisit it only if the group grows enough to 
 ## Status (2026-10-16)
 
 Boss considers Hostile Takeover **complete**. From here it only receives upstream (OpenFront) syncs.
-Update 2 (progression) stays parked in `update-2-progression.md` until Boss reopens it.
+Update 2 (progression) was reopened 2026-10-24 and built as slices U2.1 to U2.9 (`update-2-progression.md`).
 
 ## Next update (planned 2026-10-23)
 
 Order: **1.** [Upstream sync to v0.35.3](upstream-sync-v0.35.3.md) (Major lane), **2.** the
 [daily host rotation + status page](daily-rotation.md) (its own slice, never the same day as the
-sync), **3.** [Update 2](update-2-progression.md) features on top of the synced code.
+sync), **3.** [Update 2](update-2-progression.md) features on top of the synced code (built 2026-10-24, Minor lane, ships after the v0.35.3 watch).
 
 **Later (postponed by Boss, 2026-10-23):** a root-only force-join for public games. Lobby stage is a
 small server-only change (skip max players, allowlist and trust gates for JWT `role: root`). Taking

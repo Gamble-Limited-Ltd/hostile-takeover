@@ -2,6 +2,12 @@
 
 🆕 **What's new**
 
+- XP and account levels are back. Every finished game earns XP, more for winning, placing well and staying alive, plus a bonus for your first game each day.
+  → Your level shows next to your name in lobbies and games. Click a player's level badge to open their profile.
+  → Profiles show level, games, wins and your flag. The flag you pick is now saved to your account, so it follows you to every device.
+  → The leaderboard has four tabs: XP, wins, games played and win rate.
+  → You can change your username once every 7 days from your account.
+  → Singleplayer and small private games earn half XP. Games shorter than 2 minutes earn none.
 - From Monday, October 26, the game's address changes every morning at 7:00 AM Central. The news box shows tomorrow's address, and https://status.taps-holdings.org always has today's link.
   → You'll need to sign in again each morning.
 - Updated to OpenFront v0.35.3: the latest engine, gameplay and interface fixes from OpenFront, including a fix for troops being duplicated.
