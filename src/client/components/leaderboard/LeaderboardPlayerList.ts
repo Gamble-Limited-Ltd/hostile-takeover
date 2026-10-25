@@ -4,6 +4,7 @@ import {
   RankedLeaderboardEntry,
 } from "@openfront/shared/ApiSchemas";
 import { assetUrl } from "@openfront/shared/AssetUrls";
+import { HT_LEADERBOARD_MIN_GAMES } from "@openfront/shared/HtLeaderboardSchemas";
 import { html, LitElement, nothing, PropertyValues } from "lit";
 import { customElement, property, query, state } from "lit/decorators.js";
 import { fetchPlayerLeaderboard, getUserMe } from "../../Api";
@@ -598,11 +599,15 @@ export class LeaderboardPlayerList extends LitElement {
           ${translateText("leaderboard_modal.no_data_yet")}
         </h3>
         <p class="text-white/30 text-sm">
-          ${translateText(
-            this.htTab
-              ? "leaderboard_modal.ht_no_stats"
-              : "leaderboard_modal.ranked_no_stats",
-          )}
+          ${this.htConfig?.sort === "winrate"
+            ? translateText("leaderboard_modal.ht_no_win_rate", {
+                games: HT_LEADERBOARD_MIN_GAMES,
+              })
+            : translateText(
+                this.htTab
+                  ? "leaderboard_modal.ht_no_stats"
+                  : "leaderboard_modal.ranked_no_stats",
+              )}
         </p>
       </div>
     `;

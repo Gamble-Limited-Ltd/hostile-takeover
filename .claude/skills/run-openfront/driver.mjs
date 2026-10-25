@@ -36,7 +36,9 @@ async function loadPlaywright() {
   const req = createRequire(path.join(CACHE, "node_modules", "x.js"));
   return await import(pathToFileURL(req.resolve("playwright")).href);
 }
-const { chromium } = await loadPlaywright();
+const pw = await loadPlaywright();
+// A file-URL import of the CJS entry puts the exports under `default`.
+const chromium = pw.chromium ?? pw.default.chromium;
 
 // Launch chromium with the locally-extracted system libraries and fontconfig
 // (see setup.sh). Without them the headless shell dies on libnspr4.so, and
