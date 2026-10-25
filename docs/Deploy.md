@@ -155,3 +155,26 @@ Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 29621ccfc5fffa0d7fb5f0c3731ab9
 Overrides:
   Override: 72 h watch (v0.35.3) — Boss: daily rotation must be live before Monday 2026-10-26 ~6 am.
 ```
+
+## Release record: Update 2, XP and account levels (draft, target 2026-10-29/30)
+
+```
+Release: XP and account levels return (slices U2.1 to U2.8). Migration 007 (games, game_players,
+  user_progress, xp_awards; users.flag, users.username_changed_at). XP from POST /game/:id (API key)
+  and signed-in singleplayer; level in /users/@me, lobby badges, profile page (by publicId, copy-link
+  share only), 4 leaderboard tabs (XP, wins, games, win rate), username change every 7 days, flag
+  saved to the account, root admin XP card (audited). Privacy policy and ToS updated (Boss approved
+  2026-10-24, effective 2026-10-29). Player note: changelog "XP and account levels are back".
+Lane: Minor (new API tables and routes, UI switches on). Deployed by: Boss.
+Gates: ht-ci green on the release sha [ ]  migration 007 rehearsed on a throwaway stack from a prod-
+  shaped backup [ ]  dev stack end to end: multiplayer game -> win screen XP, nav level, lobby badge,
+  both players on all 4 tabs, profiles open; singleplayer half XP; rename persists; admin fix
+  audited [ ]  screenshots vs upstream (profile, leaderboard, admin card) [ ]  zero open P0/P1 [ ]
+  v0.35.3 72 h watch over [ ]  not between 10 pm and 7 am Chicago [ ]
+Needs in .env.prod: nothing new.
+Kill switch: Features.xp, Features.profile, Features.leaderboard (build-time; rebuild with the flag
+  off, or roll back). Migration 007 only adds tables and nullable columns, so the old build runs on it.
+Watch period: 24 h (Minor)
+Rollback: cd ~/hostile-takeover && ./ht-deploy.sh <prod sha at deploy time; 29621ccfc5fffa0d7fb5f0c3731ab9a8bbd850a4 today>
+Overrides: none
+```
