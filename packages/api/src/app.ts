@@ -167,14 +167,12 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     res: express.Response,
     userId: string,
     userAgent: string | undefined,
-    rotatedFrom?: string,
   ) {
     const { token, hash } = newRefreshToken();
     await store.createSession({
       userId,
       tokenHash: hash,
       expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
-      rotatedFrom,
       userAgent,
     });
     setRefreshCookie(res, token);
@@ -297,7 +295,6 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
           userId: user.id,
           tokenHash: next.hash,
           expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
-          rotatedFrom: found.id,
           userAgent: req.headers["user-agent"],
         }))
       ) {
@@ -397,7 +394,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   mountAccountRoutes(app, {
     ctx,
     limits,
-    startSession: (res, userId, ua) => startSession(res, userId, ua),
+    startSession,
     clearRefreshCookie,
     readRefreshCookie: (req) => readCookie(req.headers.cookie, REFRESH_COOKIE),
     authenticate,
@@ -407,7 +404,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     ctx,
     gate,
     limits,
-    startSession: (res, userId, ua) => startSession(res, userId, ua),
+    startSession,
     readCookie: (req, name) => readCookie(req.headers.cookie, name),
     cookieFlags: { secure, sameSite: cookieOpts.sameSite },
   });

@@ -176,10 +176,18 @@ export function mountGameRoutes(
   // Client: src/client/LocalServer.ts (gzip body, bearer token, only checks
   // response.ok). Auth comes before the body is read. Only the caller is
   // credited, and only when the record's single player is the caller.
+  // One singleplayer ingest per user at a time, so the daily cap's
+  // count-then-insert can't be raced. shortcut: per-process; fine for one API process.
+  const spBusy = new Set<string>();
   app.post("/archive_singleplayer_game", async (req, res, next) => {
+    let mine: string | null = null;
     try {
       const who = await d.authenticate(req);
       if (!who) return void res.status(401).json({ error: "unauthorized" });
+      if (spBusy.has(who.user.id)) {
+        return void res.status(429).json({ error: "rate_limited" });
+      }
+      spBusy.add((mine = who.user.id));
       const body = await readBody(req, res);
       if (body === undefined) return;
       const parsed = PartialAnalyticsRecordSchema.safeParse(body);
@@ -217,6 +225,8 @@ export function mountGameRoutes(
       res.status(204).end();
     } catch (e) {
       next(e);
+    } finally {
+      if (mine) spBusy.delete(mine);
     }
   });
 

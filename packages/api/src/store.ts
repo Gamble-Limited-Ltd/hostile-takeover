@@ -35,7 +35,6 @@ export interface Store {
       userId: string;
       tokenHash: string;
       expiresAt: Date;
-      rotatedFrom?: string;
       userAgent?: string;
     },
   ): Promise<boolean>;
@@ -267,7 +266,8 @@ export interface NewUser {
 }
 
 export type CreateUserResult =
-  { ok: true; user: UserRow } | { ok: false; taken: "username" | "email" };
+  | { ok: true; user: UserRow }
+  | { ok: false; taken: "username" | "email" };
 
 export type RenameResult =
   | { ok: true; user: UserRow }

@@ -73,6 +73,11 @@ export class GateLinkCard extends LitElement {
       this.status = "expired";
       return;
     }
+    // An email match alone no longer links: ask for the old password.
+    if (result.code === "password_required") {
+      this.oldAccount = true;
+      return;
+    }
     this.error = translateText(keyOf(result.code));
   }
 
@@ -168,7 +173,7 @@ export class GateLinkCard extends LitElement {
           translateText("gate_auth.match_continue", { username }),
           () => void this.run(() => confirmGateLink(), linkErrorKey),
         )}
-        ${this.message()}
+        ${this.message()} ${this.oldAccount ? this.renderLinkOld() : nothing}
       </div>
     `;
   }

@@ -396,6 +396,24 @@ describe("POST /archive_singleplayer_game", () => {
     }
   });
 
+  test("concurrent singleplayer posts can't race past the daily cap", async () => {
+    const a = user();
+    const mem = memoryStore([a]);
+    const h = await harness(mem.store);
+    try {
+      const jwt = await h.jwt(a);
+      for (let i = 0; i < 24; i++) {
+        expect((await postSingle(h.base, jwt, solo(a))).status).toBe(204);
+      }
+      await Promise.all(
+        Array.from({ length: 5 }, () => postSingle(h.base, jwt, solo(a))),
+      );
+      expect(mem.awards).toHaveLength(25);
+    } finally {
+      h.close();
+    }
+  });
+
   test("a singleplayer id can't block the same id from a server game", async () => {
     const a = user();
     const mem = memoryStore([a]);
@@ -491,6 +509,58 @@ describe.skipIf(process.env.HT_TEST_DB !== "1")("real database", () => {
       h.close();
       await pool.query("DELETE FROM games WHERE id = ANY($1)", [gameIDs]);
       await pool.query("DELETE FROM users WHERE id = ANY($1)", [ids]);
+      await pool.end();
+    }
+  });
+
+  test("singleplayer daily count and one-transaction password reset", async () => {
+    const pool = new pg.Pool({
+      host: process.env.HT_DB_HOST ?? "127.0.0.1",
+      port: Number(process.env.HT_DB_PORT ?? 5436),
+      database: process.env.HT_DB_NAME ?? "hostile_takeover",
+      user: process.env.HT_DB_USER ?? "hostile_takeover",
+      password: process.env.HT_DB_PASSWORD ?? "",
+    });
+    const store = pgStore(pool);
+    const name = "itest" + randomUUID().slice(0, 8);
+    const r = await pool.query(
+      `INSERT INTO users (public_id, username, first_name, last_name, email, password_hash, age_confirmed_at)
+       VALUES ($1, $2, 'I', 'T', $3, 'x', now()) RETURNING id`,
+      [generatePublicId(), name, `${name}@example.org`],
+    );
+    const a = { ...user(name), id: r.rows[0].id as string };
+    const h = await harness(store);
+    const rec = record({
+      gameType: "Singleplayer",
+      players: [{ id: a.id, clientID: "AAAAAAAA" }],
+      winner: ["player", "AAAAAAAA"],
+    });
+    try {
+      expect(await store.countSingleplayerToday(a.id)).toBe(0);
+      expect((await postSingle(h.base, await h.jwt(a), rec)).status).toBe(204);
+      expect(await store.countSingleplayerToday(a.id)).toBe(1);
+
+      const tok = randomUUID();
+      await store.createReset({
+        userId: a.id,
+        tokenHash: tok,
+        createdBy: null,
+        expiresAt: new Date(Date.now() + 60_000),
+      });
+      expect(await store.consumeReset("nope", "h1")).toBeNull();
+      expect(await store.consumeReset(tok, "h2")).toBe(a.id);
+      expect(await store.consumeReset(tok, "h3")).toBeNull();
+      const pw = await pool.query(
+        "SELECT password_hash FROM users WHERE id = $1",
+        [a.id],
+      );
+      expect(pw.rows[0].password_hash).toBe("h2");
+    } finally {
+      h.close();
+      await pool.query("DELETE FROM games WHERE id LIKE '%' || $1", [
+        rec.info.gameID,
+      ]);
+      await pool.query("DELETE FROM users WHERE id = $1", [a.id]);
       await pool.end();
     }
   });

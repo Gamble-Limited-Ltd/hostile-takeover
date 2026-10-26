@@ -87,7 +87,7 @@ export function memoryStore(
           token_hash: next.tokenHash,
           expires_at: next.expiresAt,
           revoked_at: null,
-          rotated_from: next.rotatedFrom,
+          rotated_from: id,
         });
       }
       return true;
@@ -185,12 +185,14 @@ export function memoryStore(
     },
     countSingleplayerToday: async (id) => {
       const day = new Date().toISOString().slice(0, 10);
-      return games.filter(
+      const n = games.filter(
         (g) =>
           g.source === "singleplayer" &&
           g.createdAt.toISOString().slice(0, 10) === day &&
           g.players.some((p) => p.userId === id),
       ).length;
+      await new Promise((r) => setTimeout(r, 5)); // a real query's latency: lets races show
+      return n;
     },
     countGames: async (id) =>
       games.filter((g) => g.players.some((p) => p.userId === id)).length,

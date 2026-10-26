@@ -3,7 +3,7 @@
 // see GATE.
 import { uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
-import { USERNAME_RE } from "./accountRoutes";
+import { bodyOf, ipOf, USERNAME_RE } from "./accountRoutes";
 import type { AppContext } from "./app";
 import { profanityMatcher } from "./censor";
 import {
@@ -48,9 +48,6 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
   const { store, env } = d.ctx;
   const { gate } = d;
   const json = express.json({ limit: "16kb" });
-  const ipOf = (req: express.Request) => req.ip ?? "unknown";
-  const bodyOf = (req: express.Request): Record<string, unknown> =>
-    req.body && typeof req.body === "object" ? req.body : {};
   const str = (v: unknown) => (typeof v === "string" ? v : null);
   const cookieOpts = {
     path: "/auth/gate",

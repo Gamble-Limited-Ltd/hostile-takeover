@@ -180,6 +180,28 @@ describe("gate-link-card", () => {
     expect(confirmGateLink).toHaveBeenCalled();
   });
 
+  it("match: password_required falls through to the old-password form", async () => {
+    vi.mocked(confirmGateLink).mockResolvedValue({
+      ok: false,
+      status: 403,
+      code: "password_required",
+    });
+    vi.mocked(gateLinkWithPassword).mockResolvedValueOnce({ ok: true });
+    await mountLink({ ...pendingBase, match: { username: "bobby" } });
+    expect(el.querySelector("input[type=password]")).toBeNull();
+    click('o-button[title=\'gate_auth.match_continue:{"username":"bobby"}\']');
+    await settle();
+    expect(el.querySelector("input[type=password]")).not.toBeNull();
+    expect(el.textContent).not.toContain("gate_auth.error_generic");
+    fill("username", "bobby");
+    fill("password", "pw");
+    const onSuccess = vi.fn();
+    el.addEventListener("auth-success", onSuccess);
+    await submit("form");
+    expect(gateLinkWithPassword).toHaveBeenCalledWith("bobby", "pw");
+    expect(onSuccess).toHaveBeenCalledOnce();
+  });
+
   it("rename: names the taken login and creates as the suggestion", async () => {
     vi.mocked(gateCreate).mockResolvedValueOnce({
       ok: false,
