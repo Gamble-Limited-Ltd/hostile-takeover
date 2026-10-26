@@ -46,8 +46,12 @@ export interface Store {
     createdBy: string | null;
     expiresAt: Date;
   }): Promise<void>;
-  /** Marks a live, unused token used (and any other open ones for that user); returns the user id. */
-  consumeReset(tokenHash: string): Promise<string | null>;
+  /**
+   * In one transaction: spends a live, unused token (and any other open ones
+   * for that user) and sets the password. Null (nothing spent) when the token
+   * is bad or the user is disabled; returns the user id otherwise.
+   */
+  consumeReset(tokenHash: string, passwordHash: string): Promise<string | null>;
 
   // Sign in with GLL ID (GATE)
   findUserByGateSub(sub: string): Promise<UserRow | null>;
@@ -72,9 +76,6 @@ export interface Store {
   ): Promise<void>;
   findGatePending(tokenHash: string): Promise<GatePendingRow | null>;
   deleteGatePending(tokenHash: string): Promise<void>;
-  /** The user's latest GATE id_token (logout hint only); null when none. */
-  findGateIdToken(userId: string): Promise<string | null>;
-  setGateIdToken(userId: string, idToken: string): Promise<void>;
   /**
    * Links a GATE subject to an enabled, not-yet-linked user (race safe), and
    * sets their email to `email` when no other account holds it. "already_linked"
@@ -84,17 +85,13 @@ export interface Store {
     userId: string,
     sub: string,
     email: string | null,
-    idToken: string | null,
   ): Promise<LinkGateResult>;
-  /** Sets the user's email unless another account holds it. */
-  setEmailIfFree(userId: string, email: string): Promise<void>;
   /** A password-less, GATE-linked user. */
   createGateUser(u: {
     publicId: string;
     username: string;
     email: string;
     gateSub: string;
-    idToken: string | null;
   }): Promise<CreateGateUserResult>;
 
   /**
@@ -256,8 +253,7 @@ export interface NewUser {
 }
 
 export type CreateUserResult =
-  | { ok: true; user: UserRow }
-  | { ok: false; taken: "username" | "email" };
+  { ok: true; user: UserRow } | { ok: false; taken: "username" | "email" };
 
 export type RenameResult =
   | { ok: true; user: UserRow }
@@ -609,20 +605,40 @@ export function pgStore(db: SqlClient): Store {
         [r.userId, r.tokenHash, r.createdBy, r.expiresAt],
       );
     },
-    async consumeReset(tokenHash) {
-      const r = await db.query(
-        `UPDATE password_resets SET used_at = now()
-         WHERE token_hash = $1 AND used_at IS NULL AND expires_at > now()
-         RETURNING user_id`,
-        [tokenHash],
-      );
-      const userId = r.rows[0]?.user_id as string | undefined;
-      if (!userId) return null;
-      await db.query(
-        "UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL",
-        [userId],
-      );
-      return userId;
+    async consumeReset(tokenHash, passwordHash) {
+      const conn = db.connect ? await db.connect() : null;
+      const q: SqlClient = conn ?? db;
+      try {
+        await q.query("BEGIN");
+        const r = await q.query(
+          `UPDATE password_resets pr SET used_at = now()
+           FROM users u
+           WHERE pr.token_hash = $1 AND pr.used_at IS NULL AND pr.expires_at > now()
+             AND u.id = pr.user_id AND u.disabled_at IS NULL
+           RETURNING pr.user_id`,
+          [tokenHash],
+        );
+        const userId = r.rows[0]?.user_id as string | undefined;
+        if (!userId) {
+          await q.query("ROLLBACK");
+          return null;
+        }
+        await q.query(
+          "UPDATE password_resets SET used_at = now() WHERE user_id = $1 AND used_at IS NULL",
+          [userId],
+        );
+        await q.query("UPDATE users SET password_hash = $2 WHERE id = $1", [
+          userId,
+          passwordHash,
+        ]);
+        await q.query("COMMIT");
+        return userId;
+      } catch (e) {
+        await q.query("ROLLBACK").catch(() => {});
+        throw e;
+      } finally {
+        conn?.release();
+      }
     },
     async findUserByGateSub(sub) {
       const r = await db.query(
@@ -702,29 +718,16 @@ export function pgStore(db: SqlClient): Store {
         tokenHash,
       ]);
     },
-    async findGateIdToken(userId) {
-      const r = await db.query(
-        "SELECT gate_id_token FROM users WHERE id = $1",
-        [userId],
-      );
-      return (r.rows[0]?.gate_id_token as string | null | undefined) ?? null;
-    },
-    async setGateIdToken(userId, idToken) {
-      await db.query("UPDATE users SET gate_id_token = $2 WHERE id = $1", [
-        userId,
-        idToken,
-      ]);
-    },
-    async linkGate(userId, sub, email, idToken) {
+    async linkGate(userId, sub, email) {
       try {
         const r = await db.query(
-          `UPDATE users SET gate_sub = $2, gate_id_token = $4,
+          `UPDATE users SET gate_sub = $2,
              email = CASE WHEN $3::text IS NOT NULL AND NOT EXISTS
                (SELECT 1 FROM users o WHERE o.email = $3::text AND o.id <> $1)
                THEN $3::text ELSE email END
            WHERE id = $1 AND gate_sub IS NULL AND disabled_at IS NULL
            RETURNING id`,
-          [userId, sub, email, idToken],
+          [userId, sub, email],
         );
         if (r.rows.length === 1) return "ok";
       } catch (e) {
@@ -737,21 +740,13 @@ export function pgStore(db: SqlClient): Store {
       if (cur.rows.length === 0) return "gone";
       return cur.rows[0].gate_sub ? "already_linked" : "gone";
     },
-    async setEmailIfFree(userId, email) {
-      await db.query(
-        `UPDATE users SET email = $2
-         WHERE id = $1 AND email <> $2
-           AND NOT EXISTS (SELECT 1 FROM users o WHERE o.email = $2 AND o.id <> $1)`,
-        [userId, email],
-      );
-    },
     async createGateUser(u) {
       try {
         const r = await db.query(
-          `INSERT INTO users (public_id, username, email, gate_sub, gate_id_token, age_confirmed_at)
-           VALUES ($1, $2, $3, $4, $5, now())
+          `INSERT INTO users (public_id, username, email, gate_sub, age_confirmed_at)
+           VALUES ($1, $2, $3, $4, now())
            RETURNING ${USER_COLS}`,
-          [u.publicId, u.username, u.email, u.gateSub, u.idToken],
+          [u.publicId, u.username, u.email, u.gateSub],
         );
         return { ok: true, user: r.rows[0] as UserRow };
       } catch (e) {

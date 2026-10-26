@@ -348,12 +348,11 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
       const userId =
         token.length > 200
           ? null
-          : await store.consumeReset(hashRefreshToken(token));
+          : await store.consumeReset(
+              hashRefreshToken(token),
+              await hashPassword(body.newPassword as string),
+            );
       if (!userId) return void res.status(400).json({ error: "invalid_token" });
-      await store.setPassword(
-        userId,
-        await hashPassword(body.newPassword as string),
-      );
       await store.revokeAllForUser(userId);
       d.clearRefreshCookie(res);
       res.json({ ok: true });

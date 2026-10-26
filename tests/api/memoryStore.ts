@@ -48,8 +48,6 @@ export function memoryStore(
     detail?: Record<string, unknown>;
   }[] = [];
   const flows: MemGateFlow[] = [];
-  /** users.gate_id_token, kept off UserRow like the real store. */
-  const gateTokens = new Map<string, string>();
   const pending: (GatePendingRow & { tokenHash: string; expiresAt: Date })[] =
     [];
   const games: (GameRow & { players: GamePlayerRow[] })[] = [];
@@ -236,14 +234,15 @@ export function memoryStore(
         used_at: null,
       });
     },
-    consumeReset: async (h) => {
+    consumeReset: async (h, passwordHash) => {
       const r = resets.find(
         (x) =>
           x.token_hash === h &&
           !x.used_at &&
           x.expires_at.getTime() > Date.now(),
       );
-      if (!r) return null;
+      if (!r || users.find((u) => u.id === r.user_id)?.disabled_at) return null;
+      hashes[r.user_id] = passwordHash;
       for (const x of resets)
         if (x.user_id === r.user_id) x.used_at ??= new Date();
       return r.user_id;
@@ -286,24 +285,15 @@ export function memoryStore(
       const i = pending.findIndex((x) => x.tokenHash === h);
       if (i >= 0) pending.splice(i, 1);
     },
-    findGateIdToken: async (userId) => gateTokens.get(userId) ?? null,
-    setGateIdToken: async (userId, idToken) => {
-      gateTokens.set(userId, idToken);
-    },
-    linkGate: async (userId, sub, email, idToken) => {
+    linkGate: async (userId, sub, email) => {
       const u = users.find((x) => x.id === userId);
       if (!u) return "gone";
       if (u.gate_sub) return "already_linked";
       if (u.disabled_at) return "gone";
       if (users.some((x) => x.gate_sub === sub)) return "already_linked";
       u.gate_sub = sub;
-      if (idToken) gateTokens.set(u.id, idToken);
       if (email && emailFree(email, u.id)) u.email = email;
       return "ok";
-    },
-    setEmailIfFree: async (userId, email) => {
-      const u = users.find((x) => x.id === userId);
-      if (u && emailFree(email, u.id)) u.email = email;
     },
     createGateUser: async (n) => {
       if (users.some((u) => lower(u.username) === lower(n.username)))
@@ -324,7 +314,6 @@ export function memoryStore(
         gate_sub: n.gateSub,
       };
       users.push(user);
-      if (n.idToken) gateTokens.set(user.id, n.idToken);
       return { ok: true, user };
     },
     renameUser: async (id, username, opts) => {

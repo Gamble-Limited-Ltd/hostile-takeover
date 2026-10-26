@@ -318,9 +318,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
         if (!all && gate.enabled) {
           const user = await store.findUserById(session.user_id);
           if (user?.gate_sub) {
-            gateLogoutUrl = await gate.logoutUrl(
-              await store.findGateIdToken(user.id),
-            );
+            gateLogoutUrl = await gate.logoutUrl();
           }
         }
       }
