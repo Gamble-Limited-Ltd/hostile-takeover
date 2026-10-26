@@ -496,11 +496,11 @@ describe("callback success", () => {
     expect(h.alice.email).toBe("alice@kmlhs.org");
   });
 
-  test("a linked user's email is updated to GATE's when free", async () => {
+  test("a linked user's email is set at link time only, never overwritten by a later GATE login", async () => {
     const h = await harness();
     const r = await h.login({ mint: { claims: { email: "fresh@kmlhs.org" } } });
     expect(r.where).toBe(`${GAME}/#gate=ok`);
-    expect(h.linked.email).toBe("fresh@kmlhs.org");
+    expect(h.linked.email).toBe("old@kmlhs.org");
   });
 
   test("a linked but disabled user -> account_disabled, no session", async () => {
@@ -699,43 +699,17 @@ describe("pending", () => {
 });
 
 describe("link/confirm", () => {
-  test("links the matching account, starts a session and consumes the pending", async () => {
+  test("an unverified legacy account is never linked without its password", async () => {
     const h = await harness();
     const c = await h.pendingFor({
       mint: { claims: { sub: "s-bob", email: "bob@kmlhs.org" } },
     });
     const r = await h.post("/auth/gate/link/confirm", {}, c);
-    expect(r.status).toBe(200);
-    expect(await r.json()).toEqual({ ok: true });
-    expect(h.cookieVal(r, REFRESH_COOKIE)).toBeTruthy();
-    expect(h.bob.gate_sub).toBe("s-bob");
-    expect(h.mem.pending).toHaveLength(0);
-    expect(h.rawCookie(r, "ht_gate_pending")).toMatch(/^ht_gate_pending=;/);
-    // Single use.
-    expect((await h.post("/auth/gate/link/confirm", {}, c)).status).toBe(401);
-    // Next time the sign-in is direct.
-    const again = await h.login({
-      mint: { claims: { sub: "s-bob", email: "bob@kmlhs.org" } },
-    });
-    expect(again.where).toBe(`${GAME}/#gate=ok`);
-  });
-
-  test("linking an old account needs no email_approved: absent or false still links", async () => {
-    for (const approved of [false, undefined]) {
-      const h = await harness();
-      const c = await h.pendingFor({
-        mint: {
-          claims: {
-            sub: "s-bob",
-            email: "bob@kmlhs.org",
-            email_approved: approved,
-          },
-        },
-      });
-      const r = await h.post("/auth/gate/link/confirm", {}, c);
-      expect(r.status).toBe(200);
-      expect(h.bob.gate_sub).toBe("s-bob");
-    }
+    expect(r.status).toBe(403);
+    expect((await r.json()).error).toBe("password_required");
+    expect(h.cookieVal(r, REFRESH_COOKIE)).toBeFalsy();
+    expect(h.bob.gate_sub).toBeNull();
+    expect(h.mem.pending).toHaveLength(1);
   });
 
   test("401 without a pending; 409 no_match when nothing matches", async () => {
@@ -757,18 +731,6 @@ describe("link/confirm", () => {
     });
     expect((await h.post("/auth/gate/link/confirm", {}, c)).status).toBe(409);
     expect(h.goneUnlinked.gate_sub).toBeNull();
-  });
-
-  test("already_linked when the subject got linked to another account meanwhile", async () => {
-    const h = await harness();
-    const c = await h.pendingFor({
-      mint: { claims: { sub: "s-bob2", email: "bob@kmlhs.org" } },
-    });
-    h.alice.gate_sub = "s-bob2"; // linked elsewhere between pending and confirm
-    const r = await h.post("/auth/gate/link/confirm", {}, c);
-    expect(r.status).toBe(409);
-    expect((await r.json()).error).toBe("already_linked");
-    expect(h.bob.gate_sub).toBeNull();
   });
 
   test("no_match when the match got linked meanwhile", async () => {
@@ -1068,7 +1030,7 @@ describe("logout", () => {
     expect(u.origin + u.pathname).toBe(`${h.fake.issuer}/oidc/logout`);
     expect(u.searchParams.get("client_id")).toBe(FAKE_CLIENT_ID);
     expect(u.searchParams.get("post_logout_redirect_uri")).toBe(`${GAME}/`);
-    expect(u.searchParams.get("id_token_hint")).toBe(h.fake.lastIdToken());
+    expect(u.searchParams.get("id_token_hint")).toBeNull();
 
     // A password-only user gets none.
     const pw = await h.post("/auth/login", {
@@ -1109,9 +1071,9 @@ describe("logout", () => {
       await h.post("/auth/logout", {}, `${REFRESH_COOKIE}=${lin.refresh}`)
     ).json();
     expect(new URL(out.gateLogoutUrl).origin).toBe("http://elsewhere.test");
-    expect(new URL(out.gateLogoutUrl).searchParams.get("id_token_hint")).toBe(
-      h.fake.lastIdToken(),
-    );
+    expect(
+      new URL(out.gateLogoutUrl).searchParams.get("id_token_hint"),
+    ).toBeNull();
     const h2 = await harness({ gateOpts: { endSession: false } });
     const lin2 = await h2.login();
     const out2 = await (
@@ -1120,35 +1082,30 @@ describe("logout", () => {
     expect(
       out2.gateLogoutUrl.startsWith(`${h2.fake.issuer}/oidc/logout?`),
     ).toBe(true);
-    expect(new URL(out2.gateLogoutUrl).searchParams.get("id_token_hint")).toBe(
-      h2.fake.lastIdToken(),
-    );
+    expect(
+      new URL(out2.gateLogoutUrl).searchParams.get("id_token_hint"),
+    ).toBeNull();
   });
 
-  test("the hint follows the latest sign-in, and a link or create stores the pending token", async () => {
+  test("the id_token is not stored: the logout url never carries a hint", async () => {
     const h = await harness();
     await h.login();
     const second = await h.login();
-    expect(h.fake.state.idTokens).toHaveLength(2);
     const out = await (
       await h.post("/auth/logout", {}, `${REFRESH_COOKIE}=${second.refresh}`)
     ).json();
-    expect(new URL(out.gateLogoutUrl).searchParams.get("id_token_hint")).toBe(
-      h.fake.state.idTokens[1],
-    );
-
+    expect(
+      new URL(out.gateLogoutUrl).searchParams.get("id_token_hint"),
+    ).toBeNull();
+    expect(
+      (h.mem.store as unknown as Record<string, unknown>).findGateIdToken,
+    ).toBeUndefined();
     const c = await h.pendingFor({
       mint: { claims: { sub: "s-new", email: "fresh@kmlhs.org" } },
     });
+    expect(h.mem.pending[0].idToken).toBeNull();
     const made = await h.post("/auth/gate/create", { username: "Okname" }, c);
     expect(made.status).toBe(201);
-    const refresh = h.cookieVal(made, REFRESH_COOKIE);
-    const out2 = await (
-      await h.post("/auth/logout", {}, `${REFRESH_COOKIE}=${refresh}`)
-    ).json();
-    expect(new URL(out2.gateLogoutUrl).searchParams.get("id_token_hint")).toBe(
-      h.fake.state.idTokens[2],
-    );
   });
 
   test("the id_token is never returned from /users/@me", async () => {

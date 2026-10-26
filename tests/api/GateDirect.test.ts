@@ -319,15 +319,14 @@ describe("login -> code -> HT session", () => {
     const pend = h.cookieVal(r, "ht_gate_pending");
     expect(pend).toBeTruthy();
     expect(h.cookieVal(r, REFRESH_COOKIE)).toBeNull();
-    // The existing link step: the old account with the same email, one click.
+    // The existing link step: the old account with the same email, password required.
     const c = `ht_gate_pending=${pend}`;
     const pe = await fetch(`${h.base}/auth/gate/pending`, {
       headers: { cookie: c },
     });
     expect((await pe.json()).match).toEqual({ username: "alice" });
-    const ok = await h.post("/auth/gate/link/confirm", {}, c);
-    expect(ok.status).toBe(200);
-    expect(h.cookieVal(ok, REFRESH_COOKIE)).toBeTruthy();
+    const no = await h.post("/auth/gate/link/confirm", {}, c);
+    expect(no.status).toBe(403);
   });
 
   test("a new player with a free login name is signed in on the spot", async () => {

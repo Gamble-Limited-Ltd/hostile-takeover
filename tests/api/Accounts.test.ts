@@ -619,6 +619,30 @@ describe("admin password resets", () => {
     });
   });
 
+  test("a disabled account cannot be reset, and the token is left unspent", async () => {
+    await using(async (h) => {
+      const { token } = await (await createReset(h)).json();
+      const alice = h.mem.users.find((u) => u.username === "alice")!;
+      alice.disabled_at = new Date();
+      const res = await h.call("POST", "/auth/reset", {
+        token,
+        newPassword: "reset password 1",
+      });
+      expect(res.status).toBe(400);
+      expect((await res.json()).error).toBe("invalid_token");
+      expect(h.mem.resets[0].used_at).toBeNull();
+      expect(await h.mem.store.findPasswordHash(alice.id)).not.toBeNull();
+      expect(
+        (
+          await h.call("POST", "/auth/login", {
+            usernameOrEmail: "alice",
+            password: PW,
+          })
+        ).status,
+      ).toBe(401);
+    });
+  });
+
   test("an expired token and a made-up token are refused", async () => {
     await using(async (h) => {
       const { token } = await (await createReset(h)).json();

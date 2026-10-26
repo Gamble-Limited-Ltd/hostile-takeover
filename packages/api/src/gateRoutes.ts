@@ -149,10 +149,6 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     const user = await store.findUserByGateSub(who.sub);
     if (user) {
       if (user.disabled_at) return "disabled";
-      if (who.email && who.email.toLowerCase() !== user.email.toLowerCase()) {
-        await store.setEmailIfFree(user.id, who.email);
-      }
-      await store.setGateIdToken(user.id, who.idToken);
       await d.startSession(res, user.id, req.headers["user-agent"]);
       return "ok";
     }
@@ -161,7 +157,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       email: who.email,
       loginName: who.loginName,
       emailApproved: who.emailApproved,
-      idToken: who.idToken,
+      idToken: null,
     };
     const match = await matchOf(p);
     if (!match) {
@@ -172,7 +168,6 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
           username: p.loginName,
           email: p.email,
           gateSub: p.gateSub,
-          idToken: p.idToken,
         });
         if (created.ok) {
           await d.startSession(res, created.user.id, req.headers["user-agent"]);
@@ -308,18 +303,9 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       if (!pend) return noPending(res);
       const match = await matchOf(pend.p);
       if (!match) return void res.status(409).json({ error: "no_match" });
-      const r = await store.linkGate(
-        match.id,
-        pend.p.gateSub,
-        pend.p.email,
-        pend.p.idToken,
-      );
-      if (r === "already_linked") {
-        return void res.status(409).json({ error: "already_linked" });
-      }
-      if (r === "gone") return void res.status(409).json({ error: "no_match" });
-      await finish(req, res, pend.hash, match.id);
-      res.json({ ok: true });
+      // Legacy sign-up never verifies the email, so a matching address proves
+      // nothing: the player must prove they own the account (link/password).
+      res.status(403).json({ error: "password_required" });
     } catch (e) {
       next(e);
     }
@@ -363,7 +349,6 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         cred.user.id,
         pend.p.gateSub,
         pend.p.email,
-        pend.p.idToken,
       );
       if (r === "already_linked") {
         return void res.status(409).json({ error: "already_linked" });
@@ -400,7 +385,6 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         username,
         email: p.email,
         gateSub: p.gateSub,
-        idToken: p.idToken,
       });
       if (!created.ok) {
         if (created.taken === "gate") {
