@@ -52,7 +52,7 @@ export function memoryStore(
   const gateTokens = new Map<string, string>();
   const pending: (GatePendingRow & { tokenHash: string; expiresAt: Date })[] =
     [];
-  const games: (GameRow & { players: GamePlayerRow[] })[] = [];
+  const games: (GameRow & { players: GamePlayerRow[]; createdAt: Date })[] = [];
   const progress = new Map<string, ProgressRow>();
   const awards: (AwardOutcome & { gameId: string; userId: string })[] = [];
   const lower = (s: string) => s.toLowerCase();
@@ -78,10 +78,20 @@ export function memoryStore(
     },
     findSessionByHash: async (h) =>
       sessions.find((s) => s.token_hash === h) ?? null,
-    rotateSession: async (id) => {
+    rotateSession: async (id, next) => {
       const s = sessions.find((x) => x.id === id)!;
       if (s.revoked_at) return false;
       s.revoked_at = new Date();
+      if (next) {
+        sessions.push({
+          id: randomUUID(),
+          user_id: next.userId,
+          token_hash: next.tokenHash,
+          expires_at: next.expiresAt,
+          revoked_at: null,
+          rotated_from: next.rotatedFrom,
+        });
+      }
       return true;
     },
     revokeSession: async (id) => {
@@ -149,7 +159,7 @@ export function memoryStore(
           !seen.has(p.userId) &&
           seen.add(p.userId),
       );
-      games.push({ ...game, players: mine });
+      games.push({ ...game, players: mine, createdAt: new Date() });
       for (const p of mine) {
         const cur = progress.get(p.userId) ?? {
           state: { prestige: 0, level: 1, xpInLevel: 0, lifetimeXp: 0 },
@@ -174,6 +184,15 @@ export function memoryStore(
         state,
         lastXpDay: clearDay ? null : (cur?.lastXpDay ?? null),
       });
+    },
+    countSingleplayerToday: async (id) => {
+      const day = new Date().toISOString().slice(0, 10);
+      return games.filter(
+        (g) =>
+          g.source === "singleplayer" &&
+          g.createdAt.toISOString().slice(0, 10) === day &&
+          g.players.some((p) => p.userId === id),
+      ).length;
     },
     countGames: async (id) =>
       games.filter((g) => g.players.some((p) => p.userId === id)).length,

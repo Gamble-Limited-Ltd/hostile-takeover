@@ -210,6 +210,28 @@ describe("refresh cookie", () => {
     }
   });
 
+  test("a failing session insert during refresh leaves the user a live session", async () => {
+    const u = user("PLAYER");
+    const mem = memoryStore([u]);
+    let fail = false;
+    const store: Store = {
+      ...mem.store,
+      createSession: async (x) => {
+        if (fail) throw new Error("db down");
+        return mem.store.createSession(x);
+      },
+    };
+    const h = await harness([u], {}, store);
+    try {
+      const { cookie: c1 } = await devLogin(h.base, u.username);
+      fail = true;
+      await refresh(h.base, c1);
+      expect(mem.sessions.some((s) => !s.revoked_at)).toBe(true);
+    } finally {
+      h.close();
+    }
+  });
+
   test("reusing a rotated token revokes every session and returns 401", async () => {
     const u = user("PLAYER");
     const h = await harness([u]);

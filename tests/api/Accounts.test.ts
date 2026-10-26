@@ -316,8 +316,43 @@ describe("POST /auth/login", () => {
   });
 });
 
+describe("RateLimiter", () => {
+  test("caps its map at 10k keys, evicting the oldest", () => {
+    const l = new RateLimiter(1, 60_000);
+    for (let i = 0; i <= 10_000; i++) l.hit(`k${i}`);
+    // k0 was evicted, so it counts as fresh; the newest is still limited
+    expect(l.blocked("k0")).toBe(false);
+    expect(l.blocked("k10000")).toBe(true);
+    expect(l.blocked("k1")).toBe(true);
+  });
+});
+
+describe("login account limiter", () => {
+  test("is keyed on account and IP, so one IP cannot lock the name for others", async () => {
+    const limits = generous();
+    limits.loginAccount = new RateLimiter(3, 60_000);
+    const h = await harness({ limits });
+    try {
+      const login = (ip: string, password: string) =>
+        h.call(
+          "POST",
+          "/auth/login",
+          { usernameOrEmail: "alice", password },
+          { "x-forwarded-for": ip },
+        );
+      for (let i = 0; i < 3; i++) {
+        expect((await login("1.1.1.1", "nope nope nope")).status).toBe(401);
+      }
+      expect((await login("1.1.1.1", PW)).status).toBe(429);
+      expect((await login("2.2.2.2", PW)).status).toBe(200);
+    } finally {
+      h.close();
+    }
+  });
+});
+
 describe("register rate limits", () => {
-  test("per IP and per account name", async () => {
+  test("per IP only", async () => {
     const ipLimits = generous();
     ipLimits.registerIp = new RateLimiter(2, 60_000);
     const h = await harness({ limits: ipLimits });
@@ -341,12 +376,13 @@ describe("register rate limits", () => {
     } finally {
       h.close();
     }
-    const acctLimits = generous();
-    acctLimits.registerAccount = new RateLimiter(1, 60_000);
-    const h2 = await harness({ limits: acctLimits });
+    const h2 = await harness({ limits: generous() });
     try {
-      await h2.call("POST", "/auth/register", { ...good, password: "x" });
-      expect((await h2.call("POST", "/auth/register", good)).status).toBe(429);
+      // no per-name limit: a repeated name is a 409, never a 429
+      for (let i = 0; i < 7; i++) {
+        const res = await h2.call("POST", "/auth/register", good);
+        expect(res.status).not.toBe(429);
+      }
     } finally {
       h2.close();
     }

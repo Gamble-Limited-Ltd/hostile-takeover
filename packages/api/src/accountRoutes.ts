@@ -32,6 +32,10 @@ export interface AccountDeps {
   ): Promise<{ user: UserRow; role: unknown } | null>;
 }
 
+export const ipOf = (req: express.Request) => req.ip ?? "unknown";
+export const bodyOf = (req: express.Request): Record<string, unknown> =>
+  req.body && typeof req.body === "object" ? req.body : {};
+
 function str(v: unknown): string | null {
   return typeof v === "string" ? v : null;
 }
@@ -96,11 +100,8 @@ export function validateRegister(body: Record<string, unknown>):
 export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
   const { store, env } = d.ctx;
   const json = express.json({ limit: "16kb" });
-  const ipOf = (req: express.Request) => req.ip ?? "unknown";
   const tooMany = (res: express.Response) =>
     void res.status(429).json({ error: "rate_limited" });
-  const bodyOf = (req: express.Request): Record<string, unknown> =>
-    req.body && typeof req.body === "object" ? req.body : {};
 
   const legacyOff = (res: express.Response) =>
     !env.legacyLogin &&
@@ -111,9 +112,7 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
       if (legacyOff(res)) return;
       const body = bodyOf(req);
       const ipOk = d.limits.registerIp.hit(ipOf(req));
-      const key = (str(body.username) ?? "").trim().toLowerCase();
-      const acctOk = d.limits.registerAccount.hit(key);
-      if (!ipOk || !acctOk) return tooMany(res);
+      if (!ipOk) return tooMany(res);
 
       const v = validateRegister(body);
       if ("error" in v) return void res.status(400).json({ error: v.error });
@@ -146,7 +145,8 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
       const body = bodyOf(req);
       const login = str(body.usernameOrEmail)?.trim() ?? "";
       const password = str(body.password) ?? "";
-      const acctKey = login.toLowerCase();
+      // Keyed on account+IP so one IP can't lock the name for everyone.
+      const acctKey = `${login.toLowerCase()}|${ipOf(req)}`;
       // IP: every attempt counts. Account: failures only, cleared on success.
       if (
         !d.limits.loginIp.hit(ipOf(req)) ||

@@ -199,6 +199,8 @@ export function mountGameRoutes(
         seconds > 6 * 3600 ||
         Math.abs(info.end - info.start - seconds * 1000) > 2000 ||
         info.end > Date.now() + 60_000 ||
+        // a forged old record can't backfill XP
+        info.end < Date.now() - 24 * 3600_000 ||
         // turns are 100 ms: allow a wide band around 10 per second
         info.num_turns < seconds * 3 ||
         info.num_turns > seconds * 30

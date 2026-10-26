@@ -70,9 +70,10 @@ function record(o: {
   winner?: unknown;
   statsAgreed?: boolean;
   numTurns?: number;
+  endedAgoMs?: number;
 }) {
   const seconds = o.seconds ?? 600;
-  const end = Date.now() - 1000;
+  const end = Date.now() - (o.endedAgoMs ?? 1000);
   const info = {
     gameID: o.gameID ?? gameId(),
     lobbyCreatedAt: end - seconds * 1000,
@@ -355,6 +356,41 @@ describe("POST /archive_singleplayer_game", () => {
       });
       expect((await postSingle(h.base, jwt, twoPlayers)).status).toBe(400);
       expect(mem.games).toHaveLength(0);
+    } finally {
+      h.close();
+    }
+  });
+
+  test("refuses a record that ended over 24 hours ago", async () => {
+    const a = user();
+    const mem = memoryStore([a]);
+    const h = await harness(mem.store);
+    try {
+      const jwt = await h.jwt(a);
+      const old = solo(a, { endedAgoMs: 25 * 3600_000 });
+      expect((await postSingle(h.base, jwt, old)).status).toBe(400);
+      expect(mem.games).toHaveLength(0);
+    } finally {
+      h.close();
+    }
+  });
+
+  test("stores at most 25 singleplayer games per user per UTC day", async () => {
+    const a = user();
+    const b = user();
+    const mem = memoryStore([a, b]);
+    const h = await harness(mem.store);
+    try {
+      const jwt = await h.jwt(a);
+      for (let i = 0; i < 25; i++) {
+        expect((await postSingle(h.base, jwt, solo(a))).status).toBe(204);
+      }
+      expect((await postSingle(h.base, jwt, solo(a))).status).toBe(409);
+      expect(mem.awards).toHaveLength(25);
+      // another account is unaffected
+      expect((await postSingle(h.base, await h.jwt(b), solo(b))).status).toBe(
+        204,
+      );
     } finally {
       h.close();
     }

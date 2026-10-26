@@ -25,8 +25,20 @@ export interface Store {
     userAgent?: string;
   }): Promise<string>;
   findSessionByHash(hash: string): Promise<SessionRow | null>;
-  /** Revokes the session if it is still live; true only for the caller that did. */
-  rotateSession(id: string): Promise<boolean>;
+  /**
+   * Revokes the session if it is still live; true only for the caller that
+   * did. With `next`, the successor is inserted in the same statement.
+   */
+  rotateSession(
+    id: string,
+    next?: {
+      userId: string;
+      tokenHash: string;
+      expiresAt: Date;
+      rotatedFrom?: string;
+      userAgent?: string;
+    },
+  ): Promise<boolean>;
   revokeSession(id: string): Promise<void>;
   revokeAllForUser(userId: string): Promise<void>;
   /** The session that rotated out of `id`, if any (newest first). */
@@ -138,6 +150,8 @@ export interface Store {
     state: ProgressState,
     clearDay: boolean,
   ): Promise<void>;
+  /** Singleplayer games stored for the account since 00:00 UTC today. */
+  countSingleplayerToday(userId: string): Promise<number>;
   /** How many stored games the account played. */
   countGames(userId: string): Promise<number>;
   /** The caller's stored award for the first of `gameIds` that has one. */
@@ -326,7 +340,24 @@ export function pgStore(db: SqlClient): Store {
       );
       return (r.rows[0] as SessionRow | undefined) ?? null;
     },
-    async rotateSession(id) {
+    async rotateSession(id, next) {
+      if (next) {
+        const r = await db.query(
+          `WITH old AS (
+             UPDATE sessions SET revoked_at = now(), last_used_at = now()
+             WHERE id = $1 AND revoked_at IS NULL RETURNING id)
+           INSERT INTO sessions (user_id, token_hash, expires_at, rotated_from, user_agent, last_used_at)
+           SELECT $2, $3, $4, old.id, $5, now() FROM old RETURNING id`,
+          [
+            id,
+            next.userId,
+            next.tokenHash,
+            next.expiresAt,
+            next.userAgent ?? null,
+          ],
+        );
+        return r.rows.length === 1;
+      }
       const r = await db.query(
         `UPDATE sessions SET revoked_at = now(), last_used_at = now()
          WHERE id = $1 AND revoked_at IS NULL RETURNING id`,
@@ -541,6 +572,15 @@ export function pgStore(db: SqlClient): Store {
            last_xp_day = CASE WHEN $5 THEN NULL ELSE user_progress.last_xp_day END`,
         [userId, s.level, s.xpInLevel, s.lifetimeXp, clearDay],
       );
+    },
+    async countSingleplayerToday(userId) {
+      const r = await db.query(
+        `SELECT count(*)::int AS n FROM game_players gp JOIN games g ON g.id = gp.game_id
+         WHERE gp.user_id = $1 AND g.source = 'singleplayer'
+           AND g.created_at >= date_trunc('day', now() AT TIME ZONE 'UTC') AT TIME ZONE 'UTC'`,
+        [userId],
+      );
+      return r.rows[0].n;
     },
     async countGames(userId) {
       const r = await db.query(

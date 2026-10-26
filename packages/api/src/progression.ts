@@ -8,6 +8,8 @@ import {
 } from "./xp/rules";
 
 const TICK_MS = 100;
+/** Singleplayer records are client-supplied: cap how many a user banks per UTC day. */
+const SINGLEPLAYER_DAILY_CAP = 25;
 
 /** The America/Chicago calendar day (YYYY-MM-DD) of a timestamp. */
 export function chicagoDay(ms: number): string {
@@ -55,6 +57,14 @@ export async function ingestGame(
     humans.length,
     ...humans.map((p) => p.stats?.deathPosition ?? 0),
   );
+
+  if (
+    source === "singleplayer" &&
+    onlyUser &&
+    (await store.countSingleplayerToday(onlyUser)) >= SINGLEPLAYER_DAILY_CAP
+  ) {
+    return false;
+  }
 
   const rows: GamePlayerRow[] = [];
   for (const p of humans) {

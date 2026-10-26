@@ -7,11 +7,15 @@ import {
 import type express from "express";
 import type { Store } from "./store";
 
+const CACHE_MS = 45_000;
+
 /** Public player leaderboard (U2.5), fork-only. Mounted before mountGameRoutes' catch-all 404. */
 export function mountLeaderboardRoutes(
   app: express.Express,
   d: { store: Store },
 ): void {
+  // shortcut: per-process, bounded by clearing; fine for one API process.
+  const cache = new Map<string, { at: number; body: HtLeaderboardResponse }>();
   app.get("/public/leaderboard/players", async (req, res, next) => {
     try {
       const sort = String(req.query.sort ?? "xp") as HtLeaderboardSort;
@@ -20,6 +24,11 @@ export function mountLeaderboardRoutes(
         return void res.status(400).json({ error: "sort_invalid" });
       if (!Number.isInteger(page) || page < 1 || page > 10_000)
         return void res.status(400).json({ error: "page_invalid" });
+      const hit = cache.get(`${sort}:${page}`);
+      if (hit && Date.now() - hit.at < CACHE_MS) {
+        res.setHeader("Cache-Control", "public, max-age=60");
+        return void res.json(hit.body);
+      }
       const offset = (page - 1) * HT_LEADERBOARD_PAGE_SIZE;
       const rows = await d.store.listLeaderboard(
         sort,
@@ -42,6 +51,8 @@ export function mountLeaderboardRoutes(
           winRate: r.games > 0 ? r.wins / r.games : 0,
         })),
       };
+      if (cache.size >= 500) cache.clear();
+      cache.set(`${sort}:${page}`, { at: Date.now(), body });
       res.setHeader("Cache-Control", "public, max-age=60");
       res.json(body);
     } catch (e) {

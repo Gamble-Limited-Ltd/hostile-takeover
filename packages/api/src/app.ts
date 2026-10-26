@@ -2,7 +2,7 @@ import { base64urlToUuid, uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
 import { mountAccountRoutes } from "./accountRoutes";
 import { mountAdminXpRoutes } from "./adminXpRoutes";
-import { sameSecret } from "./apiKey";
+import { hasValidApiKey } from "./apiKey";
 import type { ApiEnv } from "./env";
 import { mountFlagRoutes } from "./flagRoutes";
 import { mountGameRoutes } from "./gameRoutes";
@@ -289,14 +289,25 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       if (found.expires_at.getTime() <= Date.now()) return deny(res);
       const user = await store.findUserById(found.user_id);
       if (!user || user.disabled_at) return deny(res);
-      if (!(await store.rotateSession(found.id))) {
+      // Revoke the old session and insert its successor atomically, so a DB
+      // error can't leave the user with neither.
+      const next = newRefreshToken();
+      if (
+        !(await store.rotateSession(found.id, {
+          userId: user.id,
+          tokenHash: next.hash,
+          expiresAt: new Date(Date.now() + REFRESH_TTL_SECONDS * 1000),
+          rotatedFrom: found.id,
+          userAgent: req.headers["user-agent"],
+        }))
+      ) {
         // Lost a race to a concurrent refresh, or to a sign-out / password
         // change. Re-read to tell which; neither is a reuse by itself.
         const now = await store.findSessionByHash(hashRefreshToken(raw));
         if (now?.revoked_at) return await replyForRevoked(now, res);
         return deny(res);
       }
-      await startSession(res, user.id, req.headers["user-agent"], found.id);
+      setRefreshCookie(res, next.token);
       sendJwt(res, await signJwt(keys, env, user));
     } catch (e) {
       next(e);
@@ -337,15 +348,11 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
 
   app.get("/users/@me", async (req, res, next) => {
     try {
-      const apiKey = req.headers["x-api-key"];
-      if (apiKey !== undefined) {
-        if (
-          typeof apiKey !== "string" ||
-          env.apiKey === "" ||
-          !sameSecret(apiKey, env.apiKey)
-        ) {
-          return void res.status(401).json({ error: "unauthorized" });
-        }
+      if (
+        req.headers["x-api-key"] !== undefined &&
+        !hasValidApiKey(req, env.apiKey)
+      ) {
+        return void res.status(401).json({ error: "unauthorized" });
       }
       const auth = req.headers.authorization ?? "";
       const m = /^Bearer (.+)$/.exec(auth);

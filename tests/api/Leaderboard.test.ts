@@ -180,6 +180,32 @@ describe("public player leaderboard", () => {
     });
   });
 
+  test("repeat requests inside the cache window don't hit the store", async () => {
+    const x = user("cached");
+    const store = memoryStore([x]).store;
+    await play(store, x.id, true);
+    const keys = await keysFromPem(generatePrivateKeyPem());
+    const server = createApp(
+      { query: async () => ({}) },
+      { env, keys, store },
+    ).listen(0, "127.0.0.1");
+    await new Promise((r) => server.once("listening", r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      const games = async () =>
+        (
+          await (
+            await fetch(`${base}/public/leaderboard/players?sort=games`)
+          ).json()
+        ).entries[0].games;
+      expect(await games()).toBe(1);
+      await play(store, x.id, true);
+      expect(await games()).toBe(1);
+    } finally {
+      server.close();
+    }
+  });
+
   test("pagination: a full page then the rest", async () => {
     const n = HT_LEADERBOARD_PAGE_SIZE + 3;
     const users = Array.from({ length: n }, (_, i) =>
