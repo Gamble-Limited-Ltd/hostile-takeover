@@ -2,6 +2,7 @@
 
 🆕 **What's new**
 
+- Linking an old account to your GLL ID now always asks for the old password once. XP can no longer be farmed with old or bulk singleplayer games: up to 25 count per day. Sign-ins and password resets are more reliable.
 - XP and account levels are back. Every finished game earns XP, more for winning, placing well and staying alive, plus a bonus for your first game each day.
   → Your level shows next to your name in lobbies and games. Click a player's level badge to open their profile.
   → Profiles show level, games, wins and your flag. The flag you pick is now saved to your account, so it follows you to every device.
