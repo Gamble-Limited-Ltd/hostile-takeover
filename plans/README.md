@@ -11,7 +11,7 @@ written as a set of **slices**: self-contained briefs a Sonnet agent can pick up
 | 4   | [Brand and legal](stage-4-brand-legal.md)     | Rebrand, NOTICE, attribution, our ToS and privacy policy                                          | Done (Boss, 2026-10-16: HT considered complete) |
 | 5   | [Deploy](stage-5-deploy.md)                   | Compose stack on this VM behind cloudflared, backups                                              | Done (Boss, 2026-10-16: HT considered complete) |
 | 6   | [Playtest and harden](stage-6-playtest.md)    | Real friends in real games; fix what breaks                                                       | Done (Boss, 2026-10-16: HT considered complete) |
-| -   | [Admin tools + chat](admin-tools-and-chat.md) | Root badge, moderation, Global/Alliance chat, spectate any game, bot takeover                     | Approved 2026-10-27; S0 + S1 in progress        |
+| -   | [Admin tools + chat](admin-tools-and-chat.md) | Root badge, moderation, Global/Alliance chat, spectate any game, bot takeover                     | Built 2026-10-27 (S0-S5 on main), not deployed  |
 
 Rough effort: 6–9 working days in total. Stage 1 is the biggest unknown.
 

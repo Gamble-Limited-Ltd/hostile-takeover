@@ -2,6 +2,13 @@
 
 🆕 **What's new**
 
+- In-game text chat. Press Enter to type, Enter to send.
+  → Two channels: Global (everyone in the game) and Alliance (your allies, or your team in team games). Tab switches channel, or start a message with /g or /a.
+  → Bad words are masked, messages are up to 200 characters, and there is a short limit on how fast you can send.
+  → Mute a player's chat from the chat line, or report a message to the admin.
+  → Spectators and players who have been eliminated can read chat but not send.
+  → Alliance chat is not private: the admin can read it, and a modified game could too.
+- New admin tools to keep games fair: chat mutes, account suspensions, a site-wide notice and a maintenance mode that pauses new games. The admin can watch any public game and may take control of a computer player; everyone in that game is told, and the game gives no XP.
 - Linking an old account to your GLL ID now always asks for the old password once. XP can no longer be farmed with old or bulk singleplayer games: up to 25 count per day. Sign-ins and password resets are more reliable.
 - XP and account levels are back. Every finished game earns XP, more for winning, placing well and staying alive, plus a bonus for your first game each day.
   → Your level shows next to your name in lobbies and games. Click a player's level badge to open their profile.

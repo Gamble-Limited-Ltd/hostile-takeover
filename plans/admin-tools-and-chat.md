@@ -1,7 +1,8 @@
 # Admin tools + in-game chat
 
-**Status:** Approved by Boss 2026-10-27 ("approved, you may begin"), plus slice S0 (root badge). In progress:
-S0 and S1. Open questions O1-O6 still default to the recommendation until Boss answers.
+**Status:** Approved by Boss 2026-10-27 ("approved, you may begin"), plus slice S0 (root badge). Built
+2026-10-27: S0-S5 merged to `main` with green CI; S6 and S7 (legal draft, docs) on their branches. Not deployed.
+Open questions O1-O6 default to the recommendation until Boss answers, except O4 (see there).
 **Lane:** Minor (new wire messages, an engine change, migration 009, legal change): CI + targeted tests + the
 determinism suite + migration rehearsal and a trial on a throwaway stack, then a **24 h watch**.
 **Ships after:** Update 2 (target Thu 2026-10-29 / Fri 2026-10-30) and its 24 h watch. Never in the same release.
@@ -295,7 +296,10 @@ stored chat.
 2. **O2 Lane:** takeover touches the engine; Minor as briefed, or Major (72 h watch)? Recommended: Minor, takeover
    behind its kill switch, off for the first 24 h.
 3. **O3 Takeover name:** account name (recommended) or keep the bot's name?
-4. **O4 XP for others** in a taken-over game: keep (recommended) or the whole game unranked?
+4. **O4 XP for others** in a taken-over game: keep (recommended) or the whole game unranked? **As built:** the
+   whole game gives no XP (S1 stores `unranked_reason='takeover'` and awards nobody; the confirm text, changelog
+   and ToS say so). Switching to "others keep XP" is a small change in `packages/api/src/gameRoutes.ts`
+   (skip only players not in `gameStartInfo`, which root already is) plus the three texts.
 5. **O5 Report retention:** 30 days (recommended)?
 6. **O6 Mute scope:** account-level, all games (recommended) or per game?
 
