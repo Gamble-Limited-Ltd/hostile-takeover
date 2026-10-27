@@ -49,16 +49,6 @@ export function mountGameRoutes(
         resolve(req.body ?? null);
       }),
     );
-  const readInfo = async (req: express.Request, res: express.Response) => {
-    const body = await readBody(req, res);
-    if (body === undefined) return null;
-    const parsed = PartialAnalyticsRecordSchema.safeParse(body);
-    if (!parsed.success) {
-      res.status(400).json({ error: "bad_request" });
-      return null;
-    }
-    return parsed.data.info;
-  };
 
   // Server: src/server/JoinVerify.ts verifyJoin(), parsed by its local
   // JoinVerifyVerdictSchema. There is no Turnstile here, so every join is
@@ -161,12 +151,21 @@ export function mountGameRoutes(
   // A repeated POST changes nothing and is still a 204.
   app.post("/game/:id", serverOnly, async (req, res, next) => {
     try {
-      const info = await readInfo(req, res);
-      if (!info) return;
-      if (info.gameID !== req.params.id) {
+      const body = await readBody(req, res);
+      if (body === undefined) return;
+      const parsed = PartialAnalyticsRecordSchema.safeParse(body);
+      if (!parsed.success || parsed.data.info.gameID !== req.params.id) {
         return void res.status(400).json({ error: "bad_request" });
       }
-      await ingestGame(d.store, info, "server");
+      // The game server flags games it knows are not fair play for XP.
+      const flags = (body ?? {}) as Record<string, unknown>;
+      const reason =
+        flags.htTakeover === true
+          ? "takeover"
+          : flags.htUnranked === true
+            ? "unranked"
+            : null;
+      await ingestGame(d.store, parsed.data.info, "server", undefined, reason);
       res.status(204).end();
     } catch (e) {
       next(e);

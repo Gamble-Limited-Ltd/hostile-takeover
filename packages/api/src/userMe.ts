@@ -15,6 +15,11 @@ export interface UserRow {
   gate_sub?: string | null;
   /** Last self-service rename; null if never. */
   username_changed_at?: Date | null;
+  /** Ban end; null = not banned, Infinity / far future = permanent. */
+  banned_until?: Date | null;
+  ban_reason?: string | null;
+  chat_muted_until?: Date | null;
+  chat_shadow_muted?: boolean;
 }
 
 /**

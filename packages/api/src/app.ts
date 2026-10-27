@@ -3,6 +3,7 @@ import express from "express";
 import { mountAccountRoutes } from "./accountRoutes";
 import { mountAdminXpRoutes } from "./adminXpRoutes";
 import { hasValidApiKey } from "./apiKey";
+import { AccountBannedError, isBanned } from "./bans";
 import type { ApiEnv } from "./env";
 import { mountFlagRoutes } from "./flagRoutes";
 import { mountGameRoutes } from "./gameRoutes";
@@ -10,6 +11,7 @@ import { createGate, type GateClient } from "./gate";
 import { mountGateRoutes } from "./gateRoutes";
 import type { SigningKeys } from "./keys";
 import { mountLeaderboardRoutes } from "./leaderboardRoutes";
+import { mountModerationRoutes } from "./moderationRoutes";
 import { mountProgressionRoutes } from "./progressionRoutes";
 import { defaultRateLimits, type RateLimits } from "./rateLimit";
 import type { SessionRow, Store } from "./store";
@@ -168,6 +170,9 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     userId: string,
     userAgent: string | undefined,
   ) {
+    // The one gate every sign-in path (password, GATE, dev, password change) passes.
+    const who = await store.findUserById(userId);
+    if (who && isBanned(who)) throw new AccountBannedError();
     const { token, hash } = newRefreshToken();
     await store.createSession({
       userId,
@@ -283,9 +288,13 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       if (!raw) return deny(res);
       const found = await store.findSessionByHash(hashRefreshToken(raw));
       if (!found) return deny(res);
+      const owner = await store.findUserById(found.user_id);
+      if (owner && isBanned(owner)) {
+        return void res.status(403).json({ error: "account_banned" });
+      }
       if (found.revoked_at) return await replyForRevoked(found, res);
       if (found.expires_at.getTime() <= Date.now()) return deny(res);
-      const user = await store.findUserById(found.user_id);
+      const user = owner;
       if (!user || user.disabled_at) return deny(res);
       // Revoke the old session and insert its successor atomically, so a DB
       // error can't leave the user with neither.
@@ -362,6 +371,9 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       if (!user || user.disabled_at) {
         return void res.status(401).json({ error: "unauthorized" });
       }
+      if (isBanned(user)) {
+        return void res.status(403).json({ error: "account_banned" });
+      }
       res.json(buildUserMe(user, await store.getProgress(user.id)));
     } catch (e) {
       next(e);
@@ -411,6 +423,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
 
   mountProgressionRoutes(app, { store, authenticate });
   mountAdminXpRoutes(app, { store, authenticate });
+  mountModerationRoutes(app, { env, store, authenticate, limits });
   mountFlagRoutes(app, { store, authenticate });
   mountLeaderboardRoutes(app, { store });
   mountGameRoutes(app, env, { store, authenticate });
@@ -422,6 +435,10 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       res: express.Response,
       _next: express.NextFunction,
     ) => {
+      if (err instanceof AccountBannedError) {
+        res.status(403).json({ error: "account_banned" });
+        return;
+      }
       if ((err as { type?: string }).type === "entity.parse.failed") {
         res.status(400).json({ error: "invalid_request" });
         return;

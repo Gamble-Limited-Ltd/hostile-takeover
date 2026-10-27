@@ -100,3 +100,12 @@ direct endpoints; discovered public URLs are rewritten onto it. The id_token `is
 exactly. Production: `GATE_DIRECT_URL=http://gate:3301` over the external Docker network `gll_gate` (alias `gate`,
 declared in `docker-compose.prod.yml`; `ht-deploy.sh` creates it with `--internal` if missing). Dev: `http://127.0.0.1:3302`.
 Takes precedence over `GATE_BACKCHANNEL_URL`.
+
+## Bans
+
+Root can ban an account for N minutes or for good (`users.banned_until`, `'infinity'` = permanent) and mute it in
+chat; see `docs/API.md`. A ban revokes every session. While `banned_until` is in the future, `/auth/refresh` (the
+cookie is neither rotated nor cleared), `/users/@me` and every sign-in that would mint a session (password, GLL ID
+callback and direct, dev login, link and create) answer 403 `{"error":"account_banned"}`; the GLL ID callback
+redirects with `gate_error=account_banned`. An expired ban needs no cleanup. A live 15-minute JWT still verifies
+until it expires, so the game server also asks `GET /game-server/moderation/:sub` when a player joins.

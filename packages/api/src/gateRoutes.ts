@@ -5,6 +5,7 @@ import { uuidToBase64url } from "@openfront/shared/Base64";
 import express from "express";
 import { bodyOf, ipOf, USERNAME_RE } from "./accountRoutes";
 import type { AppContext } from "./app";
+import { AccountBannedError } from "./bans";
 import { profanityMatcher } from "./censor";
 import {
   GateError,
@@ -232,6 +233,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       res.clearCookie(GATE_TAB_COOKIE, cookieOpts);
       back(res, outcome === "ok" ? "gate=ok" : "gate=link", tab);
     } catch (e) {
+      if (e instanceof AccountBannedError) return fail("account_banned");
       next(e);
     }
   });
