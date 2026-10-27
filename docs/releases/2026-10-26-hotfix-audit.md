@@ -22,3 +22,4 @@ Known issues: 25/day cap lock is per process (single API container today); a GAT
 Kill switches: none new. Legacy register can be stopped by taking /auth/register out at nginx if needed.
 Watch period: 2 h
 Rollback: cd ~/hostile-takeover && ./ht-deploy.sh 6544ea29ac43304a33ae51f0526d052ae84dffbd
+```
