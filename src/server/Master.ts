@@ -28,6 +28,7 @@ import { startPolling } from "./PollingLoop";
 import { renderAppShell } from "./RenderHtml";
 import { securityHeaders } from "./SecurityHeaders";
 import { ServerEnv } from "./ServerEnv";
+import { startSiteStatusPolling } from "./SiteStatus";
 import { applyStaticAssetCacheControl } from "./StaticAssetCache";
 
 const playlist = new MapPlaylist();
@@ -179,6 +180,7 @@ export async function startMaster() {
   process.env.INSTANCE_ID = INSTANCE_ID;
 
   log.info(`Instance ID: ${INSTANCE_ID}`);
+  startSiteStatusPolling();
 
   // Join the site's shared public-lobby roster (LobbyCoordinatorClient.ts)
   // when LOBBY_COORDINATOR=api and this server has a public host to

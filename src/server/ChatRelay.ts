@@ -17,7 +17,8 @@ const REPORT_LIMIT = 5;
 const REPORT_WINDOW_MS = 60_000;
 const DEFAULT_MUTE_MINUTES = 10;
 const MAX_MUTE_MINUTES = 5 * 365 * 24 * 60;
-const ROOT_COMMAND = /^\/(mute|shadow|unmute|kick|say)(?:\s+([\s\S]*))?$/i;
+const ROOT_COMMAND =
+  /^\/(mute|shadow|unmute|kick|say|endgame|unranked)(?:\s+([\s\S]*))?$/i;
 
 export interface ChatRelayDeps {
   // Everyone currently connected (players and spectators).
@@ -27,6 +28,9 @@ export interface ChatRelayDeps {
   // The admin kick path (GameServer.kickClient with the admin reason).
   kick: (clientID: string) => void;
   gameId: () => string;
+  // Root /endgame and /unranked (S6): the GameServer methods.
+  endGame: () => void;
+  markUnranked: () => void;
   now?: () => number;
 }
 
@@ -122,6 +126,16 @@ export class ChatRelay {
         actor,
         action: "say",
         detail: { text },
+      });
+      return;
+    }
+    if (name === "endgame" || name === "unranked") {
+      if (name === "endgame") this.deps.endGame();
+      else this.deps.markUnranked();
+      ChatEnv.post("/game-server/audit", {
+        actor,
+        action: name === "endgame" ? "end_game" : "game_unranked",
+        target: this.deps.gameId(),
       });
       return;
     }

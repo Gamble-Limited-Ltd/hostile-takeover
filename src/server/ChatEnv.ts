@@ -1,4 +1,5 @@
 import { uuidToBase64url } from "@openfront/shared/Base64";
+import { logger } from "./Logger";
 import { ServerEnv } from "./ServerEnv";
 
 const UUID_RE =
@@ -15,7 +16,6 @@ export class ChatEnv {
     return process.env.HT_CHAT !== "off";
   }
 
-  // Muted accounts are looked up from the API at join; failing open on any error.
   // Fire-and-forget API-key POST to the API (root chat commands, reports).
   static post(path: string, body: unknown): void {
     try {
@@ -33,9 +33,12 @@ export class ChatEnv {
     }
   }
 
-  static async muteFor(
-    sub: string,
-  ): Promise<{ until: number; shadow: boolean } | null> {
+  // One API lookup per join: ban state and chat mute. Fails open (not banned,
+  // not muted) on any error, with a warning.
+  static async moderation(sub: string): Promise<{
+    banned: boolean;
+    mute: { until: number; shadow: boolean } | null;
+  }> {
     try {
       const res = await fetch(
         `${ServerEnv.jwtIssuer()}/game-server/moderation/${encodeURIComponent(apiSub(sub))}`,
@@ -44,16 +47,23 @@ export class ChatEnv {
           signal: AbortSignal.timeout(1500),
         },
       );
-      if (!res.ok) return null;
+      if (!res.ok) throw new Error(`status ${res.status}`);
       const body = (await res.json()) as {
+        banned?: boolean;
         mutedUntil?: string | null;
         shadow?: boolean;
       };
       const until = body.mutedUntil ? Date.parse(body.mutedUntil) : NaN;
-      if (!Number.isFinite(until) || until <= Date.now()) return null;
-      return { until, shadow: body.shadow === true };
-    } catch {
-      return null;
+      const muted = Number.isFinite(until) && until > Date.now();
+      return {
+        banned: body.banned === true,
+        mute: muted ? { until, shadow: body.shadow === true } : null,
+      };
+    } catch (e) {
+      logger.warn("moderation lookup failed, failing open", {
+        error: String(e),
+      });
+      return { banned: false, mute: null };
     }
   }
 }

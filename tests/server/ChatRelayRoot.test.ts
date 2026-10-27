@@ -10,6 +10,7 @@ let now = 1_000_000;
 let sent: Map<string, ServerMessage[]>;
 let all: Client[];
 let kicked: string[];
+let ended: string[];
 let fetchMock: ReturnType<typeof vi.fn>;
 
 function relay() {
@@ -20,6 +21,8 @@ function relay() {
     now: () => now,
     kick: (id) => kicked.push(id),
     gameId: () => "game1",
+    endGame: () => ended.push("end"),
+    markUnranked: () => ended.push("unranked"),
   });
 }
 function join(tag: string, opts: Parameters<typeof makeClient>[0] = {}) {
@@ -45,6 +48,7 @@ beforeEach(() => {
   sent = new Map();
   all = [];
   kicked = [];
+  ended = [];
   fetchMock = vi.fn(async () => ({ ok: true }));
   vi.stubGlobal("fetch", fetchMock);
   vi.stubEnv("DOMAIN", "localhost");

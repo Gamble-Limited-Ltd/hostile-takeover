@@ -67,6 +67,7 @@ import {
 import { ClientEnv } from "./ClientEnv";
 import { ensureServerList } from "./ServerList";
 import { UserSettings } from "./UserSettings";
+import { showToast, translateText } from "./Utils";
 
 export async function fetchPlayerById(
   playerId: string,
@@ -2212,6 +2213,10 @@ export async function createLobby(): Promise<{
     );
 
     if (!response.ok) {
+      // Fork-only (S6): maintenance pauses new games.
+      if (response.status === 503) {
+        showToast(translateText("site_banner.maintenance"), "red");
+      }
       const errorText = await response.text();
       console.error("Server error response:", errorText);
       throw new Error(`HTTP error! status: ${response.status}`);
