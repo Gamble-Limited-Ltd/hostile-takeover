@@ -22,6 +22,8 @@ export const HtLeaderboardEntrySchema = z.object({
   games: z.number().int().min(0),
   wins: z.number().int().min(0),
   winRate: z.number().min(0).max(1),
+  // Boss's account (rank THE_STRONGEST): crown beside the name. Omitted otherwise.
+  root: z.literal(true).optional(),
 });
 export type HtLeaderboardEntry = z.infer<typeof HtLeaderboardEntrySchema>;
 

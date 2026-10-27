@@ -379,6 +379,7 @@ export function memoryStore(
             },
             games: mine.length,
             wins: mine.filter((p) => p.won).length,
+            rank: u.rank,
           };
         })
         .filter((r) =>

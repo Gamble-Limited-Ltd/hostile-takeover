@@ -49,6 +49,7 @@ export function mountLeaderboardRoutes(
           games: r.games,
           wins: r.wins,
           winRate: r.games > 0 ? r.wins / r.games : 0,
+          ...(r.rank === "THE_STRONGEST" ? { root: true as const } : {}),
         })),
       };
       if (cache.size >= 500) cache.clear();

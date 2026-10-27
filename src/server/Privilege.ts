@@ -278,6 +278,16 @@ export class FailOpenPrivilegeChecker implements PrivilegeChecker {
   }
 }
 
+/** Crown badge for the root account only (not `admin`); never from the client. */
+export function applyRootBadge(
+  cosmetics: PlayerCosmetics,
+  role: string | null | undefined,
+): PlayerCosmetics {
+  if (role === "root") cosmetics.root = true;
+  else delete cosmetics.root;
+  return cosmetics;
+}
+
 /**
  * Decide whether a join keeps the verified check.
  *

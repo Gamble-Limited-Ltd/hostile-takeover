@@ -1910,6 +1910,9 @@
     "tps": "TPS:",
     "tps_avg_60s": "Avg:"
   },
+  "player_badge": {
+    "root": "The Strongest"
+  },
   "player_panel": {
     "active": "Active",
     "alliance_time_remaining": "Alliance Expires In",

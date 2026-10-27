@@ -24,6 +24,7 @@ import "../../components/EquippedCosmeticsRow";
 import "../../components/LevelBadge";
 import { actionButton } from "../../components/ui/ActionButton";
 import "../../components/ui/Divider";
+import { rootBadge } from "../../components/ui/RootBadge";
 import { Controller } from "../../Controller";
 import { Features } from "../../Features";
 import {
@@ -46,10 +47,10 @@ import { UserSettings } from "../../UserSettings";
 import { renderDuration, showToast, translateText } from "../../Utils";
 import { GameView, PlayerView } from "../../view";
 import { ChatModal } from "./ChatModal";
-import { EmojiTable } from "./EmojiTable";
 import "./PlayerModerationModal";
 import "./PlayerReportModal";
 import "./SendResourceModal";
+import { EmojiTable } from "./EmojiTable";
 const allianceIcon = assetUrl("images/AllianceIconWhite.svg");
 const chatIcon = assetUrl("images/ChatIconWhite.svg");
 const donateGoldIcon = assetUrl("images/DonateGoldIconWhite.svg");
@@ -659,6 +660,7 @@ export class PlayerPanel extends LitElement implements Controller {
           >
             ${other.displayName()}
           </h2>
+          ${other.cosmetics.root ? rootBadge("w-5 h-5") : ""}
         </div>
         ${chip
           ? html`<span

@@ -30,6 +30,19 @@ vi.mock("../../src/client/HtLeaderboardApi", async (importOriginal) => ({
       games: 12,
       wins: 6,
       winRate: 0.5,
+      root: true,
+    },
+    {
+      rank: 2,
+      publicId: "def",
+      username: "bob",
+      flag: null,
+      level: 2,
+      prestige: 0,
+      lifetimeXp: 100,
+      games: 3,
+      wins: 1,
+      winRate: 0.33,
     },
   ]),
 }));
@@ -80,5 +93,9 @@ describe("LeaderboardModal (ranked off)", () => {
     expect(active.querySelector('img[src$="flags/us.svg"]')).not.toBeNull();
     expect(active.textContent).toContain("leaderboard_modal.xp");
     expect(active.textContent).toContain("700");
+    // Crown only on the root row (ann), not bob's.
+    const crowns = active.querySelectorAll("img[data-badge='root']");
+    expect(crowns).toHaveLength(1);
+    expect(crowns[0].closest("tr")?.textContent).toContain("700");
   });
 });

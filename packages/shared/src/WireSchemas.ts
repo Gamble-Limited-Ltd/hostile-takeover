@@ -461,6 +461,9 @@ export const PlayerCosmeticsSchema = z.object({
   effects: z.record(z.string(), PlayerEffectSchema).optional(),
   // Plays under the verified account username — renders the blue check.
   verified: z.boolean().optional(),
+  // Boss's account (JWT role "root"): crown badge. Server-set only; the join
+  // refs schema above has no such field. Keep last (zbin field order).
+  root: z.boolean().optional(),
 });
 
 // A player as the server sends and records it: what the engine reads
