@@ -1,16 +1,4 @@
 {
-  "admin": {
-    "live_games": {
-      "age": "{minutes} min",
-      "counts": "{players} players, {bots} bots",
-      "desc": "Public games in progress. Spectating is invisible to the players.",
-      "error": "Could not load the live games.",
-      "none": "No public games are running.",
-      "refresh": "Refresh",
-      "spectate": "Spectate",
-      "title": "Live games"
-    }
-  },
   "account_modal": {
     "cancel_subscription": "Cancel",
     "cancel_subscription_confirm": "Cancel your subscription? You may lose access immediately.",
@@ -177,6 +165,22 @@
   },
   "account_settings_modal": {
     "title": "Account Settings"
+  },
+  "admin": {
+    "live_games": {
+      "age": "{minutes} min",
+      "counts": "{players} players, {bots} bots",
+      "desc": "Public games in progress. Spectating is invisible to the players.",
+      "error": "Could not load the live games.",
+      "none": "No public games are running.",
+      "refresh": "Refresh",
+      "spectate": "Spectate",
+      "title": "Live games"
+    },
+    "takeover": {
+      "button": "Take over",
+      "confirm": "Take over {name}? You will play it for the rest of the game, and the game will give no XP to anyone."
+    }
   },
   "ban_notice": {
     "appeal": "If you believe this is a mistake, contact us on Discord.",
@@ -889,6 +893,7 @@
   "events_display": {
     "about_to_expire": "Your alliance with {name} is about to expire!",
     "accept_alliance": "Accept",
+    "admin_takeover": "{admin} took over {bot}",
     "alliance_accepted": "accepted",
     "alliance_expired": "Your alliance with {name} expired",
     "alliance_nukes_destroyed_incoming": "{count, plural, one {# nuke launched by {name} was destroyed due to the alliance} other {# nukes launched by {name} were destroyed due to the alliance}}",

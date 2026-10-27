@@ -183,7 +183,17 @@ export class SocketIngress {
     // A spectator is not in the simulation, so none of what it sends can be
     // game state. Without this, claiming to spectate is a way past the lobby
     // cap and into the intent stream.
-    if (client.spectator && SPECTATOR_BLOCKED_MESSAGES.has(clientMsg.type)) {
+    // Fork-only (S5): a root spectator may send admin_takeover; GameServer
+    // authorizes it fully.
+    const rootTakeover =
+      client.role === "root" &&
+      clientMsg.type === "intent" &&
+      clientMsg.intent.type === "admin_takeover";
+    if (
+      client.spectator &&
+      !rootTakeover &&
+      SPECTATOR_BLOCKED_MESSAGES.has(clientMsg.type)
+    ) {
       // Debug-only: a spectator probing blocked types produces one line per
       // message, which dominates warn volume at scale.
       this.log.debug(`dropping ${clientMsg.type} from spectator`, {

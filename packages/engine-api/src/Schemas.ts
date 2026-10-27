@@ -46,7 +46,8 @@ export type Intent =
   | KickPlayerIntent
   | TogglePauseIntent
   | UpdateGameConfigIntent
-  | ToggleGameStartTimer;
+  | ToggleGameStartTimer
+  | AdminTakeoverIntent;
 
 export type AttackIntent = z.infer<typeof AttackIntentSchema>;
 export type CancelAttackIntent = z.infer<typeof CancelAttackIntentSchema>;
@@ -76,6 +77,7 @@ export type AllianceExtensionIntent = z.infer<
 >;
 export type DeleteUnitIntent = z.infer<typeof DeleteUnitIntentSchema>;
 export type KickPlayerIntent = z.infer<typeof KickPlayerIntentSchema>;
+export type AdminTakeoverIntent = z.infer<typeof AdminTakeoverIntentSchema>;
 export type TogglePauseIntent = z.infer<typeof TogglePauseIntentSchema>;
 export type UpdateGameConfigIntent = z.infer<
   typeof UpdateGameConfigIntentSchema
@@ -545,6 +547,15 @@ export const KickPlayerIntentSchema = z.object({
   targetPublicID: MappedID.optional(),
 });
 
+// Fork-only (S5): root takes over a Bot/Nation player. Travels in the Turn so
+// every client and late joiner applies it at the same tick. `name` is set by
+// the server from the sender's account, never trusted from the client.
+export const AdminTakeoverIntentSchema = z.object({
+  type: z.literal("admin_takeover"),
+  targetPlayerID: MappedID,
+  name: z.string().max(MAX_STORED_USERNAME_LENGTH).optional(),
+});
+
 export const TogglePauseIntentSchema = z.object({
   type: z.literal("toggle_pause"),
   paused: z.boolean().default(false),
@@ -587,6 +598,7 @@ export const IntentSchema = z.discriminatedUnion("type", [
   TogglePauseIntentSchema,
   UpdateGameConfigIntentSchema,
   ToggleGameStartTimerIntentSchema,
+  AdminTakeoverIntentSchema,
 ]);
 
 // StampedIntent = Intent with server-stamped clientID (used in turns and execution)

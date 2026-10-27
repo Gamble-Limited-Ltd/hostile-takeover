@@ -52,6 +52,7 @@ import { clientDevice, clientPlatform } from "./ClientPlatform";
 import { isDesktopShell } from "./DesktopShell";
 import { showInGameConfirm } from "./InGameModal";
 import {
+  SendAdminTakeoverIntentEvent,
   SendKickPlayerIntentEvent,
   SendSpectateEvent,
   SendToggleGameStartTimer,
@@ -352,6 +353,13 @@ export class Transport {
 
     this.subscribe(SendDeleteUnitIntentEvent, (e) =>
       this.onSendDeleteUnitIntent(e),
+    );
+
+    this.subscribe(SendAdminTakeoverIntentEvent, (e) =>
+      this.sendIntent({
+        type: "admin_takeover",
+        targetPlayerID: e.targetPlayerID,
+      }),
     );
 
     this.subscribe(SendKickPlayerIntentEvent, (e) =>

@@ -50,6 +50,11 @@ export class TribeExecution implements Execution {
   }
 
   tick(ticks: number) {
+    // Fork-only (S5): a human took this tribe over; the AI stops.
+    if (this.tribe.clientID() !== null) {
+      this.active = false;
+      return;
+    }
     if (ticks % this.attackRate !== this.attackTick) return;
 
     if (!this.tribe.isAlive()) {

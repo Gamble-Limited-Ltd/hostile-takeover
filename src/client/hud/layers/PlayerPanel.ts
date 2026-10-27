@@ -47,10 +47,11 @@ import { UserSettings } from "../../UserSettings";
 import { renderDuration, showToast, translateText } from "../../Utils";
 import { GameView, PlayerView } from "../../view";
 import { ChatModal } from "./ChatModal";
+import { EmojiTable } from "./EmojiTable";
 import "./PlayerModerationModal";
 import "./PlayerReportModal";
 import "./SendResourceModal";
-import { EmojiTable } from "./EmojiTable";
+import { canTakeOver, confirmTakeOver } from "./TakeoverAction";
 const allianceIcon = assetUrl("images/AllianceIconWhite.svg");
 const chatIcon = assetUrl("images/ChatIconWhite.svg");
 const donateGoldIcon = assetUrl("images/DonateGoldIconWhite.svg");
@@ -531,6 +532,28 @@ export class PlayerPanel extends LitElement implements Controller {
                 </span>`
             : ""}
         </span>
+      </div>
+    `;
+  }
+
+  // Fork-only (S5): root spectating a public game can take over a bot.
+  private renderTakeover(other: PlayerView) {
+    if (!canTakeOver(this.playerRole, this.g, other)) return html``;
+    const title = translateText("admin.takeover.button");
+    return html`
+      <ui-divider></ui-divider>
+      <div class="grid auto-cols-fr grid-flow-col gap-1">
+        ${actionButton({
+          onClick: async (e: MouseEvent) => {
+            e.stopPropagation();
+            if (await confirmTakeOver(this.eventBus, other)) this.hide();
+          },
+          icon: shieldIcon,
+          iconAlt: "Take over",
+          title,
+          label: title,
+          type: "red",
+        })}
       </div>
     `;
   }
@@ -1200,7 +1223,7 @@ export class PlayerPanel extends LitElement implements Controller {
                         ? // Dead (or not yet spawned) players still get to
                           // report and, as host/admin, moderate.
                           this.renderModeration(my, other, this.isAdminRole)
-                        : ""}
+                        : this.renderTakeover(other)}
                   </div>
                 </div>
               </div>

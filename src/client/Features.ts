@@ -12,6 +12,13 @@
  */
 export const Features = Object.freeze({
   /**
+   * Root-only "Take over" of a Bot/Nation player while spectating a public
+   * game (S5). Default on, unlike the rest: the server (HT_ADMIN_TAKEOVER)
+   * and root's role gate it too, so non-root never sees it. Flip to false to
+   * hide the entry point.
+   */
+  adminTakeover: true,
+  /**
    * Menu and gameplay music. Off: OpenFront's two tracks live in
    * proprietary/ (all rights reserved) and we ship none, so neither track is
    * requested. The music volume setting stays and does nothing until we have
