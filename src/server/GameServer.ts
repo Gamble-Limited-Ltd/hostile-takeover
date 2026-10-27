@@ -64,6 +64,7 @@ import { Logger } from "winston";
 import WebSocket from "ws";
 import { z } from "zod";
 import { archive, finalizeGameRecord } from "./Archive";
+import { ChatRelay } from "./ChatRelay";
 import { Client } from "./Client";
 import { applyGameConfigPatch, hostCheatsEnabled } from "./ConfigPatch";
 import { LiveStatsVote, voteKey, WinnerVote } from "./Consensus";
@@ -217,6 +218,16 @@ export class GameServer {
   // Socket listeners and the decode / validate / rate-limit / spectator-block
   // pipeline every frame goes through before handleClientMessage.
   private readonly ingress: SocketIngress;
+  // Chat (S2): its own messages, never intents; see ChatRelay.
+  private readonly chat = new ChatRelay({
+    recipients: () => this.clients.active(),
+    send: (c, m) => {
+      if (c.ws.readyState === WebSocket.OPEN) {
+        c.ws.send(encodeServerMessage(m, this.zbinCtx));
+      }
+    },
+    turn: () => this.turns.length,
+  });
 
   private maxGameDuration = 3 * 60 * 60 * 1000; // 3 hours
 
@@ -732,6 +743,7 @@ export class GameServer {
     // A spectator arriving mid-game missed the start message.
     if (this.stage === "started") {
       this.sendStartGameMsg(client.ws, 0);
+      this.chat.sendHistory(client);
     }
 
     return "joined";
@@ -780,6 +792,7 @@ export class GameServer {
 
     if (this.stage === "started") {
       this.sendStartGameMsg(client.ws, lastTurn);
+      this.chat.sendHistory(client);
     }
     return true;
   }
@@ -801,6 +814,7 @@ export class GameServer {
         // Client is already connected, no auth required, send start game message if game has started
         if (this.stage === "started") {
           this.sendStartGameMsg(client.ws, clientMsg.lastTurn);
+          this.chat.sendHistory(client);
         }
         break;
       }
@@ -856,6 +870,14 @@ export class GameServer {
       }
       case "report": {
         this.handleReport(client, clientMsg);
+        break;
+      }
+      case "chat": {
+        this.chat.handle(client, clientMsg);
+        break;
+      }
+      case "chat_report": {
+        // S3 implements reports; accepted and ignored for now.
         break;
       }
       default: {

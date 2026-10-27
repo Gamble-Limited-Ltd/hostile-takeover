@@ -209,6 +209,14 @@
     "unavailable": "Username management isn't available on this account yet."
   },
   "chat": {
+    "channel_alliance": "Alliance",
+    "channel_global": "All",
+    "error_disabled": "Chat is turned off.",
+    "error_muted": "You are muted.",
+    "error_rate_limited": "You are sending messages too fast.",
+    "error_too_long": "That message is too long.",
+    "input_placeholder": "Type a message (Tab switches channel)",
+    "spectator": "Spectator",
     "all_phrases": "All phrases",
     "attack": {
       "attack": "Attack [P1]!",

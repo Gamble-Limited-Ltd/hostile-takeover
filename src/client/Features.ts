@@ -12,6 +12,12 @@
  */
 export const Features = Object.freeze({
   /**
+   * In-game chat input (S2). The one switch that defaults to `true`: off, the
+   * input never opens (the log still shows what the server sends). The
+   * server-side kill switch is HT_CHAT=off.
+   */
+  chat: true,
+  /**
    * Menu and gameplay music. Off: OpenFront's two tracks live in
    * proprietary/ (all rights reserved) and we ship none, so neither track is
    * requested. The music volume setting stays and does nothing until we have

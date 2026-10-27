@@ -37,6 +37,7 @@ import { z } from "zod";
 import { forcedAccountUsername } from "./AccountName";
 import { registerAdminBotRoutes } from "./AdminBotRoutes";
 import { censorPlayer } from "./Censor";
+import { ChatEnv } from "./ChatEnv";
 import { Client } from "./Client";
 import { gameApiCors } from "./GameApiCors";
 import { GameManager } from "./GameManager";
@@ -924,6 +925,9 @@ export async function startWorker() {
           clientMsg.device,
           levelBadge,
         );
+
+        // Chat mute (S2); fails open on any API error.
+        client.chatMute = await ChatEnv.muteFor(persistentId);
 
         const joinResult = gm.joinClient(client, clientMsg.gameID);
 
