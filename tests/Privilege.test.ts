@@ -1,6 +1,7 @@
 import {
   FailOpenPrivilegeChecker,
   PrivilegeCheckerImpl,
+  applyRootBadge,
   resolveVerifiedJoin,
 } from "../src/server/Privilege";
 
@@ -771,5 +772,24 @@ describe("FailOpenPrivilegeChecker#resolveClanTag", () => {
   it("keeps an anonymous user's tag fail-open", () => {
     const result = checker.resolveClanTag("ABC", []);
     expect(result).toEqual({ tag: "ABC", dropped: false });
+  });
+});
+
+// Boss's root badge: set by the worker from the verified JWT role alone.
+describe("applyRootBadge", () => {
+  test("only the root role gets the badge", () => {
+    expect(applyRootBadge({}, "root")).toMatchObject({ root: true });
+    expect(applyRootBadge({}, "admin").root).toBeUndefined();
+    expect(applyRootBadge({}, null).root).toBeUndefined();
+  });
+
+  test("a client-sent root is never honoured", () => {
+    const refs = { root: true } as never;
+    for (const c of [checker, new FailOpenPrivilegeChecker()]) {
+      const result = c.isAllowed([], refs);
+      if (result.type !== "allowed") throw new Error("expected allowed");
+      expect(result.cosmetics.root).toBeUndefined();
+    }
+    expect(applyRootBadge({ root: true }, "admin").root).toBeUndefined();
   });
 });

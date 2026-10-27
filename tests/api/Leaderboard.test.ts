@@ -294,3 +294,34 @@ describe.skipIf(process.env.HT_TEST_DB !== "1")("real database", () => {
     }
   });
 });
+
+describe("root badge on leaderboard rows", () => {
+  test("only THE_STRONGEST rows carry root: true", async () => {
+    const boss = { ...user("boss"), rank: "THE_STRONGEST" };
+    const pal = user("pal");
+    const store = memoryStore([boss, pal]).store;
+    await play(store, boss.id, true);
+    await play(store, pal.id, true);
+    const keys = await keysFromPem(generatePrivateKeyPem());
+    const server = createApp(
+      { query: async () => ({}) },
+      { env, keys, store },
+    ).listen(0, "127.0.0.1");
+    await new Promise((r) => server.once("listening", r));
+    const base = `http://127.0.0.1:${(server.address() as AddressInfo).port}`;
+    try {
+      const body = await (
+        await fetch(`${base}/public/leaderboard/players?sort=games`)
+      ).json();
+      const row = (u: UserRow) =>
+        body.entries.find(
+          (e: { publicId: string }) => e.publicId === u.public_id,
+        );
+      expect(row(boss).root).toBe(true);
+      expect("root" in row(pal)).toBe(false);
+      HtLeaderboardResponseSchema.parse(body);
+    } finally {
+      server.close();
+    }
+  });
+});

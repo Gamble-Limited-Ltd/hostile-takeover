@@ -12,6 +12,7 @@ import { assetUrl } from "@openfront/shared/AssetUrls";
 import { EventBus } from "@openfront/shared/EventBus";
 import { html, LitElement, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { rootBadge } from "../../components/ui/RootBadge";
 import { Controller } from "../../Controller";
 import {
   ContextMenuEvent,
@@ -690,6 +691,7 @@ export class PlayerInfoOverlay extends LitElement implements Controller {
                 >${player.displayName()}</span
               >
             </div>
+            ${player.cosmetics.root ? rootBadge("w-5 h-5") : ""}
             ${this.getRelationSmiley(player, myPlayer)}
             ${playerTeam !== "" && player.type() !== PlayerType.Bot
               ? html`<div

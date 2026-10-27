@@ -21,6 +21,7 @@ import {
   levelBadgeSlot,
 } from "../LevelBadgeSlot";
 import "../PlayerName";
+import { rootBadge } from "../ui/RootBadge";
 
 /** One ranked ladder's loaded rows. */
 interface LadderState {
@@ -207,7 +208,7 @@ export class LeaderboardPlayerList extends LitElement {
       for (const rankedType of RANKED_TYPES) {
         const ladder = this.ladders[rankedType];
         // Our board fills the one 1v1 slot; the other slots stay empty.
-        const nextPlayers: PlayerLeaderboardEntry[] = ht
+        const nextPlayers: (PlayerLeaderboardEntry & { root?: boolean })[] = ht
           ? rankedType === RankedType.OneVOne
             ? (htRows ?? []).map((e) => ({
                 rank: e.rank,
@@ -222,6 +223,7 @@ export class LeaderboardPlayerList extends LitElement {
                 level: e.level,
                 prestige: e.prestige,
                 legend: false,
+                root: e.root,
               }))
             : []
           : ((result ?? {})[rankedType] ?? []).map(toPlayerEntry);
@@ -422,7 +424,10 @@ export class LeaderboardPlayerList extends LitElement {
     `;
   }
 
-  private renderPlayerRow(player: PlayerLeaderboardEntry, badgeSlot: boolean) {
+  private renderPlayerRow(
+    player: PlayerLeaderboardEntry & { root?: boolean },
+    badgeSlot: boolean,
+  ) {
     const isCurrentUser = this.currentUserEntry?.playerId === player.playerId;
     const displayRank = player.rank;
 
@@ -465,6 +470,7 @@ export class LeaderboardPlayerList extends LitElement {
               .nameClass=${"font-bold text-blue-300 truncate text-base hover:underline"}
               .onNameClick=${() => this.openProfile(player.playerId)}
             ></player-name>
+            ${player.root ? rootBadge("w-5 h-5") : ""}
           </div>
         </td>
         <td class="py-3 px-4 text-right">

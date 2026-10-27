@@ -53,7 +53,7 @@ import { levelBadgeForPlayer } from "./LevelBadge";
 import { payForLobbyQueue, queueListedLobby } from "./LobbyQueuePayment";
 import { logger } from "./Logger";
 import { registerPlayerProfileRoute } from "./PlayerProfileRoute";
-import { resolveVerifiedJoin } from "./Privilege";
+import { applyRootBadge, resolveVerifiedJoin } from "./Privilege";
 
 import { MapPlaylist } from "./MapPlaylist";
 import { setNoStoreHeaders } from "./NoStoreHeaders";
@@ -901,6 +901,8 @@ export async function startWorker() {
             },
           );
         }
+
+        applyRootBadge(cosmeticResult.cosmetics, claims?.role);
 
         // Create client and add to game
         const client = new Client(

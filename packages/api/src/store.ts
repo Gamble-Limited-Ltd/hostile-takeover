@@ -221,6 +221,8 @@ export interface LeaderboardRow {
   progress: ProgressState;
   games: number;
   wins: number;
+  /** Account rank, e.g. PLAYER or THE_STRONGEST. */
+  rank: string;
 }
 
 export interface ProfileData {
@@ -851,7 +853,7 @@ export function pgStore(db: SqlClient): Store {
         winrate: "COALESCE(s.wins, 0)::float / COALESCE(s.games, 1) DESC",
       }[sort];
       const r = await db.query(
-        `SELECT u.public_id, u.username::text AS username, u.flag,
+        `SELECT u.public_id, u.username::text AS username, u.flag, u.rank,
                 COALESCE(p.level, 1) AS level, COALESCE(p.xp_in_level, 0) AS xp_in_level,
                 COALESCE(p.lifetime_xp, 0)::float8 AS lifetime_xp,
                 COALESCE(s.games, 0) AS games, COALESCE(s.wins, 0) AS wins
@@ -877,6 +879,7 @@ export function pgStore(db: SqlClient): Store {
         },
         games: x.games,
         wins: x.wins,
+        rank: x.rank,
       }));
     },
     async getFlag(userId) {
