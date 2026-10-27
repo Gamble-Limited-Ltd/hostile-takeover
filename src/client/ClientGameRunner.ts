@@ -333,8 +333,18 @@ export function joinLobby(
             composed: true,
           }),
         );
-      } else if (message.error === "kick_reason.host_left") {
-        showInGameAlert(translateText("kick_reason.host_left")).then(() => {
+      } else if (
+        message.error === "kick_reason.host_left" ||
+        message.error === "kick_reason.admin_ended"
+      ) {
+        // Fork-only (S6): root /endgame drops everyone the same way.
+        showInGameAlert(
+          translateText(
+            message.error === "kick_reason.admin_ended"
+              ? "kick_reason.admin_ended"
+              : "kick_reason.host_left",
+          ),
+        ).then(() => {
           document.dispatchEvent(
             new CustomEvent("leave-lobby", {
               detail: { lobby: lobbyConfig.gameID, cause: "host-left" },

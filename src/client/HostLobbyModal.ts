@@ -917,6 +917,8 @@ export class HostLobbyModal extends BaseModal {
       .catch(() => {
         // Clear clipboard so the host doesn't accidentally share a dead link
         void navigator.clipboard.writeText("").catch(() => {});
+        // Fork-only (S6): maintenance mode refuses new lobbies with a 503.
+        showToast(translateText("new_lobby_prompt.failed"), "red", 3000);
       });
     // BaseModal.firstUpdated() owns modalEl.onClose so the o-modal close path
     // (backdrop / close button) runs confirmBeforeClose(). Don't override it

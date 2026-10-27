@@ -207,7 +207,7 @@ describe("GameServer.endGame / markUnranked", () => {
     const frames = vi
       .mocked(players[0].ws.send)
       .mock.calls.map(([f]) => Buffer.from(f as Uint8Array).toString("latin1"));
-    expect(frames.some((f) => f.includes("kick_reason.match_cancelled"))).toBe(
+    expect(frames.some((f) => f.includes("kick_reason.admin_ended"))).toBe(
       true,
     );
     await game.end();

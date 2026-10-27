@@ -1614,7 +1614,7 @@ export class GameServer {
   public endGame(): void {
     this.unranked = true;
     for (const c of [...this.clients.active()]) {
-      this.kickClient(c.clientID, KICK_REASON_MATCH_CANCELLED);
+      this.kickClient(c.clientID, "kick_reason.admin_ended");
     }
     this.ended = true;
   }

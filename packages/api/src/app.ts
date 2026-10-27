@@ -119,12 +119,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     const origin = req.headers.origin;
     if (origin !== undefined) {
       if (origin !== env.gameOrigin && !env.extraOrigins.includes(origin)) {
-        if (
-          req.method === "OPTIONS" ||
-          req.method === "POST" ||
-          req.method === "PATCH" ||
-          req.method === "DELETE"
-        ) {
+        if (req.method !== "GET" && req.method !== "HEAD") {
           res.status(403).json({ error: "origin_not_allowed" });
           return;
         }
@@ -137,7 +132,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     if (req.method === "OPTIONS") {
       res.setHeader(
         "Access-Control-Allow-Methods",
-        "GET, POST, PATCH, DELETE, OPTIONS",
+        "GET, POST, PUT, PATCH, DELETE, OPTIONS",
       );
       res.setHeader(
         "Access-Control-Allow-Headers",
