@@ -161,6 +161,7 @@ import "./UsernameInput";
 import { parseReplayViewerHash } from "./replay/ReplayViewerRoute";
 import { UsernameInput } from "./UsernameInput";
 import { UserSettings } from "./UserSettings";
+import "./SiteBanner";
 import "./components/BannedModal";
 import "./components/DesktopStatusBar";
 import "./components/MarketingConsentToast";

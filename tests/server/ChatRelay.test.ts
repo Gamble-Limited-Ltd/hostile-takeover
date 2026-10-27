@@ -17,6 +17,8 @@ function relay() {
     now: () => now,
     kick: () => {},
     gameId: () => "g",
+    endGame: () => {},
+    markUnranked: () => {},
   });
 }
 function join(tag: string, opts: Parameters<typeof makeClient>[0] = {}) {

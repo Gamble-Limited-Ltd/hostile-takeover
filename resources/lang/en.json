@@ -177,6 +177,47 @@
       "spectate": "Spectate",
       "title": "Live games"
     },
+    "moderation": {
+      "ban_button": "Ban",
+      "ban_desc": "Ban an account for a number of minutes, or permanently if the minutes are left empty.",
+      "ban_title": "Ban or unban",
+      "banner": "Banner text (empty for none)",
+      "done_ban": "Banned.",
+      "done_mute": "Muted.",
+      "done_report": "Report deleted.",
+      "done_site": "Saved.",
+      "done_unban": "Unbanned.",
+      "done_unmute": "Unmuted.",
+      "done_unranked": "Game marked unranked.",
+      "error_forbidden": "Only the root account can do this.",
+      "error_generic": "Something went wrong. Try again.",
+      "error_input": "Check the username and minutes.",
+      "error_no_such_user": "No such player.",
+      "error_not_found": "Not found.",
+      "error_protected_account": "This account cannot be banned.",
+      "error_unauthorized": "Sign in again to do this.",
+      "game_id": "Game ID",
+      "maintenance": "Maintenance: pause new games",
+      "minutes": "Minutes",
+      "minutes_permanent": "Minutes (empty for permanent)",
+      "mute_button": "Mute",
+      "mute_desc": "Stop an account from chatting for a number of minutes.",
+      "mute_title": "Mute or unmute",
+      "reason": "Reason (optional)",
+      "report_delete": "Delete",
+      "reports_desc": "Chat messages players reported.",
+      "reports_empty": "No chat reports.",
+      "reports_title": "Chat reports",
+      "shadow": "Shadow mute (they do not see that they are muted)",
+      "site_button": "Save",
+      "site_desc": "The banner shows on the home page. Maintenance stops new games; running games carry on.",
+      "site_title": "Banner and maintenance",
+      "unban_button": "Unban",
+      "unmute_button": "Unmute",
+      "unranked_button": "Mark unranked",
+      "unranked_desc": "A game marked unranked gives no XP from then on.",
+      "unranked_title": "Unrank a game"
+    },
     "takeover": {
       "button": "Take over",
       "confirm": "Take over {name}? You will play it for the rest of the game, and the game will give no XP to anyone."
@@ -2376,6 +2417,9 @@
     "options_changed_no_achievements": "Custom settings – achievements disabled",
     "sign_in_for_achievements": "Sign in for achievements",
     "toggle_achievements": "Toggle achievements"
+  },
+  "site_banner": {
+    "maintenance": "Maintenance: new games are paused"
   },
   "spawn_timer": {
     "team_percent_tooltip": "{team}: {percent}"
