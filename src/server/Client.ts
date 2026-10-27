@@ -17,6 +17,9 @@ export class Client {
 
   public hashes: Map<Tick, number> = new Map();
 
+  // Chat mute from the API's moderation lookup at join (S2); null = not muted.
+  public chatMute: { until: number; shadow: boolean } | null = null;
+
   // This client's winner vote, keyed on winner and stats (Consensus.voteKey).
   public reportedVote: { winner: Winner; key: string } | null = null;
 

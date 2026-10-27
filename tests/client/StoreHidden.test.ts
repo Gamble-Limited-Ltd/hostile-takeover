@@ -43,6 +43,7 @@ describe("Features", () => {
           "xp",
           "profile",
           "leaderboard",
+          "chat",
           "adminTakeover",
         ].includes(key),
       );

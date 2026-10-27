@@ -8,7 +8,10 @@ import { html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { DirectiveResult } from "lit/directive.js";
 import { unsafeHTML, UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
+import { chatState, ChatLogItem } from "../../ChatState";
+import { rootBadge } from "../../components/ui/RootBadge";
 import { Controller } from "../../Controller";
+import { translateText } from "../../Utils";
 import { GameView } from "../../view";
 import { onlyImages } from "./OnlyImages";
 
@@ -17,6 +20,7 @@ interface ChatEvent {
   unsafeDescription?: boolean;
   createdAt: number;
   highlight?: boolean;
+  chat?: ChatLogItem; // a Global/Alliance chat line or chat error (S2)
 }
 
 @customElement("chat-display")
@@ -71,7 +75,55 @@ export class ChatDisplay extends LitElement implements Controller {
     });
   }
 
-  init() {}
+  private lastChatItem: ChatLogItem | undefined;
+
+  init() {
+    chatState.subscribe(() => this.syncChat());
+    this.syncChat();
+  }
+
+  // Lists the server's chat lines in this same table; a reset or a history
+  // replay (last seen line gone) rebuilds them.
+  private syncChat() {
+    const log = chatState.log();
+    const at = this.lastChatItem ? log.indexOf(this.lastChatItem) : -1;
+    const fresh = at >= 0 ? log.slice(at + 1) : log;
+    const base =
+      at >= 0 ? this.chatEvents : this.chatEvents.filter((e) => !e.chat);
+    this.lastChatItem = log[log.length - 1];
+    if (fresh.length === 0 && at >= 0) return;
+    this.chatEvents = [
+      ...base,
+      ...fresh.map((chat) => ({
+        description: "",
+        chat,
+        createdAt: this.game.ticks(),
+      })),
+    ];
+    if (fresh.length > 0) {
+      this.active = true;
+      if (this._hidden) this.newEvents += fresh.length;
+    }
+    this.requestUpdate();
+  }
+
+  private renderChat(item: ChatLogItem) {
+    if (item.kind === "error") {
+      return html`<span class="text-red-400"
+        >${translateText(`chat.error_${item.reason}`)}</span
+      >`;
+    }
+    const e = item.entry;
+    const name =
+      this.game.playerByClientID(e.fromClientID)?.displayName() ??
+      translateText("chat.spectator");
+    return html`<span
+        class="inline-flex items-center rounded-full px-2 py-0.5 text-[14px] font-bold text-white"
+        >${translateText(`chat.channel_${e.channel}`)}</span
+      >
+      ${e.root ? rootBadge() : ""}
+      <span class="font-semibold">${name}</span>: ${e.text}`;
+  }
 
   tick() {
     // this.active = true;
@@ -168,7 +220,9 @@ export class ChatDisplay extends LitElement implements Controller {
                 (chat) => html`
                   <tr class="border-b border-gray-200/0">
                     <td class="lg:p-3 p-1 text-left">
-                      ${this.getChatContent(chat)}
+                      ${chat.chat
+                        ? this.renderChat(chat.chat)
+                        : this.getChatContent(chat)}
                     </td>
                   </tr>
                 `,

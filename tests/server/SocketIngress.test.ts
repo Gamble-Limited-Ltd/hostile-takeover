@@ -222,6 +222,31 @@ describe("SocketIngress.receive", () => {
       sentAt: 0,
     });
   });
+
+  it("drops chat from a spectator but lets a root spectator chat", () => {
+    const { ingress, view } = setup();
+    const chat = clientFrame({ type: "chat", channel: "global", text: "hi" });
+    const report = clientFrame({ type: "chat_report", messageId: 1 });
+    const spectator = makeClient({ clientID: P1, spectator: true });
+    ingress.receive(spectator, chat);
+    ingress.receive(spectator, report);
+    expect(view.onMessage).not.toHaveBeenCalled();
+
+    const root = makeClient({
+      clientID: cid("root"),
+      spectator: true,
+      role: "root",
+    });
+    ingress.receive(root, chat);
+    expect(view.onMessage).toHaveBeenCalledWith(root, {
+      type: "chat",
+      channel: "global",
+      text: "hi",
+    });
+    // Root spectators still cannot speak for the simulation.
+    ingress.receive(root, spawn());
+    expect(view.onMessage).toHaveBeenCalledTimes(1);
+  });
 });
 
 describe("SocketIngress.attach", () => {

@@ -247,6 +247,8 @@
       "recent": "Recent",
       "warnings": "Warnings"
     },
+    "channel_alliance": "Alliance",
+    "channel_global": "All",
     "defend": {
       "ally": "[P1] is my ally!",
       "build_posts": "Build Defense Posts!",
@@ -255,6 +257,10 @@
       "dont_attack": "Don’t attack [P1]!",
       "make_ally": "Ally with [P1]!"
     },
+    "error_disabled": "Chat is turned off.",
+    "error_muted": "You are muted.",
+    "error_rate_limited": "You are sending messages too fast.",
+    "error_too_long": "That message is too long.",
     "from": "From {user}: {msg}",
     "greet": {
       "bye": "Bye!",
@@ -290,6 +296,7 @@
       "troops": "Please give me troops!",
       "troops_frontlines": "Send troops to the frontlines!"
     },
+    "input_placeholder": "Type a message (Tab switches channel)",
     "misc": {
       "alliances_end_together": "Our alliances with [P1] end around the same time!",
       "build_closer": "Build closer to get trains!",
@@ -331,6 +338,7 @@
         "stop_war": "Stop before others swoop in"
       }
     },
+    "spectator": "Spectator",
     "title": "Quick Chat",
     "to": "Sent {user}: {msg}",
     "warnings": {

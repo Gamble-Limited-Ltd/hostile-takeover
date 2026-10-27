@@ -40,7 +40,9 @@ export type ClientMessage =
   | ClientLogMessage
   | ClientHashMessage
   | ClientSpectateMessage
-  | ClientReportMessage;
+  | ClientReportMessage
+  | ClientChatMessage
+  | ClientChatReportMessage;
 
 export type ServerMessage =
   | ServerTurnMessage
@@ -52,7 +54,10 @@ export type ServerMessage =
   | ServerLobbyInfoMessage
   | ServerNewLobbyMessage
   | ServerPongMessage
-  | ServerRedirectMessage;
+  | ServerRedirectMessage
+  | ServerChatMessage
+  | ServerChatHistoryMessage
+  | ServerChatErrorMessage;
 
 export type ServerTurnMessage = z.infer<typeof ServerTurnMessageSchema>;
 
@@ -589,6 +594,45 @@ export const ServerRedirectMessageSchema = z.object({
   gameID: ID,
 });
 
+// Chat (S2). Its own messages, never intents: they never enter a Turn, the turn
+// log, the archive or a replay.
+export const ChatChannelSchema = z.enum(["global", "alliance"]);
+export const CHAT_MAX_LENGTH = 200;
+
+const ChatEntrySchema = z.object({
+  id: zb.uint(),
+  fromClientID: ID,
+  channel: ChatChannelSchema,
+  text: z.string().min(1).max(CHAT_MAX_LENGTH),
+  root: z.boolean(),
+  system: z.boolean(),
+  turn: zb.uint(),
+});
+export const ServerChatMessageSchema = ChatEntrySchema.extend({
+  type: z.literal("chat"),
+});
+export const ServerChatHistoryMessageSchema = z.object({
+  type: z.literal("chat_history"),
+  messages: ChatEntrySchema.array(),
+});
+export const ServerChatErrorMessageSchema = z.object({
+  type: z.literal("chat_error"),
+  reason: z.enum(["muted", "rate_limited", "too_long", "disabled"]),
+});
+export type ChatChannel = z.infer<typeof ChatChannelSchema>;
+export type ChatEntry = z.infer<typeof ChatEntrySchema>;
+export type ServerChatMessage = z.infer<typeof ServerChatMessageSchema>;
+export type ServerChatHistoryMessage = z.infer<
+  typeof ServerChatHistoryMessageSchema
+>;
+export type ServerChatErrorMessage = z.infer<
+  typeof ServerChatErrorMessageSchema
+>;
+export type ClientChatMessage = z.infer<typeof ClientChatMessageSchema>;
+export type ClientChatReportMessage = z.infer<
+  typeof ClientChatReportMessageSchema
+>;
+
 export const ServerMessageSchema = zb.discriminatedUnion("type", [
   ServerTurnMessageSchema,
   ServerPrestartMessageSchema,
@@ -601,6 +645,9 @@ export const ServerMessageSchema = zb.discriminatedUnion("type", [
   ServerPongMessageSchema,
   // Appended, never inserted: variant order is the wire tag (zbin/README.md).
   ServerRedirectMessageSchema,
+  ServerChatMessageSchema,
+  ServerChatHistoryMessageSchema,
+  ServerChatErrorMessageSchema,
 ]);
 
 //
@@ -756,6 +803,18 @@ export const ClientSpectateMessageSchema = z.object({
   spectator: z.boolean(),
 });
 
+// text is 1..200 on the wire; the server trims first and answers an overlong
+// one with chat_error too_long, so the schema bound is looser than the rule.
+export const ClientChatMessageSchema = z.object({
+  type: z.literal("chat"),
+  channel: ChatChannelSchema,
+  text: z.string().min(1).max(1000),
+});
+export const ClientChatReportMessageSchema = z.object({
+  type: z.literal("chat_report"),
+  messageId: zb.uint(),
+});
+
 export const ClientMessageSchema = zb.discriminatedUnion("type", [
   ClientSendWinnerSchema,
   ClientSendLiveStatsSchema,
@@ -767,6 +826,8 @@ export const ClientMessageSchema = zb.discriminatedUnion("type", [
   ClientHashSchema,
   ClientSpectateMessageSchema,
   ClientReportMessageSchema,
+  ClientChatMessageSchema,
+  ClientChatReportMessageSchema,
 ]);
 
 //
