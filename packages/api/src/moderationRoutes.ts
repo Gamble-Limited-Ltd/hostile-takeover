@@ -298,6 +298,55 @@ export function mountModerationRoutes(
     }
   });
 
+  // Root chat commands (/mute, /shadow, /unmute) run on the game server, which
+  // holds no root JWT: same store change as the admin routes, audited as the
+  // root player who typed the command.
+  const chatMuteFromServer =
+    (clear: boolean): express.RequestHandler =>
+    async (req, res, next) => {
+      try {
+        const { actorUsername, targetSub, minutes, shadow } = bodyOf(req);
+        const actor = str(actorUsername, 64);
+        if (
+          !actor ||
+          (!clear &&
+            (!isMinutes(minutes) ||
+              (shadow !== undefined && typeof shadow !== "boolean")))
+        ) {
+          return bad(res);
+        }
+        const target = await userBySub(store, targetSub);
+        if (!target) {
+          return void res.status(404).json({ error: "no_such_user" });
+        }
+        if (clear) {
+          await store.setMute(target.id, null, false);
+          await store.logAdmin({
+            actor,
+            action: "unmute",
+            target: target.username,
+          });
+        } else {
+          await store.setMute(
+            target.id,
+            new Date(Date.now() + (minutes as number) * MIN_MS),
+            shadow === true,
+          );
+          await store.logAdmin({
+            actor,
+            action: "mute",
+            target: target.username,
+            detail: { minutes, shadow: shadow === true },
+          });
+        }
+        res.json({ ok: true });
+      } catch (e) {
+        next(e);
+      }
+    };
+  app.post("/game-server/mute", serverOnly, json, chatMuteFromServer(false));
+  app.post("/game-server/unmute", serverOnly, json, chatMuteFromServer(true));
+
   app.post(
     "/game-server/chat-report",
     serverOnly,

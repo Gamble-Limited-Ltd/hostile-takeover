@@ -42,6 +42,7 @@ export class ChatInput extends LitElement implements Controller {
       .then(({ userAuth }) => userAuth(false))
       .then((auth) => {
         this.isRoot = auth !== false && auth.claims.role === "root";
+        chatState.isRoot = this.isRoot;
       })
       .catch(() => {});
   }
@@ -110,7 +111,8 @@ export class ChatInput extends LitElement implements Controller {
       e.preventDefault();
       const input = e.target as HTMLInputElement;
       const { channel, text } = parseChatInput(input.value, this.channel);
-      if (text.length > 0) {
+      // "/word" is a root command; for everyone else it is not sent at all.
+      if (text.length > 0 && (this.isRoot || !text.startsWith("/"))) {
         this.eventBus.emit(new SendChatEvent(channel, text));
       }
       input.value = "";

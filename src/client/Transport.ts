@@ -47,7 +47,7 @@ import {
 import { ZbContext } from "@openfront/zbin";
 import { ClientEnv, NoServerError } from "src/client/ClientEnv";
 import { getPlayToken } from "./Auth";
-import { SendChatEvent } from "./ChatState";
+import { ReportChatEvent, SendChatEvent } from "./ChatState";
 import { LobbyConfig } from "./ClientGameRunner";
 import { clientDevice, clientPlatform } from "./ClientPlatform";
 import { isDesktopShell } from "./DesktopShell";
@@ -366,6 +366,11 @@ export class Transport {
       // Chat is its own message, never an intent; singleplayer has no server.
       if (this.isLocal) return;
       this.sendMsg({ type: "chat", channel: e.channel, text: e.text });
+    });
+
+    this.subscribe(ReportChatEvent, (e) => {
+      if (this.isLocal) return;
+      this.sendMsg({ type: "chat_report", messageId: e.messageId });
     });
 
     this.subscribe(SendKickPlayerIntentEvent, (e) =>

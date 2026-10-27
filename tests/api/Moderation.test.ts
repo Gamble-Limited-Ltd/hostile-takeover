@@ -354,6 +354,62 @@ describe("mutes and the game server lookup", () => {
       expect(bad.status).toBe(400);
     });
   });
+
+  test("POST /game-server/mute and /unmute: key-only, audited as the actor, unknown target 404", async () => {
+    await using(async (h) => {
+      const body = {
+        actorUsername: "boss",
+        targetSub: sub(h.alice),
+        minutes: 10,
+        shadow: true,
+      };
+      for (const p of ["/game-server/mute", "/game-server/unmute"]) {
+        expect((await h.call("POST", p, { body, as: h.boss })).status).toBe(
+          401,
+        );
+        expect((await h.call("POST", p, { body })).status).toBe(401);
+      }
+      expect(h.mem.audit).toHaveLength(0);
+
+      const r = await h.call("POST", "/game-server/mute", { key: KEY, body });
+      expect(r.status).toBe(200);
+      expect(await mod(h, h.alice)).toMatchObject({ shadow: true });
+
+      const u = await h.call("POST", "/game-server/unmute", {
+        key: KEY,
+        body: { actorUsername: "boss", targetSub: sub(h.alice) },
+      });
+      expect(u.status).toBe(200);
+      expect((await mod(h, h.alice)).mutedUntil).toBeNull();
+      expect(h.mem.audit).toEqual([
+        {
+          actor: "boss",
+          action: "mute",
+          target: "alice",
+          detail: { minutes: 10, shadow: true },
+        },
+        { actor: "boss", action: "unmute", target: "alice", detail: undefined },
+      ]);
+
+      const missing = {
+        ...body,
+        targetSub: sub({ ...h.alice, id: randomUUID() }),
+      };
+      expect(
+        (await h.call("POST", "/game-server/mute", { key: KEY, body: missing }))
+          .status,
+      ).toBe(404);
+      expect(
+        (
+          await h.call("POST", "/game-server/mute", {
+            key: KEY,
+            body: { ...body, minutes: 0 },
+          })
+        ).status,
+      ).toBe(400);
+      expect(h.mem.audit).toHaveLength(2);
+    });
+  });
 });
 
 describe("site status", () => {

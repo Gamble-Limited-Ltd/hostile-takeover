@@ -257,8 +257,10 @@
       "dont_attack": "Don’t attack [P1]!",
       "make_ally": "Ally with [P1]!"
     },
+    "error_bad_command": "That command needs a player name (and minutes for mute).",
     "error_disabled": "Chat is turned off.",
     "error_muted": "You are muted.",
+    "error_no_such_player": "No player here has that name.",
     "error_rate_limited": "You are sending messages too fast.",
     "error_too_long": "That message is too long.",
     "from": "From {user}: {msg}",
@@ -308,9 +310,13 @@
       "strategy": "Nice strategy!",
       "team_up": "Let’s team up against [P1]!"
     },
+    "mute": "Mute",
     "no_phrases": "No matching phrases",
+    "report": "Report",
+    "report_confirm": "Report this message?",
     "search": "Search player...",
     "search_phrases": "Search phrases...",
+    "shadow": "Shadow mute",
     "short": {
       "greet": {
         "ruining_games": "Ruining our games"
@@ -341,6 +347,8 @@
     "spectator": "Spectator",
     "title": "Quick Chat",
     "to": "Sent {user}: {msg}",
+    "unmute": "Unmute",
+    "unmute_all": "Unmute all",
     "warnings": {
       "betrayed": "[P1] betrayed their ally!",
       "betrayed_me": "[P1] betrayed me!",
