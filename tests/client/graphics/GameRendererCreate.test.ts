@@ -24,6 +24,7 @@ const HUD_TAGS = [
   "actionable-events",
   "attacks-display",
   "chat-display",
+  "chat-input",
   "player-info-overlay",
   "win-modal",
   "new-lobby-prompt",

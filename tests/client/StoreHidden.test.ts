@@ -38,7 +38,9 @@ describe("Features", () => {
     expect(Object.isFrozen(Features)).toBe(true);
     for (const [key, value] of Object.entries(Features))
       expect(value).toBe(
-        ["usernameChange", "xp", "profile", "leaderboard"].includes(key),
+        ["usernameChange", "xp", "profile", "leaderboard", "chat"].includes(
+          key,
+        ),
       );
     expect(Features.store).toBe(false);
   });
