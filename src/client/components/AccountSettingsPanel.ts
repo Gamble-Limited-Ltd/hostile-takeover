@@ -16,6 +16,7 @@ import { showInGameAlert } from "../InGameModal";
 import { refreshOwnHiddenLevelBadge } from "../OwnLevelBadge";
 import { steamSDK } from "../SteamSDK";
 import { translateText } from "../Utils";
+import "./account/AdminLiveGamesCard";
 import "./account/AdminResetCard";
 import "./account/AdminXpCard";
 import "./account/ChangePasswordCard";
@@ -104,6 +105,7 @@ export class AccountSettingsPanel extends LitElement {
           <identity-token-card></identity-token-card>
         </div>
         <admin-reset-card></admin-reset-card>
+        <admin-live-games-card></admin-live-games-card>
         <admin-xp-card></admin-xp-card>
         <change-password-card></change-password-card>
         ${this.renderDeleteAccountCard()}

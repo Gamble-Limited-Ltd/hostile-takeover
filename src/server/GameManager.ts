@@ -49,6 +49,13 @@ export class GameManager {
     );
   }
 
+  // S4: started, not-ended public games (root's live games list).
+  public startedPublicGames(): GameServer[] {
+    return Array.from(this.games.values()).filter(
+      (g) => g.hasStarted() && !g.hasEnded() && g.isPublic(),
+    );
+  }
+
   // Private lobbies a subscriber has listed in the public lobby browser.
   // Leaving the Lobby phase (start/fill/expiry) delists them automatically.
   public listedLobbies(): GameServer[] {
