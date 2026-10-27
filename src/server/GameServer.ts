@@ -228,6 +228,8 @@ export class GameServer {
       }
     },
     turn: () => this.turns.length,
+    kick: (id) => this.kickClient(id, KICK_REASON_ADMIN),
+    gameId: () => this.id,
   });
 
   private maxGameDuration = 3 * 60 * 60 * 1000; // 3 hours
@@ -879,7 +881,7 @@ export class GameServer {
         break;
       }
       case "chat_report": {
-        // S3 implements reports; accepted and ignored for now.
+        this.chat.report(client, clientMsg.messageId);
         break;
       }
       default: {

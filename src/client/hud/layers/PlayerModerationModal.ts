@@ -3,6 +3,7 @@ import { assetUrl } from "@openfront/shared/AssetUrls";
 import { EventBus } from "@openfront/shared/EventBus";
 import { html, LitElement } from "lit";
 import { customElement, property } from "lit/decorators.js";
+import { SendChatEvent } from "../../ChatState";
 import { actionButton } from "../../components/ui/ActionButton";
 import { showInGameConfirm } from "../../InGameModal";
 import { SendKickPlayerIntentEvent } from "../../LobbyEvents";
@@ -10,6 +11,7 @@ import { translateText } from "../../Utils";
 import { PlayerView } from "../../view";
 const kickIcon = assetUrl("images/ExitIconWhite.svg");
 const shieldIcon = assetUrl("images/ShieldIconWhite.svg");
+const sirenIcon = assetUrl("images/SirenIconWhite.svg");
 
 @customElement("player-moderation-modal")
 export class PlayerModerationModal extends LitElement {
@@ -78,6 +80,15 @@ export class PlayerModerationModal extends LitElement {
     );
     this.closeModal();
   };
+
+  // Root chat powers go through the chat command path (the server checks root);
+  // the target is named by clientID.
+  private chatCommand(cmd: "mute" | "shadow" | "unmute") {
+    const id = this.target?.clientID();
+    if (!id || !this.eventBus) return;
+    this.eventBus.emit(new SendChatEvent("global", `/${cmd} ${id}`));
+    this.closeModal();
+  }
 
   render() {
     if (!this.open) return html``;
@@ -161,6 +172,21 @@ export class PlayerModerationModal extends LitElement {
                 type: "red",
                 disabled: alreadyKicked || !canKick,
               })}
+              ${this.isAdmin && other !== my && !!other.clientID()
+                ? html`${(["mute", "shadow", "unmute"] as const).map((cmd) =>
+                    actionButton({
+                      onClick: (e: MouseEvent) => {
+                        e.stopPropagation();
+                        this.chatCommand(cmd);
+                      },
+                      icon: sirenIcon,
+                      iconAlt: cmd,
+                      title: translateText(`chat.${cmd}`),
+                      label: translateText(`chat.${cmd}`),
+                      type: cmd === "unmute" ? "green" : "yellow",
+                    }),
+                  )}`
+                : ""}
             </div>
           </div>
         </div>

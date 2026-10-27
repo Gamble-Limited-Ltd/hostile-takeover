@@ -15,6 +15,8 @@ function relay() {
     send: (c, m) => sent.get(c.clientID)!.push(m),
     turn: () => 7,
     now: () => now,
+    kick: () => {},
+    gameId: () => "g",
   });
 }
 function join(tag: string, opts: Parameters<typeof makeClient>[0] = {}) {

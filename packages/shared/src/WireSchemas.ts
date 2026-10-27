@@ -617,7 +617,15 @@ export const ServerChatHistoryMessageSchema = z.object({
 });
 export const ServerChatErrorMessageSchema = z.object({
   type: z.literal("chat_error"),
-  reason: z.enum(["muted", "rate_limited", "too_long", "disabled"]),
+  reason: z.enum([
+    "muted",
+    "rate_limited",
+    "too_long",
+    "disabled",
+    // root chat commands (S3), answered to root only
+    "no_such_player",
+    "bad_command",
+  ]),
 });
 export type ChatChannel = z.infer<typeof ChatChannelSchema>;
 export type ChatEntry = z.infer<typeof ChatEntrySchema>;
