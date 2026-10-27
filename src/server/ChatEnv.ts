@@ -35,9 +35,7 @@ export class ChatEnv {
 
   // One API lookup per join: ban state and chat mute. Fails open (not banned,
   // not muted) on any error, with a warning.
-  static async moderation(
-    sub: string,
-  ): Promise<{
+  static async moderation(sub: string): Promise<{
     banned: boolean;
     mute: { until: number; shadow: boolean } | null;
   }> {
