@@ -36,6 +36,7 @@ import { WebSocket, WebSocketServer } from "ws";
 import { z } from "zod";
 import { forcedAccountUsername } from "./AccountName";
 import { registerAdminBotRoutes } from "./AdminBotRoutes";
+import { registerAdminLiveGames } from "./AdminLiveGames";
 import { censorPlayer } from "./Censor";
 import { ChatEnv } from "./ChatEnv";
 import { Client } from "./Client";
@@ -538,6 +539,7 @@ export async function startWorker() {
   registerPlayerProfileRoute({ app, log, baseDir: __dirname });
 
   registerAdminBotRoutes({ app, gm, workerId, log });
+  registerAdminLiveGames({ app, gm });
 
   // WebSocket handling
   wss.on("connection", (ws: WebSocket, req) => {

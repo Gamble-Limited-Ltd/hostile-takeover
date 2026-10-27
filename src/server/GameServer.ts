@@ -28,6 +28,7 @@ import {
 import { isAdminRole } from "@openfront/shared/ApiSchemas";
 import { CloseCode, CloseReason } from "@openfront/shared/CloseCodes";
 import { GameEnv } from "@openfront/shared/configuration/Env";
+import { AdminLiveGame } from "@openfront/shared/HtAdminSchemas";
 import { createPartialGameRecord } from "@openfront/shared/SharedUtil";
 import {
   ClientMessage,
@@ -618,6 +619,7 @@ export class GameServer {
       }
       if (
         !client.spectator &&
+        client.role !== "root" &&
         Date.now() - (this._startTime ?? 0) < LATE_JOIN_GRACE_MS
       ) {
         this.log.info("cannot add client, game just started", {
@@ -1734,6 +1736,25 @@ export class GameServer {
     return this.ended;
   }
 
+  // S4: row for the root-only live games list. The server runs no simulation,
+  // so `alive` and the tribe/nation list are unknown here.
+  public adminSummary(): AdminLiveGame {
+    const cfg = this.gameStartInfo.config;
+    return {
+      gameID: this.id,
+      map: String(cfg.gameMap),
+      mode: String(cfg.gameMode),
+      gameType: String(cfg.gameType),
+      startedAt: this._startTime ?? 0,
+      tick: this.turns.length,
+      players: this.gameStartInfo.players.map((p) => ({
+        name: p.username,
+        clientID: p.clientID,
+      })),
+      bots: [],
+    };
+  }
+
   isPaused(): boolean {
     return this.paused;
   }
@@ -1746,7 +1767,13 @@ export class GameServer {
     const gameConfig = sanitizeConfigForWire(this.gameConfig);
     return {
       gameID: this.id,
-      clients: this.names.lobbyClients(viewer, this.clients.active()),
+      // S4: a root spectator watches invisibly.
+      clients: this.names.lobbyClients(
+        viewer,
+        this.clients
+          .active()
+          .filter((c) => !(c.spectator && c.role === "root")),
+      ),
       lobbyCreatorClientID: this.lobbyCreatorID,
       gameConfig,
       startsAt: this.startsAt,
