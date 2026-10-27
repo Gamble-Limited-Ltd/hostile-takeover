@@ -28,6 +28,7 @@ import {
 } from "@openfront/shared/WireSchemas";
 import { ClientEnv } from "../client/ClientEnv";
 import { reloadForUpdate, translateText } from "../client/Utils";
+import { chatState } from "./ChatState";
 import { MapLayerController } from "./controllers/MapLayerController";
 import { isDesktopShell } from "./DesktopShell";
 import { GameMetrics } from "./GameMetrics";
@@ -1050,12 +1051,14 @@ export class ClientGameRunner {
     const onconnect = () => {
       console.log("Connected to game server!");
       this.awaitingStart = true;
+      chatState.reset(); // the server resends its history after the start message
       this.transport.rejoinGame(this.turnsSeen);
     };
 
     let hasGoneToPlayer = false;
     const onmessage = (message: ServerMessage) => {
       this.lastMessageTime = Date.now();
+      if (chatState.handle(message)) return;
       if (message.type === "start") {
         console.log("starting game! in client game runner");
         this.awaitingStart = false;

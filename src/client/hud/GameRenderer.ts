@@ -27,6 +27,7 @@ import { AlertFrame } from "./layers/AlertFrame";
 import { AttacksDisplay } from "./layers/AttacksDisplay";
 import { BuildMenu } from "./layers/BuildMenu";
 import { ChatDisplay } from "./layers/ChatDisplay";
+import { ChatInput } from "./layers/ChatInput";
 import { ChatModal } from "./layers/ChatModal";
 import { ControlPanel } from "./layers/ControlPanel";
 import { EmojiTable } from "./layers/EmojiTable";
@@ -145,6 +146,14 @@ export function createRenderer(
   }
   chatDisplay.eventBus = eventBus;
   chatDisplay.game = game;
+
+  const chatInput = document.querySelector("chat-input") as ChatInput;
+  if (!(chatInput instanceof ChatInput)) {
+    console.error("chat input not found");
+  }
+  chatInput.eventBus = eventBus;
+  chatInput.game = game;
+  chatInput.uiState = uiState;
 
   const playerInfo = document.querySelector(
     "player-info-overlay",
@@ -341,6 +350,7 @@ export function createRenderer(
     actionableEvents,
     attacksDisplay,
     chatDisplay,
+    chatInput,
     buildMenu,
     new MainRadialMenu(
       eventBus,
