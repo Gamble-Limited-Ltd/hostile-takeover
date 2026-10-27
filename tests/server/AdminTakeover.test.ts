@@ -103,11 +103,11 @@ describe("admin_takeover (server)", () => {
     expect(audit).not.toHaveBeenCalled();
   });
 
-  it("refuses private games", async () => {
+  it("accepts private games too", async () => {
     const { game } = started(GameType.Private);
     const root = rootSpectator(game);
     await mockWsOf(root).emit(takeover);
-    expect(queued(game)).toHaveLength(0);
+    expect(queued(game)).toHaveLength(1);
   });
 
   it("refuses when HT_ADMIN_TAKEOVER=off", async () => {

@@ -24,7 +24,7 @@ function setup(games: ReturnType<typeof makeGame>[]) {
       handler = h;
     },
   };
-  const gm = { startedPublicGames: () => games } as unknown as GameManager;
+  const gm = { startedGames: () => games } as unknown as GameManager;
   registerAdminLiveGames({ app, gm });
   return async (authorization?: string) => {
     const res: any = {
@@ -98,8 +98,8 @@ describe("GET /api/admin/live_games", () => {
   });
 });
 
-describe("GameManager.startedPublicGames", () => {
-  it("lists only started, not-ended public games", () => {
+describe("GameManager.startedGames", () => {
+  it("lists every started, not-ended game, private ones too", () => {
     const gm = new GameManager({
       info() {},
       warn() {},
@@ -116,6 +116,6 @@ describe("GameManager.startedPublicGames", () => {
     priv.joinClient(makeClient());
     startGame(priv);
     for (const g of [started, lobby, priv]) games.set(g.id, g);
-    expect(gm.startedPublicGames().map((g) => g.id)).toEqual([cid("a")]);
+    expect(gm.startedGames().map((g) => g.id)).toEqual([cid("a"), cid("c")]);
   });
 });

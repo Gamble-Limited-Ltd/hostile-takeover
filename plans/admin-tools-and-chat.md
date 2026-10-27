@@ -289,6 +289,8 @@ replay (no snapshot transfer); takeover only on alive Bot/Nation, public games, 
 root plays under the account name; feed line on; audit reuses `admin_audit`; reported messages are the only
 stored chat.
 
+**Changed 2026-10-27 (Boss, hotfix at.9):** the live-games list and takeover cover every started multiplayer game, private lobbies included (the group mostly plays private lobbies, so a public-only list was always empty). ToS and privacy now say "any match, public or private"; Boss approved the wording.
+
 **Open (ranked, Boss decides):**
 
 1. **O1 Disclosure** of root reading alliance chat and invisible spectating: privacy text only (recommended), or

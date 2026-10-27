@@ -49,10 +49,10 @@ export class GameManager {
     );
   }
 
-  // S4: started, not-ended public games (root's live games list).
-  public startedPublicGames(): GameServer[] {
+  // S4: started, not-ended games, public and private (root's live games list).
+  public startedGames(): GameServer[] {
     return Array.from(this.games.values()).filter(
-      (g) => g.hasStarted() && !g.hasEnded() && g.isPublic(),
+      (g) => g.hasStarted() && !g.hasEnded(),
     );
   }
 

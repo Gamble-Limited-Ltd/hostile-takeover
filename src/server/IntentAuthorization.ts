@@ -78,9 +78,6 @@ export function authorizeIntent(
       if (game.takeoverEnabled === false) {
         return { status: 403, error: "bot takeover is disabled" };
       }
-      if (!game.isPublic) {
-        return { status: 403, error: "takeover only in public games" };
-      }
       if (!game.hasStarted || game.hasEnded) {
         return { status: 409, error: "game not running" };
       }

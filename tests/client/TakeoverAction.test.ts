@@ -49,6 +49,9 @@ describe("takeover action", () => {
     expect(canTakeOver("root", game({ replay: true }), target())).toBe(false);
     expect(
       canTakeOver("root", game({ type: GameType.Private }), target()),
+    ).toBe(true);
+    expect(
+      canTakeOver("root", game({ type: GameType.Singleplayer }), target()),
     ).toBe(false);
   });
 
