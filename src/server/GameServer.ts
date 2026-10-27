@@ -64,6 +64,7 @@ import ipAnonymize from "ip-anonymize";
 import { Logger } from "winston";
 import WebSocket from "ws";
 import { z } from "zod";
+import { adminTakeoverEnabled, postAdminAudit } from "./AdminTakeover";
 import { archive, finalizeGameRecord } from "./Archive";
 import { ChatRelay } from "./ChatRelay";
 import { Client } from "./Client";
@@ -173,6 +174,8 @@ export interface GameServerDeps {
   // deployment (finalizeGameRecord) first; a test receives the record as the
   // game built it.
   archive: (record: PartialGameRecord) => Promise<void>;
+  // Fork-only (S5): audit row for a bot takeover.
+  audit: typeof postAdminAudit;
   // Replays the game to settle a disputed winner vote (see settleWinner).
   replayWinner: WinnerReplayer;
   // Replays waiting or running on this worker, against LONE_VOTER_REPLAY_CAP.
@@ -200,6 +203,7 @@ function mintGroupToken(): string {
 export function defaultGameServerDeps(): GameServerDeps {
   return {
     archive: (record) => archive(finalizeGameRecord(record)),
+    audit: postAdminAudit,
     replayWinner: replayWinnerInChild,
     replayPending: () => winnerReplayMetrics.pending,
     fetchTribes: fetchCustomTribes,
@@ -257,6 +261,8 @@ export class GameServer {
   private startDeferred = false;
   private ended = false;
   private paused = false;
+  // Fork-only (S5): root took over a bot; the game is unranked for XP.
+  private takeover = false;
   private _startTime: number | null = null;
   private hasReachedMaxPlayerCount: boolean = false;
 
@@ -446,12 +452,31 @@ export class GameServer {
       isListed: this.isListed(),
       isQueued: this.listing.isQueued(),
       hasStarted: this.hasStarted(),
+      hasEnded: this.ended,
+      takeoverDone: this.takeover,
+      takeoverEnabled: adminTakeoverEnabled(),
     });
     if (denied !== null) {
       return finish(denied);
     }
 
     switch (stamped.type) {
+      case "admin_takeover": {
+        // Fork-only (S5). The name is the sender's account, never client-sent.
+        const client = this.clients.get(actor.clientID)!;
+        stamped.name = client.username;
+        client.spectator = false;
+        this.takeover = true;
+        this.addIntent(stamped);
+        void this.deps.audit({
+          actor: client.username,
+          action: "takeover",
+          target: this.id,
+          detail: { targetPlayerID: stamped.targetPlayerID },
+        });
+        return finish({ status: 200 });
+      }
+
       case "kick_player": {
         // Resolve the target to a clientID: an explicit clientID, or an account
         // publicId matched against everyone who ever joined (a superset of the
@@ -829,6 +854,11 @@ export class GameServer {
           isLobbyCreator: client.clientID === this.lobbyCreatorID,
           isAdmin: isAdminRole(client.role),
           isAdminBot: false,
+          isRoot: client.role === "root",
+          isSpectator: client.spectator,
+          inRoster: this.gameStartInfo?.players.some(
+            (pl) => pl.clientID === client.clientID,
+          ),
         });
         if (outcome.status !== 200) {
           this.log.warn(`intent rejected`, {
@@ -2190,22 +2220,26 @@ export class GameServer {
       },
     );
     this.telemetry.noteArchiveAttempted();
+    const record = createPartialGameRecord(
+      this.id,
+      this.gameStartInfo.config,
+      playerRecords,
+      turns,
+      this._startTime ?? 0,
+      endTime,
+      winner?.winner,
+      this.createdAt,
+      this.visibleAt,
+      this.gameStartInfo.tribes,
+      [...this.reports.values()],
+      this.publicGameType,
+      statsAgreed,
+    );
+    // Fork-only (S5): the API stores unranked_reason 'takeover' for this flag.
     this.deps.archive(
-      createPartialGameRecord(
-        this.id,
-        this.gameStartInfo.config,
-        playerRecords,
-        turns,
-        this._startTime ?? 0,
-        endTime,
-        winner?.winner,
-        this.createdAt,
-        this.visibleAt,
-        this.gameStartInfo.tribes,
-        [...this.reports.values()],
-        this.publicGameType,
-        statsAgreed,
-      ),
+      this.takeover
+        ? ({ ...record, htTakeover: true } as typeof record)
+        : record,
     );
   }
 

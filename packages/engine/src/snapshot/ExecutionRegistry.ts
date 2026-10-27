@@ -34,6 +34,7 @@ import { SAMMissileExecutionSnapshot } from "../execution/SAMMissileExecution";
 import { ShellExecutionSnapshot } from "../execution/ShellExecution";
 import { SpawnExecutionSnapshot } from "../execution/SpawnExecution";
 import { SpawnTimerExecutionSnapshot } from "../execution/SpawnTimerExecution";
+import { TakeoverExecutionSnapshot } from "../execution/TakeoverExecution";
 import { TargetPlayerExecutionSnapshot } from "../execution/TargetPlayerExecution";
 import { TradeShipExecutionSnapshot } from "../execution/TradeShipExecution";
 import { TrainExecutionSnapshot } from "../execution/TrainExecution";
@@ -71,6 +72,7 @@ export const EXECUTION_SNAPSHOT_TYPES = [
   EmojiExecutionSnapshot,
   FactoryExecutionSnapshot,
   MarkDisconnectedExecutionSnapshot,
+  TakeoverExecutionSnapshot,
   MirvExecutionSnapshot,
   MissileSiloExecutionSnapshot,
   MoveWarshipExecutionSnapshot,
