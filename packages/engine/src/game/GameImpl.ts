@@ -506,6 +506,23 @@ export class GameImpl implements Game {
   hasPlayer(id: PlayerID): boolean {
     return this._players.has(id);
   }
+  takeOverPlayer(id: PlayerID, clientID: ClientID, name: string): void {
+    const p = this._players.get(id)!;
+    const old = p.info();
+    p.replaceInfo(
+      new PlayerInfo(
+        name,
+        PlayerType.Human,
+        clientID,
+        id,
+        false,
+        null,
+        [],
+        old.teamIndex,
+        old.nationFlag,
+      ),
+    );
+  }
   config(): EngineConfig {
     return this._config;
   }

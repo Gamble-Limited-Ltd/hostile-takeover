@@ -28,6 +28,7 @@ import {
 import { isAdminRole } from "@openfront/shared/ApiSchemas";
 import { CloseCode, CloseReason } from "@openfront/shared/CloseCodes";
 import { GameEnv } from "@openfront/shared/configuration/Env";
+import { AdminLiveGame } from "@openfront/shared/HtAdminSchemas";
 import { createPartialGameRecord } from "@openfront/shared/SharedUtil";
 import {
   ClientMessage,
@@ -63,7 +64,9 @@ import ipAnonymize from "ip-anonymize";
 import { Logger } from "winston";
 import WebSocket from "ws";
 import { z } from "zod";
+import { adminTakeoverEnabled, postAdminAudit } from "./AdminTakeover";
 import { archive, finalizeGameRecord } from "./Archive";
+import { ChatRelay } from "./ChatRelay";
 import { Client } from "./Client";
 import { applyGameConfigPatch, hostCheatsEnabled } from "./ConfigPatch";
 import { LiveStatsVote, voteKey, WinnerVote } from "./Consensus";
@@ -171,6 +174,8 @@ export interface GameServerDeps {
   // deployment (finalizeGameRecord) first; a test receives the record as the
   // game built it.
   archive: (record: PartialGameRecord) => Promise<void>;
+  // Fork-only (S5): audit row for a bot takeover.
+  audit: typeof postAdminAudit;
   // Replays the game to settle a disputed winner vote (see settleWinner).
   replayWinner: WinnerReplayer;
   // Replays waiting or running on this worker, against LONE_VOTER_REPLAY_CAP.
@@ -198,6 +203,7 @@ function mintGroupToken(): string {
 export function defaultGameServerDeps(): GameServerDeps {
   return {
     archive: (record) => archive(finalizeGameRecord(record)),
+    audit: postAdminAudit,
     replayWinner: replayWinnerInChild,
     replayPending: () => winnerReplayMetrics.pending,
     fetchTribes: fetchCustomTribes,
@@ -217,6 +223,18 @@ export class GameServer {
   // Socket listeners and the decode / validate / rate-limit / spectator-block
   // pipeline every frame goes through before handleClientMessage.
   private readonly ingress: SocketIngress;
+  // Chat (S2): its own messages, never intents; see ChatRelay.
+  private readonly chat = new ChatRelay({
+    recipients: () => this.clients.active(),
+    send: (c, m) => {
+      if (c.ws.readyState === WebSocket.OPEN) {
+        c.ws.send(encodeServerMessage(m, this.zbinCtx));
+      }
+    },
+    turn: () => this.turns.length,
+    kick: (id) => this.kickClient(id, KICK_REASON_ADMIN),
+    gameId: () => this.id,
+  });
 
   private maxGameDuration = 3 * 60 * 60 * 1000; // 3 hours
 
@@ -243,6 +261,8 @@ export class GameServer {
   private startDeferred = false;
   private ended = false;
   private paused = false;
+  // Fork-only (S5): root took over a bot; the game is unranked for XP.
+  private takeover = false;
   private _startTime: number | null = null;
   private hasReachedMaxPlayerCount: boolean = false;
 
@@ -432,12 +452,31 @@ export class GameServer {
       isListed: this.isListed(),
       isQueued: this.listing.isQueued(),
       hasStarted: this.hasStarted(),
+      hasEnded: this.ended,
+      takeoverDone: this.takeover,
+      takeoverEnabled: adminTakeoverEnabled(),
     });
     if (denied !== null) {
       return finish(denied);
     }
 
     switch (stamped.type) {
+      case "admin_takeover": {
+        // Fork-only (S5). The name is the sender's account, never client-sent.
+        const client = this.clients.get(actor.clientID)!;
+        stamped.name = client.username;
+        client.spectator = false;
+        this.takeover = true;
+        this.addIntent(stamped);
+        void this.deps.audit({
+          actor: client.username,
+          action: "takeover",
+          target: this.id,
+          detail: { targetPlayerID: stamped.targetPlayerID },
+        });
+        return finish({ status: 200 });
+      }
+
       case "kick_player": {
         // Resolve the target to a clientID: an explicit clientID, or an account
         // publicId matched against everyone who ever joined (a superset of the
@@ -607,6 +646,7 @@ export class GameServer {
       }
       if (
         !client.spectator &&
+        client.role !== "root" &&
         Date.now() - (this._startTime ?? 0) < LATE_JOIN_GRACE_MS
       ) {
         this.log.info("cannot add client, game just started", {
@@ -732,6 +772,7 @@ export class GameServer {
     // A spectator arriving mid-game missed the start message.
     if (this.stage === "started") {
       this.sendStartGameMsg(client.ws, 0);
+      this.chat.sendHistory(client);
     }
 
     return "joined";
@@ -780,6 +821,7 @@ export class GameServer {
 
     if (this.stage === "started") {
       this.sendStartGameMsg(client.ws, lastTurn);
+      this.chat.sendHistory(client);
     }
     return true;
   }
@@ -801,6 +843,7 @@ export class GameServer {
         // Client is already connected, no auth required, send start game message if game has started
         if (this.stage === "started") {
           this.sendStartGameMsg(client.ws, clientMsg.lastTurn);
+          this.chat.sendHistory(client);
         }
         break;
       }
@@ -811,6 +854,11 @@ export class GameServer {
           isLobbyCreator: client.clientID === this.lobbyCreatorID,
           isAdmin: isAdminRole(client.role),
           isAdminBot: false,
+          isRoot: client.role === "root",
+          isSpectator: client.spectator,
+          inRoster: this.gameStartInfo?.players.some(
+            (pl) => pl.clientID === client.clientID,
+          ),
         });
         if (outcome.status !== 200) {
           this.log.warn(`intent rejected`, {
@@ -856,6 +904,14 @@ export class GameServer {
       }
       case "report": {
         this.handleReport(client, clientMsg);
+        break;
+      }
+      case "chat": {
+        this.chat.handle(client, clientMsg);
+        break;
+      }
+      case "chat_report": {
+        this.chat.report(client, clientMsg.messageId);
         break;
       }
       default: {
@@ -1712,6 +1768,25 @@ export class GameServer {
     return this.ended;
   }
 
+  // S4: row for the root-only live games list. The server runs no simulation,
+  // so `alive` and the tribe/nation list are unknown here.
+  public adminSummary(): AdminLiveGame {
+    const cfg = this.gameStartInfo.config;
+    return {
+      gameID: this.id,
+      map: String(cfg.gameMap),
+      mode: String(cfg.gameMode),
+      gameType: String(cfg.gameType),
+      startedAt: this._startTime ?? 0,
+      tick: this.turns.length,
+      players: this.gameStartInfo.players.map((p) => ({
+        name: p.username,
+        clientID: p.clientID,
+      })),
+      bots: [],
+    };
+  }
+
   isPaused(): boolean {
     return this.paused;
   }
@@ -1724,7 +1799,13 @@ export class GameServer {
     const gameConfig = sanitizeConfigForWire(this.gameConfig);
     return {
       gameID: this.id,
-      clients: this.names.lobbyClients(viewer, this.clients.active()),
+      // S4: a root spectator watches invisibly.
+      clients: this.names.lobbyClients(
+        viewer,
+        this.clients
+          .active()
+          .filter((c) => !(c.spectator && c.role === "root")),
+      ),
       lobbyCreatorClientID: this.lobbyCreatorID,
       gameConfig,
       startsAt: this.startsAt,
@@ -2139,22 +2220,26 @@ export class GameServer {
       },
     );
     this.telemetry.noteArchiveAttempted();
+    const record = createPartialGameRecord(
+      this.id,
+      this.gameStartInfo.config,
+      playerRecords,
+      turns,
+      this._startTime ?? 0,
+      endTime,
+      winner?.winner,
+      this.createdAt,
+      this.visibleAt,
+      this.gameStartInfo.tribes,
+      [...this.reports.values()],
+      this.publicGameType,
+      statsAgreed,
+    );
+    // Fork-only (S5): the API stores unranked_reason 'takeover' for this flag.
     this.deps.archive(
-      createPartialGameRecord(
-        this.id,
-        this.gameStartInfo.config,
-        playerRecords,
-        turns,
-        this._startTime ?? 0,
-        endTime,
-        winner?.winner,
-        this.createdAt,
-        this.visibleAt,
-        this.gameStartInfo.tribes,
-        [...this.reports.values()],
-        this.publicGameType,
-        statsAgreed,
-      ),
+      this.takeover
+        ? ({ ...record, htTakeover: true } as typeof record)
+        : record,
     );
   }
 

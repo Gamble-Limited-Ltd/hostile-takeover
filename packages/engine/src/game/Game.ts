@@ -534,6 +534,8 @@ export interface Game extends GameLike {
   playerByClientID(id: ClientID): Player | null;
   playerBySmallID(id: number): Player | TerraNullius;
   hasPlayer(id: PlayerID): boolean;
+  /** Fork-only (S5): hands a Bot/Nation player to a human, keeping its id. */
+  takeOverPlayer(id: PlayerID, clientID: ClientID, name: string): void;
   addPlayer(playerInfo: PlayerInfo): Player;
   terraNullius(): TerraNullius;
   owner(ref: TileRef): Player | TerraNullius;

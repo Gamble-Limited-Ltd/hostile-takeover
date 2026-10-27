@@ -105,6 +105,11 @@ export class NationExecution implements Execution {
   }
 
   tick(ticks: number) {
+    // Fork-only (S5): a human took this nation over; the AI stops.
+    if (this.player !== null && this.player.clientID() !== null) {
+      this.active = false;
+      return;
+    }
     // Ship tracking
     if (
       this.behaviorsInitialized &&

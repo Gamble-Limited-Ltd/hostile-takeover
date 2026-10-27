@@ -47,11 +47,13 @@ import {
 import { ZbContext } from "@openfront/zbin";
 import { ClientEnv, NoServerError } from "src/client/ClientEnv";
 import { getPlayToken } from "./Auth";
+import { ReportChatEvent, SendChatEvent } from "./ChatState";
 import { LobbyConfig } from "./ClientGameRunner";
 import { clientDevice, clientPlatform } from "./ClientPlatform";
 import { isDesktopShell } from "./DesktopShell";
 import { showInGameConfirm } from "./InGameModal";
 import {
+  SendAdminTakeoverIntentEvent,
   SendKickPlayerIntentEvent,
   SendSpectateEvent,
   SendToggleGameStartTimer,
@@ -353,6 +355,23 @@ export class Transport {
     this.subscribe(SendDeleteUnitIntentEvent, (e) =>
       this.onSendDeleteUnitIntent(e),
     );
+
+    this.subscribe(SendAdminTakeoverIntentEvent, (e) =>
+      this.sendIntent({
+        type: "admin_takeover",
+        targetPlayerID: e.targetPlayerID,
+      }),
+    );
+    this.subscribe(SendChatEvent, (e) => {
+      // Chat is its own message, never an intent; singleplayer has no server.
+      if (this.isLocal) return;
+      this.sendMsg({ type: "chat", channel: e.channel, text: e.text });
+    });
+
+    this.subscribe(ReportChatEvent, (e) => {
+      if (this.isLocal) return;
+      this.sendMsg({ type: "chat_report", messageId: e.messageId });
+    });
 
     this.subscribe(SendKickPlayerIntentEvent, (e) =>
       this.onSendKickPlayerIntent(e),

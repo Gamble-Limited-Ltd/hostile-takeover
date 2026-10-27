@@ -5,6 +5,10 @@ import { GameEvent } from "@openfront/shared/EventBus";
 // in Transport, so emitting them doesn't pull the connection into the
 // homepage's bundle.
 
+export class SendAdminTakeoverIntentEvent implements GameEvent {
+  constructor(public readonly targetPlayerID: string) {}
+}
+
 export class SendKickPlayerIntentEvent implements GameEvent {
   constructor(public readonly target: string) {}
 }

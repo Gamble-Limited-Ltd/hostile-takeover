@@ -8,7 +8,16 @@ import { html, LitElement } from "lit";
 import { customElement, state } from "lit/decorators.js";
 import { DirectiveResult } from "lit/directive.js";
 import { unsafeHTML, UnsafeHTMLDirective } from "lit/directives/unsafe-html.js";
+import {
+  chatState,
+  chatVisible,
+  ChatLogItem,
+  ReportChatEvent,
+} from "../../ChatState";
+import { rootBadge } from "../../components/ui/RootBadge";
 import { Controller } from "../../Controller";
+import { showInGameConfirm } from "../../InGameModal";
+import { translateText } from "../../Utils";
 import { GameView } from "../../view";
 import { onlyImages } from "./OnlyImages";
 
@@ -17,6 +26,7 @@ interface ChatEvent {
   unsafeDescription?: boolean;
   createdAt: number;
   highlight?: boolean;
+  chat?: ChatLogItem; // a Global/Alliance chat line or chat error (S2)
 }
 
 @customElement("chat-display")
@@ -71,7 +81,95 @@ export class ChatDisplay extends LitElement implements Controller {
     });
   }
 
-  init() {}
+  private lastChatItem: ChatLogItem | undefined;
+  private lastVersion = 0;
+
+  private visible(item: ChatLogItem): boolean {
+    if (item.kind === "error") return true;
+    return chatVisible(item.entry, {
+      me: this.game.myPlayer(),
+      sender: this.game.playerByClientID(item.entry.fromClientID),
+      isRoot: chatState.isRoot,
+    });
+  }
+
+  private async report(messageId: number) {
+    if (await showInGameConfirm(translateText("chat.report_confirm"))) {
+      this.eventBus.emit(new ReportChatEvent(messageId));
+    }
+  }
+
+  init() {
+    chatState.subscribe(() => this.syncChat());
+    this.syncChat();
+  }
+
+  // Lists the server's chat lines in this same table; a reset or a history
+  // replay (last seen line gone) rebuilds them.
+  private syncChat() {
+    const log = chatState.log();
+    // A mute change rebuilds every line.
+    const rebuild = chatState.version !== this.lastVersion;
+    this.lastVersion = chatState.version;
+    const at =
+      this.lastChatItem && !rebuild ? log.indexOf(this.lastChatItem) : -1;
+    const fresh = (at >= 0 ? log.slice(at + 1) : log).filter((i) =>
+      this.visible(i),
+    );
+    const base =
+      at >= 0 ? this.chatEvents : this.chatEvents.filter((e) => !e.chat);
+    this.lastChatItem = log[log.length - 1];
+    if (fresh.length === 0 && at >= 0) return;
+    this.chatEvents = [
+      ...base,
+      ...fresh.map((chat) => ({
+        description: "",
+        chat,
+        createdAt: this.game.ticks(),
+      })),
+    ];
+    if (fresh.length > 0) {
+      this.active = true;
+      if (this._hidden) this.newEvents += fresh.length;
+    }
+    this.requestUpdate();
+  }
+
+  private renderChat(item: ChatLogItem) {
+    if (item.kind === "error") {
+      return html`<span class="text-red-400"
+        >${translateText(`chat.error_${item.reason}`)}</span
+      >`;
+    }
+    const e = item.entry;
+    const sender = this.game.playerByClientID(e.fromClientID);
+    const name = sender?.displayName() ?? translateText("chat.spectator");
+    const mine = e.fromClientID === this.game.myPlayer()?.clientID();
+    const actions =
+      e.system || mine
+        ? ""
+        : html`<button
+              data-chat-action="report"
+              class="pointer-events-auto ml-2 text-xs text-zinc-300 underline hover:text-white"
+              @click=${() => this.report(e.id)}
+            >
+              ${translateText("chat.report")}</button
+            >${sender
+              ? html`<button
+                  data-chat-action="mute"
+                  class="pointer-events-auto ml-2 text-xs text-zinc-300 underline hover:text-white"
+                  @click=${() => chatState.mute(sender.displayName())}
+                >
+                  ${translateText("chat.mute")}
+                </button>`
+              : ""}`;
+    return html`<span
+        class="inline-flex items-center rounded-full px-2 py-0.5 text-[14px] font-bold text-white"
+        >${translateText(`chat.channel_${e.channel}`)}</span
+      >
+      ${e.root ? rootBadge() : ""}
+      <span class="font-semibold">${name}</span>: ${e.text}${actions}`;
+  }
 
   tick() {
     // this.active = true;
@@ -140,6 +238,18 @@ export class ChatDisplay extends LitElement implements Controller {
             >
               Hide
             </button>
+            ${chatState.mutedCount() > 0
+              ? html`<button
+                  data-chat-action="unmute_all"
+                  class="ml-2 text-xs text-zinc-300 underline hover:text-white cursor-pointer pointer-events-auto ${this
+                    ._hidden
+                    ? "hidden"
+                    : ""}"
+                  @click=${() => chatState.unmuteAll()}
+                >
+                  ${translateText("chat.unmute_all")}
+                </button>`
+              : ""}
           </div>
 
           <button
@@ -168,7 +278,9 @@ export class ChatDisplay extends LitElement implements Controller {
                 (chat) => html`
                   <tr class="border-b border-gray-200/0">
                     <td class="lg:p-3 p-1 text-left">
-                      ${this.getChatContent(chat)}
+                      ${chat.chat
+                        ? this.renderChat(chat.chat)
+                        : this.getChatContent(chat)}
                     </td>
                   </tr>
                 `,

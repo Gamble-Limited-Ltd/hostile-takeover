@@ -166,6 +166,22 @@
   "account_settings_modal": {
     "title": "Account Settings"
   },
+  "admin": {
+    "live_games": {
+      "age": "{minutes} min",
+      "counts": "{players} players, {bots} bots",
+      "desc": "Public games in progress. Spectating is invisible to the players.",
+      "error": "Could not load the live games.",
+      "none": "No public games are running.",
+      "refresh": "Refresh",
+      "spectate": "Spectate",
+      "title": "Live games"
+    },
+    "takeover": {
+      "button": "Take over",
+      "confirm": "Take over {name}? You will play it for the rest of the game, and the game will give no XP to anyone."
+    }
+  },
   "ban_notice": {
     "appeal": "If you believe this is a mistake, contact us on Discord.",
     "category": {
@@ -231,6 +247,8 @@
       "recent": "Recent",
       "warnings": "Warnings"
     },
+    "channel_alliance": "Alliance",
+    "channel_global": "All",
     "defend": {
       "ally": "[P1] is my ally!",
       "build_posts": "Build Defense Posts!",
@@ -239,6 +257,12 @@
       "dont_attack": "Don’t attack [P1]!",
       "make_ally": "Ally with [P1]!"
     },
+    "error_bad_command": "That command needs a player name (and minutes for mute).",
+    "error_disabled": "Chat is turned off.",
+    "error_muted": "You are muted.",
+    "error_no_such_player": "No player here has that name.",
+    "error_rate_limited": "You are sending messages too fast.",
+    "error_too_long": "That message is too long.",
     "from": "From {user}: {msg}",
     "greet": {
       "bye": "Bye!",
@@ -274,6 +298,7 @@
       "troops": "Please give me troops!",
       "troops_frontlines": "Send troops to the frontlines!"
     },
+    "input_placeholder": "Type a message (Tab switches channel)",
     "misc": {
       "alliances_end_together": "Our alliances with [P1] end around the same time!",
       "build_closer": "Build closer to get trains!",
@@ -285,9 +310,13 @@
       "strategy": "Nice strategy!",
       "team_up": "Let’s team up against [P1]!"
     },
+    "mute": "Mute",
     "no_phrases": "No matching phrases",
+    "report": "Report",
+    "report_confirm": "Report this message?",
     "search": "Search player...",
     "search_phrases": "Search phrases...",
+    "shadow": "Shadow mute",
     "short": {
       "greet": {
         "ruining_games": "Ruining our games"
@@ -315,8 +344,11 @@
         "stop_war": "Stop before others swoop in"
       }
     },
+    "spectator": "Spectator",
     "title": "Quick Chat",
     "to": "Sent {user}: {msg}",
+    "unmute": "Unmute",
+    "unmute_all": "Unmute all",
     "warnings": {
       "betrayed": "[P1] betrayed their ally!",
       "betrayed_me": "[P1] betrayed me!",
@@ -877,6 +909,7 @@
   "events_display": {
     "about_to_expire": "Your alliance with {name} is about to expire!",
     "accept_alliance": "Accept",
+    "admin_takeover": "{admin} took over {bot}",
     "alliance_accepted": "accepted",
     "alliance_expired": "Your alliance with {name} expired",
     "alliance_nukes_destroyed_incoming": "{count, plural, one {# nuke launched by {name} was destroyed due to the alliance} other {# nukes launched by {name} were destroyed due to the alliance}}",
