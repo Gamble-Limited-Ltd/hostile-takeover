@@ -53,6 +53,7 @@ import { clientDevice, clientPlatform } from "./ClientPlatform";
 import { isDesktopShell } from "./DesktopShell";
 import { showInGameConfirm } from "./InGameModal";
 import {
+  SendAdminTakeoverIntentEvent,
   SendKickPlayerIntentEvent,
   SendSpectateEvent,
   SendToggleGameStartTimer,
@@ -355,6 +356,12 @@ export class Transport {
       this.onSendDeleteUnitIntent(e),
     );
 
+    this.subscribe(SendAdminTakeoverIntentEvent, (e) =>
+      this.sendIntent({
+        type: "admin_takeover",
+        targetPlayerID: e.targetPlayerID,
+      }),
+    );
     this.subscribe(SendChatEvent, (e) => {
       // Chat is its own message, never an intent; singleplayer has no server.
       if (this.isLocal) return;

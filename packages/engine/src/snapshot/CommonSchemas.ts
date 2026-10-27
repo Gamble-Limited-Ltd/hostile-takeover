@@ -55,7 +55,11 @@ export function newPlayerInfo(d: PlayerInfoData): PlayerInfo {
  * a live game.
  */
 export function readPlayerInfo(d: PlayerInfoData, r: SnapshotReader) {
-  return r.game.findPlayerInfo(d.id) ?? newPlayerInfo(d);
+  const found = r.game.findPlayerInfo(d.id);
+  // Fork-only (S5): after a bot takeover the game's original list is stale.
+  return found !== undefined && found.clientID === d.clientID
+    ? found
+    : newPlayerInfo(d);
 }
 
 export const CellSchema = z.object({ x: z.number(), y: z.number() });

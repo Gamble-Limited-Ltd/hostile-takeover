@@ -28,6 +28,7 @@ import { PauseExecution } from "./PauseExecution";
 import { QuickChatExecution } from "./QuickChatExecution";
 import { RetreatExecution } from "./RetreatExecution";
 import { SpawnExecution } from "./SpawnExecution";
+import { TakeoverExecution } from "./TakeoverExecution";
 import { TargetPlayerExecution } from "./TargetPlayerExecution";
 import { TransportShipExecution } from "./TransportShipExecution";
 import { TribeSpawner } from "./TribeSpawner";
@@ -58,6 +59,14 @@ export class Executor {
   }
 
   createExec(intent: StampedIntent): Execution {
+    // Fork-only (S5): the sender is a spectator with no player yet.
+    if (intent.type === "admin_takeover") {
+      return new TakeoverExecution(
+        intent.clientID,
+        intent.targetPlayerID,
+        intent.name ?? "Admin",
+      );
+    }
     const player = this.mg.playerByClientID(intent.clientID);
     if (!player) {
       console.warn(`player with clientID ${intent.clientID} not found`);

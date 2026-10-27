@@ -186,9 +186,15 @@ export class SocketIngress {
     // A spectator is not in the simulation, so none of what it sends can be
     // game state. Without this, claiming to spectate is a way past the lobby
     // cap and into the intent stream.
-    // Root spectators may chat (S2).
+    // Root spectators may chat (S2) and send admin_takeover (S5);
+    // GameServer authorizes the takeover fully.
+    const rootTakeover =
+      client.role === "root" &&
+      clientMsg.type === "intent" &&
+      clientMsg.intent.type === "admin_takeover";
     if (
       client.spectator &&
+      !rootTakeover &&
       SPECTATOR_BLOCKED_MESSAGES.has(clientMsg.type) &&
       !(client.role === "root" && ROOT_SPECTATOR_ALLOWED.has(clientMsg.type))
     ) {

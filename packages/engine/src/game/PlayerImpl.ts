@@ -56,7 +56,7 @@ import {
 } from "@openfront/engine-lib/Util";
 import { z } from "zod";
 import {
-  newPlayerInfo,
+  readPlayerInfo,
   playerInfoData,
   PlayerInfoSchema,
   UnitTypeSchema,
@@ -2041,11 +2041,16 @@ export class PlayerImpl implements Player {
     };
   }
 
+  /** Fork-only (S5): bot takeover swaps in the human's info; id is unchanged. */
+  replaceInfo(info: PlayerInfo): void {
+    this.playerInfo = info;
+  }
+
   /** Fills a prototype-only shell; see RestorableExecution.restoreSnapshot. */
   restoreSnapshot(s: PlayerState, r: SnapshotReader): void {
     this.mg = r.game;
     this._smallID = s.smallID;
-    this.playerInfo = r.game.findPlayerInfo(s.info.id) ?? newPlayerInfo(s.info);
+    this.playerInfo = readPlayerInfo(s.info, r);
     this._team = s.team;
     this._lastTileChange = s.lastTileChange;
     this._tileChangeVersion = s.tileChangeVersion;

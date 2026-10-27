@@ -12,6 +12,13 @@
  */
 export const Features = Object.freeze({
   /**
+   * Root-only "Take over" of a Bot/Nation player while spectating a public
+   * game (S5). Default on, unlike the rest: the server (HT_ADMIN_TAKEOVER)
+   * and root's role gate it too, so non-root never sees it. Flip to false to
+   * hide the entry point.
+   */
+  adminTakeover: true,
+  /**
    * In-game chat input (S2). The one switch that defaults to `true`: off, the
    * input never opens (the log still shows what the server sends). The
    * server-side kill switch is HT_CHAT=off.

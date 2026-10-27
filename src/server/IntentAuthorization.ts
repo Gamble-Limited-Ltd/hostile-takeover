@@ -7,6 +7,10 @@ export interface IntentActor {
   isLobbyCreator: boolean;
   isAdmin: boolean; // role-based admin/root (also true for the admin bot)
   isAdminBot: boolean; // the trusted admin-bot HTTP API
+  // Fork-only (S5), read by admin_takeover only.
+  isRoot?: boolean; // role === "root" exactly
+  isSpectator?: boolean;
+  inRoster?: boolean; // in gameStartInfo.players
 }
 
 // Outcome of dispatching an intent. `status` is an HTTP-style code: 200 on
@@ -23,6 +27,10 @@ export interface IntentGameState {
   isListed: boolean;
   isQueued: boolean;
   hasStarted: boolean;
+  // Fork-only (S5), read by admin_takeover only.
+  hasEnded?: boolean;
+  takeoverDone?: boolean;
+  takeoverEnabled?: boolean;
 }
 
 // The actor and game-state guards of GameServer.handleIntent, in the order
@@ -60,6 +68,27 @@ export function authorizeIntent(
           status: 403,
           error: "the host cannot kick players in a publicly listed lobby",
         };
+      }
+      return null;
+
+    case "admin_takeover":
+      if (actor.isAdminBot || !actor.isRoot) {
+        return { status: 403, error: "only root can take over a bot" };
+      }
+      if (game.takeoverEnabled === false) {
+        return { status: 403, error: "bot takeover is disabled" };
+      }
+      if (!game.isPublic) {
+        return { status: 403, error: "takeover only in public games" };
+      }
+      if (!game.hasStarted || game.hasEnded) {
+        return { status: 409, error: "game not running" };
+      }
+      if (!actor.isSpectator || actor.inRoster) {
+        return { status: 403, error: "only a spectator can take over" };
+      }
+      if (game.takeoverDone) {
+        return { status: 409, error: "a takeover already happened" };
       }
       return null;
 
