@@ -11,7 +11,7 @@ import "../baseComponents/Button";
 
 /**
  * Live games card for the signed-in account panel: root only. Lists every
- * started public game (each worker only knows its own, so all are asked and
+ * started game, public or private (each worker only knows its own, so all are asked and
  * merged) with a Spectate button that opens the normal `?spectate` join.
  * Hiding the card for other roles is cosmetic; the endpoint checks.
  */

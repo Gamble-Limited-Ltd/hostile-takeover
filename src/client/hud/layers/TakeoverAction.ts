@@ -7,7 +7,7 @@ import { translateText } from "../../Utils";
 import type { GameView, PlayerView } from "../../view";
 
 // Fork-only (S5): the "Take over" action in the player panel. Offered only to
-// root, watching a public game with no player of their own, on an alive Bot
+// root, watching a multiplayer game with no player of their own, on an alive Bot
 // or Nation. The server and the engine check everything again.
 export function canTakeOver(
   role: string | null,
@@ -19,7 +19,7 @@ export function canTakeOver(
     role === "root" &&
     game.myPlayer() === null &&
     !game.config().isReplay() &&
-    game.config().gameConfig().gameType === GameType.Public &&
+    game.config().gameConfig().gameType !== GameType.Singleplayer &&
     target.isAlive() &&
     !target.clientID() &&
     (target.type() === PlayerType.Bot || target.type() === PlayerType.Nation)

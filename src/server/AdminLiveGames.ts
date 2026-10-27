@@ -2,8 +2,8 @@ import type { Express } from "express";
 import type { GameManager } from "./GameManager";
 import { verifyClientToken } from "./jwt";
 
-// Fork-only (Hostile Takeover). Root-only list of this worker's started public
-// games; the client asks every worker and merges.
+// Fork-only (Hostile Takeover). Root-only list of this worker's started games
+// (public and private); the client asks every worker and merges.
 export function registerAdminLiveGames(opts: {
   app: Express;
   gm: GameManager;
@@ -21,6 +21,6 @@ export function registerAdminLiveGames(opts: {
     if (auth.claims?.role !== "root") {
       return res.status(403).json({ error: "Forbidden" });
     }
-    return res.json(gm.startedPublicGames().map((g) => g.adminSummary()));
+    return res.json(gm.startedGames().map((g) => g.adminSummary()));
   });
 }

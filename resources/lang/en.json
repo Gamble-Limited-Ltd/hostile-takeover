@@ -170,9 +170,9 @@
     "live_games": {
       "age": "{minutes} min",
       "counts": "{players} players, {bots} bots",
-      "desc": "Public games in progress. Spectating is invisible to the players.",
+      "desc": "Games in progress, public and private. Spectating is invisible to the players.",
       "error": "Could not load the live games.",
-      "none": "No public games are running.",
+      "none": "No games are running.",
       "refresh": "Refresh",
       "spectate": "Spectate",
       "title": "Live games"
