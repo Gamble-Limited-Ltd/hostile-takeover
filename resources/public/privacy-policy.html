@@ -182,11 +182,29 @@
         <td>Database</td>
       </tr>
       <tr>
-        <td>In-match player name, chat and emoji</td>
+        <td>In-match player name, chat messages and emoji</td>
         <td>User-submitted during a match</td>
         <td>
-          Held in server memory only while the match runs; not saved afterwards
+          Held in server memory only while the match runs (the last 50 chat
+          messages of a match are kept so a player who reconnects can catch up);
+          not saved afterwards, except reported messages (below)
         </td>
+      </tr>
+      <tr>
+        <td>
+          Reported chat messages: the message text, the match, who reported it
+          and who sent it
+        </td>
+        <td>When a player reports a message</td>
+        <td>Database</td>
+      </tr>
+      <tr>
+        <td>
+          Moderation records: account suspensions and chat mutes, their reason
+          and when they end
+        </td>
+        <td>Admin action</td>
+        <td>Database</td>
       </tr>
       <tr>
         <td>IP address</td>
@@ -231,7 +249,19 @@
     <p>
       <strong>Gameplay.</strong> Your in-match name, chat and emoji are shown to
       the other players in that match, and your actions are relayed to them so
-      the game can run.
+      the game can run. Chat has a Global channel, shown to everyone in the
+      match, and an Alliance channel, sent to the players in the match and shown
+      by each player's game only to your allies or team. Because that filtering
+      happens on each player's device, alliance chat is not private. Chat is
+      checked for bad words, which are masked before anyone sees them.
+    </p>
+    <p>
+      <strong>Moderation.</strong> The admin can read every chat channel in a
+      match, including alliance chat, can watch any public match without
+      appearing in its player list, and can take control of a
+      computer-controlled player in a public match (everyone in the match is
+      told). Reported messages and moderation records are used only to deal with
+      the report or the rule break and to keep matches safe.
     </p>
     <p>
       <strong>Progression and Profiles.</strong> Your game results earn XP and
@@ -311,6 +341,17 @@
       <li>
         <strong>In-match names, chat and emoji:</strong> discarded when the
         match ends.
+      </li>
+      <li>
+        <strong>Reported chat messages:</strong> deleted 30 days after the
+        report, or sooner when the admin closes it, and when the account of the
+        reporter or the sender is deleted.
+      </li>
+      <li>
+        <strong>Moderation records</strong> (suspensions, chat mutes and their
+        reasons): kept while your account exists; deleted when the account is
+        deleted. Each moderation action also appears in the administrative audit
+        records below.
       </li>
       <li>
         <strong>Server log files</strong> (which can include IP addresses):
