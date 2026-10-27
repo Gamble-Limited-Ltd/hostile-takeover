@@ -23,10 +23,11 @@ Gates:
   Determinism suite: live vs replay-from-0 vs snapshot after/before takeover, equal hashes [x]
   Browser test on dev (2026-10-27): crown, admin cards, chat, spectate, root commands, reports,
     /endgame [x]; 4 bugs found and fixed in at.8 with failing tests first [x]
-  Takeover re-test in the browser after the at.8 view fix [ ]  (must pass before deploy)
+  Takeover re-test in the browser after the at.8 view fix [x] (both clients: Human, root's
+    clientID and name; root HUD and feed line; no desync)
   Migration 009 applied on dev DB 5436 [x]; rehearsal on a copy of the prod schema [ ] (additive DDL,
     low risk; Boss may accept dev-only)
-  Boss reviews the ToS/privacy diff [ ]
+  Boss reviews the ToS/privacy diff [x] (approved 2026-10-27)
   Zero open P0/P1 [x]
 Known issues:
   - Alliance chat leak to modified clients (accepted). Alliance visibility uses the alliance state
@@ -35,6 +36,10 @@ Known issues:
   - Live-games card shows 0 bots (the server has no sim); root picks the bot in game.
   - Root's winner vote after a takeover is not checked; the whole game is unranked anyway.
   - The takeover feed line uses the alliance-accepted message style.
+  - After a takeover the map name label may keep the bot's name (leaderboard, panel and feed
+    show root's name). Cosmetic, follow-up.
+  - Not re-checked in the browser (covered by unit tests): late joiner after takeover, the
+    maintenance toast when hosting, the /endgame alert.
   - Roster crown and map-label crown deferred (wire header limit, WebGL atlas glyph).
 Kill switches: HT_CHAT=off (server), Features.chat; HT_ADMIN_TAKEOVER=off, Features.adminTakeover;
   maintenance mode itself.

@@ -1,6 +1,6 @@
 # Admin tools + in-game chat
 
-**Status:** Approved by Boss 2026-10-27 ("approved, you may begin"), plus slice S0 (root badge). Built
+**Status:** Built 2026-10-27: S0-S6 and the at.8 browser-test fixes merged; legal approved by Boss 2026-10-27. Not deployed; ships with `~/updates/ht-admin-chat.md`.
 2026-10-27: S0-S5 merged to `main` with green CI; S6 and S7 (legal draft, docs) on their branches. Not deployed.
 Open questions O1-O6 default to the recommendation until Boss answers, except O4 (see there).
 **Lane:** Minor (new wire messages, an engine change, migration 009, legal change): CI + targeted tests + the
