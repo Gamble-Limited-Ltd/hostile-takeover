@@ -56,6 +56,7 @@ import { payForLobbyQueue, queueListedLobby } from "./LobbyQueuePayment";
 import { logger } from "./Logger";
 import { registerPlayerProfileRoute } from "./PlayerProfileRoute";
 import { applyRootBadge, resolveVerifiedJoin } from "./Privilege";
+import { createBlocked, startSiteStatusPolling } from "./SiteStatus";
 
 import { MapPlaylist } from "./MapPlaylist";
 import { setNoStoreHeaders } from "./NoStoreHeaders";
@@ -236,6 +237,7 @@ export function registerListingRoute(opts: {
 // Worker setup
 export async function startWorker() {
   log.info(`Worker starting...`);
+  startSiteStatusPolling();
 
   const __filename = fileURLToPath(import.meta.url);
   const __dirname = path.dirname(__filename);
@@ -359,6 +361,10 @@ export async function startWorker() {
       return res.status(401).json({ error: "Invalid creator token" });
     }
     const creatorPersistentID = auth.persistentId;
+    // Fork-only (S6): maintenance pauses new games; root may still create.
+    if (createBlocked(auth.claims?.role)) {
+      return res.status(503).json({ error: "maintenance" });
+    }
 
     const parsed = CreateGameInputSchema.safeParse(req.body);
     if (!parsed.success) {
@@ -650,6 +656,14 @@ export async function startWorker() {
           return;
         }
 
+        // Fork-only (S6): a ban outlives the 15-min JWT. One lookup per join
+        // also carries the chat mute; it fails open.
+        const moderation = await ChatEnv.moderation(persistentId);
+        if (moderation.banned) {
+          ws.close(CloseCode.Banned, CloseReason.Banned);
+          return;
+        }
+
         if (clientMsg.type === "rejoin") {
           log.info("rejoining game", {
             gameID: clientMsg.gameID,
@@ -928,8 +942,7 @@ export async function startWorker() {
           levelBadge,
         );
 
-        // Chat mute (S2); fails open on any API error.
-        client.chatMute = await ChatEnv.muteFor(persistentId);
+        client.chatMute = moderation.mute;
 
         const joinResult = gm.joinClient(client, clientMsg.gameID);
 

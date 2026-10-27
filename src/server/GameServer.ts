@@ -234,6 +234,8 @@ export class GameServer {
     turn: () => this.turns.length,
     kick: (id) => this.kickClient(id, KICK_REASON_ADMIN),
     gameId: () => this.id,
+    endGame: () => this.endGame(),
+    markUnranked: () => this.markUnranked(),
   });
 
   private maxGameDuration = 3 * 60 * 60 * 1000; // 3 hours
@@ -263,6 +265,8 @@ export class GameServer {
   private paused = false;
   // Fork-only (S5): root took over a bot; the game is unranked for XP.
   private takeover = false;
+  // Fork-only (S6): root marked the game unranked or ended it.
+  private unranked = false;
   private _startTime: number | null = null;
   private hasReachedMaxPlayerCount: boolean = false;
 
@@ -1599,6 +1603,22 @@ export class GameServer {
     });
   }
 
+  // Fork-only (S6), root /unranked: the record is archived without XP.
+  public markUnranked(): void {
+    this.unranked = true;
+  }
+
+  // Fork-only (S6), root /endgame: everyone is dropped, no winner is
+  // recorded and the game is unranked. GameManager prunes it next tick, and
+  // end() then archives it.
+  public endGame(): void {
+    this.unranked = true;
+    for (const c of [...this.clients.active()]) {
+      this.kickClient(c.clientID, KICK_REASON_MATCH_CANCELLED);
+    }
+    this.ended = true;
+  }
+
   async end() {
     this.ended = true;
     // Close all WebSocket connections
@@ -2236,9 +2256,14 @@ export class GameServer {
       statsAgreed,
     );
     // Fork-only (S5): the API stores unranked_reason 'takeover' for this flag.
+    // Fork-only (S6): 'unranked' likewise (root /unranked or /endgame).
     this.deps.archive(
-      this.takeover
-        ? ({ ...record, htTakeover: true } as typeof record)
+      this.takeover || this.unranked
+        ? ({
+            ...record,
+            ...(this.takeover ? { htTakeover: true } : {}),
+            ...(this.unranked ? { htUnranked: true } : {}),
+          } as typeof record)
         : record,
     );
   }

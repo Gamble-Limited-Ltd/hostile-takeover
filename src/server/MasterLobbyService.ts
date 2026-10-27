@@ -24,6 +24,7 @@ import { logger } from "./Logger";
 import { MapPlaylist } from "./MapPlaylist";
 import { startPolling } from "./PollingLoop";
 import { ServerEnv } from "./ServerEnv";
+import { siteStatus } from "./SiteStatus";
 
 export interface MasterLobbyServiceOptions {
   playlist: MapPlaylist;
@@ -194,10 +195,14 @@ export class MasterLobbyService {
   // recentMaps (what the site just played) is not yet fed to the playlist —
   // its no-consecutive-repeat rule stays per server for now.
   private async handleCoordinatorCreate(msg: CoordinatorCreateGame) {
-    if (!this.active || !this.started) {
+    if (!this.active || !this.started || siteStatus().maintenance) {
       this.log.info(
         `refusing coordinator createGame (${msg.publicGameType}): ${
-          this.active ? "workers not ready" : "deployment inactive"
+          !this.active
+            ? "deployment inactive"
+            : siteStatus().maintenance
+              ? "maintenance"
+              : "workers not ready"
         }`,
       );
       return;
@@ -456,7 +461,12 @@ export class MasterLobbyService {
 
       // An inactive deployment still starts what it already queued (the
       // countdown above), it just stops adding to the queue.
-      if (!this.active || lobbies.length >= QUEUED_LOBBIES_PER_TYPE) {
+      // Maintenance (S6) also stops new public lobbies.
+      if (
+        !this.active ||
+        siteStatus().maintenance ||
+        lobbies.length >= QUEUED_LOBBIES_PER_TYPE
+      ) {
         continue;
       }
 
