@@ -21,16 +21,17 @@ import "../baseComponents/Button";
 const INPUT_CLASS =
   "w-full px-4 py-3 bg-white/5 border border-white/10 rounded-xl text-white placeholder-white/20 focus:outline-none focus:ring-2 focus:ring-malibu-blue/50 focus:border-malibu-blue/50 transition-all font-medium hover:bg-white/10";
 
-const KNOWN_ERRORS = [
-  "forbidden",
-  "no_such_user",
-  "not_found",
-  "protected_account",
-  "unauthorized",
-];
+// Literal keys so the en.json usage check can see them.
+const ERROR_KEYS: Record<string, string> = {
+  forbidden: "admin.moderation.error_forbidden",
+  no_such_user: "admin.moderation.error_no_such_user",
+  not_found: "admin.moderation.error_not_found",
+  protected_account: "admin.moderation.error_protected_account",
+  unauthorized: "admin.moderation.error_unauthorized",
+};
 const errorKey = (code: string) =>
-  KNOWN_ERRORS.includes(code)
-    ? `admin.moderation.error_${code}`
+  Object.prototype.hasOwnProperty.call(ERROR_KEYS, code)
+    ? ERROR_KEYS[code]
     : "admin.moderation.error_generic";
 
 type Section = "ban" | "mute" | "site" | "reports" | "unranked";
