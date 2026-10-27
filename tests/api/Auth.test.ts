@@ -437,6 +437,14 @@ describe("CORS", () => {
       expect(pre.headers.get("access-control-allow-headers")).toContain(
         "authorization",
       );
+      // Site status and the account flag are saved with PUT.
+      expect(pre.headers.get("access-control-allow-methods")).toContain("PUT");
+
+      const evilPut = await fetch(`${h.base}/admin/site-status`, {
+        method: "PUT",
+        headers: { origin: "https://evil.example" },
+      });
+      expect(evilPut.status).toBe(403);
 
       const evilPre = await fetch(`${h.base}/users/@me`, {
         method: "OPTIONS",

@@ -330,6 +330,8 @@ export class GameView implements GameLike {
 
       if (existing !== undefined) {
         existing.applyUpdate(pu);
+        // Fork-only (S5): a takeover renames the player.
+        if (pu.name !== undefined) this._namesDirty = true;
         const nextNameData = gu.playerNameViewData?.[pu.id];
         if (nextNameData !== undefined) {
           existing.nameData = nextNameData;
