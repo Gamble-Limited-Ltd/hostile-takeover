@@ -45,6 +45,8 @@ export interface RateLimits {
   resetIp: RateLimiter;
   /** Rename attempts per user. */
   usernameChange: RateLimiter;
+  /** Root moderation calls, per actor. */
+  admin: RateLimiter;
 }
 
 const MIN = 60_000;
@@ -56,5 +58,6 @@ export function defaultRateLimits(): RateLimits {
     registerIp: new RateLimiter(10, 60 * MIN),
     resetIp: new RateLimiter(20, 15 * MIN),
     usernameChange: new RateLimiter(10, 15 * MIN),
+    admin: new RateLimiter(120, MIN),
   };
 }

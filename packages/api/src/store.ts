@@ -157,12 +157,44 @@ export interface Store {
   /** The publicId of the enabled account with this username (case-insensitive), or null. */
   getPublicIdByUsername(username: string): Promise<string | null>;
 
+  /** `until` "infinity" = permanent, null clears. Does not touch sessions. */
+  setBan(
+    userId: string,
+    until: Date | "infinity" | null,
+    reason: string | null,
+  ): Promise<void>;
+  /** null `until` clears the mute (and the shadow flag). */
+  setMute(userId: string, until: Date | null, shadow: boolean): Promise<void>;
+  getSetting(key: string): Promise<unknown>;
+  setSetting(key: string, value: unknown, by: string): Promise<void>;
+  /** Purges reports older than 30 days first. */
+  addChatReport(r: {
+    gameId: string;
+    reporterId: string;
+    targetId: string;
+    message: string;
+  }): Promise<void>;
+  /** Newest first; purges reports older than 30 days first. */
+  listChatReports(): Promise<ChatReportRow[]>;
+  deleteChatReport(id: string): Promise<boolean>;
+  /** False when no such game is stored. Awards already made are kept. */
+  setGameUnranked(gameId: string, reason: string): Promise<boolean>;
+
   logAdmin(entry: {
     actor: string;
     action: string;
     target: string | null;
     detail?: Record<string, unknown>;
   }): Promise<void>;
+}
+
+export interface ChatReportRow {
+  id: string;
+  gameId: string;
+  reporter: string | null;
+  target: string | null;
+  message: string;
+  createdAt: Date;
 }
 
 export interface GameRow {
@@ -177,6 +209,8 @@ export interface GameRow {
   endedAt: Date;
   durationMs: number;
   winner: unknown;
+  /** Set when the game awards no XP (takeover, admin). */
+  unrankedReason?: string | null;
 }
 
 export interface GamePlayerRow {
@@ -293,7 +327,7 @@ export interface SqlClient {
 }
 
 const USER_COLS =
-  "id, public_id, username::text AS username, first_name, last_name, email::text AS email, rank, disabled_at, gate_sub, username_changed_at";
+  "id, public_id, username::text AS username, first_name, last_name, email::text AS email, rank, disabled_at, gate_sub, username_changed_at, banned_until, ban_reason, chat_muted_until, chat_shadow_muted";
 
 export function pgStore(db: SqlClient): Store {
   return {
@@ -447,8 +481,8 @@ export function pgStore(db: SqlClient): Store {
       try {
         await q.query("BEGIN");
         const ins = await q.query(
-          `INSERT INTO games (id, source, mode_bucket, game_type, game_mode, map, started_at, ended_at, duration_ms, winner)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+          `INSERT INTO games (id, source, mode_bucket, game_type, game_mode, map, started_at, ended_at, duration_ms, winner, unranked_reason)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
            ON CONFLICT (id) DO NOTHING RETURNING id`,
           [
             game.id,
@@ -461,6 +495,7 @@ export function pgStore(db: SqlClient): Store {
             game.endedAt,
             game.durationMs,
             JSON.stringify(game.winner ?? null),
+            game.unrankedReason ?? null,
           ],
         );
         if (ins.rows.length === 0) {
@@ -893,6 +928,76 @@ export function pgStore(db: SqlClient): Store {
         userId,
         flag,
       ]);
+    },
+    async setBan(userId, until, reason) {
+      await db.query(
+        "UPDATE users SET banned_until = $2, ban_reason = $3 WHERE id = $1",
+        [userId, until, until === null ? null : reason],
+      );
+    },
+    async setMute(userId, until, shadow) {
+      await db.query(
+        "UPDATE users SET chat_muted_until = $2, chat_shadow_muted = $3 WHERE id = $1",
+        [userId, until, until === null ? false : shadow],
+      );
+    },
+    async getSetting(key) {
+      const r = await db.query(
+        "SELECT value FROM site_settings WHERE key = $1",
+        [key],
+      );
+      return r.rows[0]?.value ?? null;
+    },
+    async setSetting(key, value, by) {
+      await db.query(
+        `INSERT INTO site_settings (key, value, updated_by) VALUES ($1, $2, $3)
+         ON CONFLICT (key) DO UPDATE SET value = $2, updated_at = now(), updated_by = $3`,
+        [key, JSON.stringify(value), by],
+      );
+    },
+    async addChatReport(r) {
+      await db.query(
+        "DELETE FROM chat_reports WHERE created_at < now() - interval '30 days'",
+      );
+      await db.query(
+        "INSERT INTO chat_reports (game_id, reporter_id, target_id, message) VALUES ($1, $2, $3, $4)",
+        [r.gameId, r.reporterId, r.targetId, r.message],
+      );
+    },
+    async listChatReports() {
+      await db.query(
+        "DELETE FROM chat_reports WHERE created_at < now() - interval '30 days'",
+      );
+      const r = await db.query(
+        `SELECT c.id, c.game_id, c.message, c.created_at,
+                a.username::text AS reporter, t.username::text AS target
+         FROM chat_reports c
+         LEFT JOIN users a ON a.id = c.reporter_id
+         LEFT JOIN users t ON t.id = c.target_id
+         ORDER BY c.created_at DESC LIMIT 500`,
+      );
+      return r.rows.map((x) => ({
+        id: x.id,
+        gameId: x.game_id,
+        reporter: x.reporter,
+        target: x.target,
+        message: x.message,
+        createdAt: x.created_at,
+      }));
+    },
+    async deleteChatReport(id) {
+      const r = await db.query(
+        "DELETE FROM chat_reports WHERE id = $1 RETURNING id",
+        [id],
+      );
+      return r.rows.length === 1;
+    },
+    async setGameUnranked(gameId, reason) {
+      const r = await db.query(
+        "UPDATE games SET unranked_reason = $2 WHERE id = $1 RETURNING id",
+        [gameId, reason],
+      );
+      return r.rows.length === 1;
     },
     async logAdmin(e) {
       await db.query(

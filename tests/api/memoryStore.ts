@@ -3,6 +3,7 @@ import { randomUUID } from "node:crypto";
 import type {
   AwardOutcome,
   Credentials,
+  ChatReportRow,
   GamePlayerRow,
   GameRow,
   ProgressRow,
@@ -48,6 +49,14 @@ export function memoryStore(
     detail?: Record<string, unknown>;
   }[] = [];
   const flows: MemGateFlow[] = [];
+  const settings = new Map<string, unknown>();
+  const reports: (ChatReportRow & { reporterId: string; targetId: string })[] =
+    [];
+  const purgeReports = () => {
+    const cutoff = Date.now() - 30 * 24 * 3600_000;
+    for (let i = reports.length - 1; i >= 0; i--)
+      if (reports[i].createdAt.getTime() < cutoff) reports.splice(i, 1);
+  };
   const pending: (GatePendingRow & { tokenHash: string; expiresAt: Date })[] =
     [];
   const games: (GameRow & { players: GamePlayerRow[]; createdAt: Date })[] = [];
@@ -412,6 +421,47 @@ export function memoryStore(
       const u = users.find((x) => x.id === id);
       if (u) (u as { flag?: string | null }).flag = flag;
     },
+    setBan: async (id, until, reason) => {
+      const u = users.find((x) => x.id === id)!;
+      u.banned_until = until === "infinity" ? new Date(8.64e15) : until;
+      u.ban_reason = until === null ? null : reason;
+    },
+    setMute: async (id, until, shadow) => {
+      const u = users.find((x) => x.id === id)!;
+      u.chat_muted_until = until;
+      u.chat_shadow_muted = until === null ? false : shadow;
+    },
+    getSetting: async (k) => settings.get(k) ?? null,
+    setSetting: async (k, v) => {
+      settings.set(k, v);
+    },
+    addChatReport: async (r) => {
+      purgeReports();
+      reports.push({
+        id: randomUUID(),
+        gameId: r.gameId,
+        reporterId: r.reporterId,
+        targetId: r.targetId,
+        reporter: users.find((u) => u.id === r.reporterId)?.username ?? null,
+        target: users.find((u) => u.id === r.targetId)?.username ?? null,
+        message: r.message,
+        createdAt: new Date(),
+      });
+    },
+    listChatReports: async () => {
+      purgeReports();
+      return [...reports].reverse();
+    },
+    deleteChatReport: async (id) => {
+      const i = reports.findIndex((r) => r.id === id);
+      if (i >= 0) reports.splice(i, 1);
+      return i >= 0;
+    },
+    setGameUnranked: async (id, reason) => {
+      const g = games.find((x) => x.id === id);
+      if (g) g.unrankedReason = reason;
+      return !!g;
+    },
     logAdmin: async (e) => {
       audit.push(e);
     },
@@ -421,6 +471,8 @@ export function memoryStore(
     sessions,
     resets,
     audit,
+    settings,
+    reports,
     users,
     hashes,
     flows,

@@ -40,6 +40,8 @@ export async function ingestGame(
   info: GameEndInfo,
   source: "server" | "singleplayer",
   onlyUser?: string,
+  /** Stores the game but awards no XP (takeover, admin-flagged). */
+  unrankedReason?: string | null,
 ): Promise<boolean> {
   const { config } = info;
   const durationMs = info.end - info.start;
@@ -116,6 +118,7 @@ export async function ingestGame(
     endedAt: new Date(info.end),
     durationMs,
     winner: info.winner ?? null,
+    unrankedReason: unrankedReason ?? null,
   };
   const day = chicagoDay(info.end);
 
@@ -140,7 +143,7 @@ export async function ingestGame(
       statsAgreed: info.statsAgreed !== false,
     };
     const result = scoreGame(input);
-    if (!result.eligible) {
+    if (unrankedReason || !result.eligible) {
       return {
         result,
         rulesVersion: RULES_VERSION,

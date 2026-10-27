@@ -425,3 +425,32 @@ Results are ordered by game start time, newest first.
 ```bash
 curl "https://api.openfront.io/public/clan/UN/sessions?start=2025-11-15T00:00:00Z&end=2025-11-18T23:59:59Z&limit=10&page=1"
 ```
+
+## Hostile Takeover: moderation (root and game server)
+
+Our own API (`packages/api`). "Root" means a JWT with `role: "root"` (the `THE_STRONGEST` account);
+anyone else gets 403, no JWT 401. Admin routes are rate limited per actor (120 per minute, then 429).
+Every mutating root action writes one `admin_audit` row.
+
+| Route                                | Body / answer                                                                                                           |
+| ------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
+| `POST /admin/users/:username/ban`    | `{minutes: number\|null, reason?}` (null = permanent). Revokes all sessions. `THE_STRONGEST` accounts are refused (403) |
+| `POST /admin/users/:username/unban`  |                                                                                                                         |
+| `POST /admin/users/:username/mute`   | `{minutes, shadow?: boolean}`                                                                                           |
+| `POST /admin/users/:username/unmute` | clears the mute and the shadow flag                                                                                     |
+| `GET` / `PUT /admin/site-status`     | `{banner: string\|null (max 200), maintenance: boolean}`                                                                |
+| `GET /public/site-status`            | same shape, no auth, `Cache-Control: max-age=5` (defaults `null` / `false`)                                             |
+| `GET /admin/chat-reports`            | `{reports: [{id, gameId, reporter, target, message, createdAt}]}`, newest first; rows older than 30 days are purged     |
+| `DELETE /admin/chat-reports/:id`     |                                                                                                                         |
+| `POST /admin/games/:id/unranked`     | `{reason?}` (default `admin`); 404 if the game is not stored. Awards already made are kept                              |
+
+Game server only (`x-api-key`; a JWT is refused):
+
+| Route                              | Body / answer                                                                                                   |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `GET /game-server/moderation/:sub` | `:sub` is the JWT `sub` (base64url UUID). `{banned, mutedUntil: ISO\|null, shadow}`; unknown subs read as clean |
+| `POST /game-server/audit`          | `{actor, action, target?, detail?}` writes one audit row                                                        |
+| `POST /game-server/chat-report`    | `{gameId, reporterSub, targetSub, message (max 200)}`, 201                                                      |
+
+`POST /game/:id` (game server) also accepts `htUnranked: true` or `htTakeover: true` beside `info`: the game is
+stored with `unranked_reason` `unranked` / `takeover` and awards no XP.
