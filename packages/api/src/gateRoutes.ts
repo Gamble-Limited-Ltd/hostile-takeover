@@ -70,6 +70,8 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       gateUrl: gate.enabled ? env.gateIssuer : "",
       // Friends tab (GATE friends, gateFriends.ts); HT_GATE_FRIENDS=off hides it.
       friends: friendsEnabled(env),
+      // Legal v2: absent while dark, so the client keeps today's links and form.
+      ...(env.legalVersion ? { legalVersion: env.legalVersion } : {}),
     });
   });
 
@@ -142,6 +144,10 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
    * with that name. Anyone else gets a pending identity: "match" when an old
    * account has their email, "rename" when the name is taken or not allowed.
    */
+  /** GATE's `legal_version` claim equals ours: signing in there counted as acceptance. */
+  const matchesLegal = (who: GateIdentity) =>
+    env.legalVersion !== "" && who.legalVersion === env.legalVersion;
+
   async function signInWho(
     req: express.Request,
     res: express.Response,
@@ -150,6 +156,9 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     const user = await store.findUserByGateSub(who.sub);
     if (user) {
       if (user.disabled_at) return "disabled";
+      if (matchesLegal(who) && user.legal_version !== env.legalVersion) {
+        await store.setLegalAcceptance(user.id, env.legalVersion);
+      }
       await d.startSession(res, user.id, req.headers["user-agent"]);
       return "ok";
     }
@@ -159,6 +168,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       loginName: who.loginName,
       emailApproved: who.emailApproved,
       idToken: null,
+      legalVersion: who.legalVersion,
     };
     const match = await matchOf(p);
     if (!match) {
@@ -169,6 +179,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
           username: p.loginName,
           email: p.email,
           gateSub: p.gateSub,
+          ...(matchesLegal(who) ? { legalVersion: env.legalVersion } : {}),
         });
         if (created.ok) {
           await d.startSession(res, created.user.id, req.headers["user-agent"]);
@@ -268,8 +279,12 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     res: express.Response,
     hash: string,
     userId: string,
+    legalVersion?: string | null,
   ) {
     await store.deleteGatePending(hash);
+    if (env.legalVersion !== "" && legalVersion === env.legalVersion) {
+      await store.setLegalAcceptance(userId, env.legalVersion);
+    }
     res.clearCookie(GATE_PENDING_COOKIE, cookieOpts);
     await d.startSession(res, userId, req.headers["user-agent"]);
   }
@@ -357,7 +372,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       }
       if (r === "gone") return invalid();
       d.limits.loginAccount.reset(acctKey);
-      await finish(req, res, pend.hash, cred.user.id);
+      await finish(req, res, pend.hash, cred.user.id, pend.p.legalVersion);
       res.json({ ok: true });
     } catch (e) {
       next(e);
@@ -396,7 +411,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
           error: created.taken === "email" ? "email_taken" : "username_taken",
         });
       }
-      await finish(req, res, pend.hash, created.user.id);
+      await finish(req, res, pend.hash, created.user.id, p.legalVersion);
       res
         .status(201)
         .json({ ok: true, userId: uuidToBase64url(created.user.id) });
@@ -420,7 +435,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
 
   type Spec = Record<string, number | "bool">;
   const SPECS: Record<string, Spec> = {
-    login: { identifier: 254, password: 1024 },
+    login: { identifier: 254, password: 1024, acceptedLegal: "bool" },
     verify: { pending: 200, code: 12 },
     resend: { pending: 200 },
     recover: { identifier: 254 },
@@ -433,8 +448,17 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       password: 1024,
       ageConfirmed13: "bool",
       acceptedLegal: "bool",
+      parentOr18Confirmed: "bool",
     },
   };
+  // Legal v2 fields GATE only knows while it has LEGAL_VERSION (a dark GATE rejects
+  // them as unknown): forwarded only when the browser sent them, never required.
+  // login's acceptedLegal is only ever `true`.
+  const OPTIONAL = new Set([
+    "login.acceptedLegal",
+    "signup.ageConfirmed13",
+    "signup.parentOr18Confirmed",
+  ]);
   const playerIp = (req: express.Request): string | undefined => {
     const ip = (req.ip ?? "").replace(/^::ffff:/, "");
     return /^[0-9a-fA-F:.]{2,45}$/.test(ip) ? ip : undefined;
@@ -538,6 +562,15 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
         const out: Record<string, unknown> = {};
         for (const [k, max] of Object.entries(SPECS[op])) {
           const v = body[k];
+          if (v === undefined && OPTIONAL.has(`${op}.${k}`)) continue;
+          if (op === "login" && k === "acceptedLegal" && v !== true) {
+            return htError(
+              res,
+              400,
+              "HT_INVALID_REQUEST",
+              "Fill in every field and try again.",
+            );
+          }
           const ok =
             max === "bool"
               ? typeof v === "boolean"

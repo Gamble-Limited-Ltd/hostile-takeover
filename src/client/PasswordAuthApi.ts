@@ -15,6 +15,8 @@ export interface RegisterFields {
   username: string;
   password: string;
   ageConfirmed: boolean;
+  /** Legal v2 only: the contract sign-up sentence was accepted. */
+  legalAccepted?: boolean;
 }
 
 async function post(
@@ -327,6 +329,7 @@ const REGISTER_TARGETS: Record<string, ErrorTarget> = {
     key: "password_auth.error_password_long",
   },
   age_unconfirmed: { field: "age", key: "password_auth.error_age" },
+  legal_unaccepted: { field: "age", key: "legal.error_signup" },
   rate_limited: { field: "form", key: "password_auth.error_rate_limited" },
   network: { field: "form", key: "password_auth.error_network" },
 };
@@ -399,7 +402,12 @@ export function validateRegisterFields(
     errors.password = "password_auth.error_password_short";
   else if (f.password.length > 128)
     errors.password = "password_auth.error_password_long";
-  if (!f.ageConfirmed) errors.age = "password_auth.error_age";
+  if (!f.ageConfirmed) {
+    errors.age =
+      f.legalAccepted === undefined
+        ? "password_auth.error_age"
+        : "legal.error_signup";
+  }
   return errors;
 }
 

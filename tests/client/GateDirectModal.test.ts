@@ -276,4 +276,154 @@ describe("GateDirectModal", () => {
     );
     expect(hrefs).toEqual(["https://id.test/terms", "https://id.test/privacy"]);
   });
+
+  it("legal v2 on: sign-up links point at HALL", async () => {
+    const { fetchAuthConfig } = await import("../../src/client/GateAuthApi");
+    vi.mocked(fetchAuthConfig).mockResolvedValueOnce({
+      gate: true,
+      legacy: false,
+      gateUrl: "https://id.test",
+      legalVersion: "2026-11-15",
+    });
+    modal.open();
+    await settle();
+    toSignUp();
+    await settle();
+    const hrefs = [...modal.querySelectorAll("a")].map((a) =>
+      a.getAttribute("href"),
+    );
+    expect(hrefs).toEqual([
+      "https://hall.taps-holdings.org/legal/terms",
+      "https://hall.taps-holdings.org/legal/privacy",
+    ]);
+  });
+
+  describe("legal v2 rules from GATE", () => {
+    const needed = {
+      ok: false,
+      error: {
+        code: "LEGAL_ACCEPTANCE_REQUIRED",
+        message: "Accept the terms to continue.",
+        fields: { acceptedLegal: "Accept the terms to continue." },
+      },
+    };
+    const legalForm = () => modal.querySelector('input[name="legalAgreed"]');
+
+    it("login 403 shows the wording and HALL links, then repeats login with acceptedLegal", async () => {
+      directCall.mockResolvedValueOnce(needed);
+      type("identifier", "alice");
+      type("password", "pw");
+      await submit();
+      expect(directCall).toHaveBeenCalledWith("login", {
+        identifier: "alice",
+        password: "pw",
+      });
+      expect(legalForm()).not.toBeNull();
+      expect(modal.textContent).not.toContain("gate_auth.error_generic");
+      expect(
+        [...modal.querySelectorAll("a")].map((a) => a.getAttribute("href")),
+      ).toEqual([
+        "https://hall.taps-holdings.org/legal/terms",
+        "https://hall.taps-holdings.org/legal/privacy",
+      ]);
+      directCall.mockResolvedValueOnce({ ok: true, status: "ok" });
+      (legalForm() as HTMLInputElement).checked = true;
+      type("password", "pw");
+      await submit();
+      expect(directCall).toHaveBeenLastCalledWith("login", {
+        identifier: "alice",
+        password: "pw",
+        acceptedLegal: true,
+      });
+    });
+
+    it("an unticked box does not call GATE", async () => {
+      directCall.mockResolvedValueOnce(needed);
+      type("identifier", "alice");
+      type("password", "pw");
+      await submit();
+      directCall.mockClear();
+      type("password", "pw");
+      await submit();
+      expect(directCall).not.toHaveBeenCalled();
+    });
+
+    it("verify 403 sends the player to sign in with a notice", async () => {
+      directCall.mockResolvedValueOnce({
+        ok: false,
+        pending: "p1",
+        error: {
+          code: "EMAIL_UNVERIFIED",
+          message: "Check your email.",
+          fields: {},
+        },
+      });
+      type("identifier", "alice");
+      type("password", "pw");
+      await submit();
+      directCall.mockResolvedValueOnce(needed);
+      type("code", "123456");
+      await submit();
+      expect(modal.querySelector('input[name="identifier"]')).not.toBeNull();
+      expect(modal.textContent).toContain("legal.verified_sign_in");
+    });
+
+    it("signup sends only the dark fields while dark", async () => {
+      directCall.mockResolvedValue({ ok: true, pending: "p" });
+      toSignUp();
+      await settle();
+      for (const n of [
+        "firstName",
+        "lastName",
+        "loginName",
+        "email",
+        "password",
+      ])
+        type(n, "x");
+      (
+        modal.querySelector('input[name="agreed"]') as HTMLInputElement
+      ).checked = true;
+      await submit();
+      expect(directCall.mock.calls[0][1]).toMatchObject({
+        ageConfirmed13: true,
+        acceptedLegal: true,
+      });
+      expect(directCall.mock.calls[0][1]).not.toHaveProperty(
+        "parentOr18Confirmed",
+      );
+    });
+
+    it("signup sends parentOr18Confirmed and acceptedLegal when on", async () => {
+      const { fetchAuthConfig } = await import("../../src/client/GateAuthApi");
+      vi.mocked(fetchAuthConfig).mockResolvedValueOnce({
+        gate: true,
+        legacy: false,
+        gateUrl: "https://id.test",
+        legalVersion: "2026-11-15",
+      });
+      modal.open();
+      await settle();
+      directCall.mockResolvedValue({ ok: true, pending: "p" });
+      toSignUp();
+      await settle();
+      for (const n of [
+        "firstName",
+        "lastName",
+        "loginName",
+        "email",
+        "password",
+      ])
+        type(n, "x");
+      (
+        modal.querySelector('input[name="agreed"]') as HTMLInputElement
+      ).checked = true;
+      await submit();
+      const sent = directCall.mock.calls[0][1];
+      expect(sent).toMatchObject({
+        parentOr18Confirmed: true,
+        acceptedLegal: true,
+      });
+      expect(sent).not.toHaveProperty("ageConfirmed13");
+    });
+  });
 });

@@ -20,6 +20,8 @@ export interface UserRow {
   ban_reason?: string | null;
   chat_muted_until?: Date | null;
   chat_shadow_muted?: boolean;
+  /** Terms + privacy version accepted (legal v2); null/absent = none. */
+  legal_version?: string | null;
 }
 
 /**
@@ -37,8 +39,18 @@ export function buildUserMe(
     xpInLevel: 0,
     lifetimeXp: 0,
   },
+  /** LEGAL_VERSION; "" (off) leaves the `legal` field out. */
+  legalRequired = "",
 ): UserMeResponse {
   return {
+    ...(legalRequired
+      ? {
+          legal: {
+            required: legalRequired,
+            accepted: row.legal_version ?? null,
+          },
+        }
+      : {}),
     user: { email: row.email },
     steamLicence: false,
     steamLicenceSince: null,

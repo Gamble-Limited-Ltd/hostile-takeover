@@ -46,7 +46,10 @@ function row(rank: string, name: string, disabled = false): UserRow {
 }
 
 async function harness(
-  opts: { limits?: ReturnType<typeof defaultRateLimits> } = {},
+  opts: {
+    limits?: ReturnType<typeof defaultRateLimits>;
+    env?: ReturnType<typeof readEnv>;
+  } = {},
 ) {
   const pw = await hashPassword(PW);
   const alice = row("PLAYER", "alice");
@@ -58,7 +61,7 @@ async function harness(
     [gone.id]: pw,
   });
   const ctx: AppContext = {
-    env,
+    env: opts.env ?? env,
     keys: await keysFromPem(generatePrivateKeyPem()),
     store: mem.store,
     limits: opts.limits ?? generous(),

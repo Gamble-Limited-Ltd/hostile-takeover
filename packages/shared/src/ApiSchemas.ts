@@ -559,6 +559,11 @@ export const UserMeResponseSchema = z.object({
   // ISO date the player's Steam account first owned the base game, or null
   // when unknown.
   steamLicenceSince: z.string().nullable().optional().default(null),
+  // Legal v2 dark launch: present only while the API has LEGAL_VERSION set.
+  // `accepted` is the version this account accepted (null = none).
+  legal: z
+    .object({ required: z.string(), accepted: z.string().nullable() })
+    .optional(),
   // Notice keys this player has dismissed (POST /users/@me/notices).
   noticesSeen: z.array(z.string()).optional().default([]),
   // The player's most recent automatic tier conversion, if any.

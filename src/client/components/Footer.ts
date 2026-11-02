@@ -11,6 +11,7 @@ import {
   meridianUrl,
 } from "../ForkLinks";
 import { currentGameVersion } from "../GameVersion";
+import { hallDoc, legalV2On } from "../LegalV2";
 import "./SteamWishlistButton";
 
 @customElement("page-footer")
@@ -25,6 +26,7 @@ export class Footer extends LitElement {
   private readonly meridianHref = meridianUrl();
 
   @state() private versionLabel = this.gameVersion;
+  @state() private legalOn = false;
 
   createRenderRoot() {
     return this;
@@ -32,6 +34,7 @@ export class Footer extends LitElement {
 
   connectedCallback() {
     super.connectedCallback();
+    void legalV2On().then((v) => (this.legalOn = v));
     // desktopVersion() resolves null off the desktop shell and on its own
     // timeout, so this can only ever leave the label as-is or extend it.
     void desktopVersion().then((shellVersion) => {
@@ -127,14 +130,14 @@ export class Footer extends LitElement {
             class="text-xs mt-1 lg:mt-2 flex items-center justify-center gap-4 px-4"
           >
             <a
-              href="/terms-of-service.html"
+              href=${this.legalOn ? hallDoc("terms") : "/terms-of-service.html"}
               data-i18n="main.terms_of_service"
               target="_blank"
               class="hover:text-white transition-colors"
             ></a>
             <span data-i18n="main.copyright"></span>
             <a
-              href="/privacy-policy.html"
+              href=${this.legalOn ? hallDoc("privacy") : "/privacy-policy.html"}
               data-i18n="main.privacy_policy"
               target="_blank"
               class="hover:text-white transition-colors"

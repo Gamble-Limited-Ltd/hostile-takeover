@@ -163,6 +163,7 @@ import { UsernameInput } from "./UsernameInput";
 import { UserSettings } from "./UserSettings";
 import "./SiteBanner";
 import "./components/BannedModal";
+import "./components/LegalReconsentModal";
 import "./components/DesktopStatusBar";
 import "./components/MarketingConsentToast";
 import "./components/PurchaseNudgeModal";

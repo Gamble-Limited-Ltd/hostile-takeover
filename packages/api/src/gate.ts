@@ -27,6 +27,8 @@ export interface GateIdentity {
    */
   emailApproved: boolean | null;
   loginName: string;
+  /** GATE's optional `legal_version` claim (legal v2); null when absent. */
+  legalVersion: string | null;
   /** The raw id_token: kept only as the logout `id_token_hint`. Never log or return it. */
   idToken: string;
 }
@@ -259,6 +261,7 @@ export function createGate(env: ApiEnv): GateClient {
       emailApproved,
       email: email !== null && email.length <= MAX_EMAIL ? email : null,
       loginName: loginName.slice(0, 100),
+      legalVersion: str(claims.legal_version),
       idToken,
     };
   }

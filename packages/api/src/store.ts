@@ -48,6 +48,8 @@ export interface Store {
   findPasswordHash(userId: string): Promise<string | null>;
   createUser(u: NewUser): Promise<CreateUserResult>;
   setPassword(userId: string, passwordHash: string): Promise<void>;
+  /** Records that the account accepted this legal version now. */
+  setLegalAcceptance(userId: string, version: string): Promise<void>;
   /** Deletes the user; their sessions and resets go with them. */
   deleteUser(userId: string): Promise<void>;
 
@@ -105,6 +107,7 @@ export interface Store {
     username: string;
     email: string;
     gateSub: string;
+    legalVersion?: string;
   }): Promise<CreateGateUserResult>;
 
   /**
@@ -290,6 +293,8 @@ export interface GatePendingRow {
   emailApproved: boolean | null;
   /** Raw GATE id_token, copied to the user on link/create. Never returned to clients. */
   idToken: string | null;
+  /** GATE's `legal_version` claim at sign-in (legal v2); null/absent when none. */
+  legalVersion?: string | null;
 }
 
 export type LinkGateResult = "ok" | "already_linked" | "gone";
@@ -301,6 +306,8 @@ export interface NewUser {
   lastName: string;
   email: string;
   passwordHash: string;
+  /** Legal v2 version accepted at sign-up; omitted while dark. */
+  legalVersion?: string;
 }
 
 export type CreateUserResult =
@@ -329,7 +336,7 @@ export interface SqlClient {
 }
 
 const USER_COLS =
-  "id, public_id, username::text AS username, first_name, last_name, email::text AS email, rank, disabled_at, gate_sub, username_changed_at, banned_until, ban_reason, chat_muted_until, chat_shadow_muted";
+  "id, public_id, username::text AS username, first_name, last_name, email::text AS email, rank, disabled_at, gate_sub, username_changed_at, banned_until, ban_reason, chat_muted_until, chat_shadow_muted, legal_version";
 
 export function pgStore(db: SqlClient): Store {
   return {
@@ -444,8 +451,10 @@ export function pgStore(db: SqlClient): Store {
       try {
         const r = await db.query(
           `INSERT INTO users (public_id, username, first_name, last_name, email,
-                              password_hash, age_confirmed_at)
-           VALUES ($1, $2, $3, $4, $5, $6, now())
+                              password_hash, age_confirmed_at,
+                              legal_version, legal_accepted_at)
+           VALUES ($1, $2, $3, $4, $5, $6, now(), $7::text,
+                   CASE WHEN $7::text IS NULL THEN NULL ELSE now() END)
            RETURNING ${USER_COLS}`,
           [
             u.publicId,
@@ -454,6 +463,7 @@ export function pgStore(db: SqlClient): Store {
             u.lastName,
             u.email,
             u.passwordHash,
+            u.legalVersion ?? null,
           ],
         );
         return { ok: true, user: r.rows[0] as UserRow };
@@ -467,6 +477,12 @@ export function pgStore(db: SqlClient): Store {
         }
         throw e;
       }
+    },
+    async setLegalAcceptance(userId, version) {
+      await db.query(
+        "UPDATE users SET legal_version = $2, legal_accepted_at = now() WHERE id = $1",
+        [userId, version],
+      );
     },
     async setPassword(userId, passwordHash) {
       await db.query("UPDATE users SET password_hash = $2 WHERE id = $1", [
@@ -764,8 +780,8 @@ export function pgStore(db: SqlClient): Store {
         "DELETE FROM gate_pending WHERE expires_at < now() - interval '1 day'",
       );
       await db.query(
-        `INSERT INTO gate_pending (token_hash, gate_sub, email, login_name, id_token, expires_at, email_approved)
-         VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+        `INSERT INTO gate_pending (token_hash, gate_sub, email, login_name, id_token, expires_at, email_approved, legal_version)
+         VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
         [
           p.tokenHash,
           p.gateSub,
@@ -774,12 +790,13 @@ export function pgStore(db: SqlClient): Store {
           p.idToken,
           p.expiresAt,
           p.emailApproved,
+          p.legalVersion ?? null,
         ],
       );
     },
     async findGatePending(tokenHash) {
       const r = await db.query(
-        `SELECT gate_sub, email, login_name, id_token, email_approved FROM gate_pending
+        `SELECT gate_sub, email, login_name, id_token, email_approved, legal_version FROM gate_pending
          WHERE token_hash = $1 AND expires_at > now()`,
         [tokenHash],
       );
@@ -796,6 +813,7 @@ export function pgStore(db: SqlClient): Store {
                   ? false
                   : null,
             idToken: (row.id_token as string | null) ?? null,
+            legalVersion: (row.legal_version as string | null) ?? null,
           }
         : null;
     },
@@ -829,10 +847,12 @@ export function pgStore(db: SqlClient): Store {
     async createGateUser(u) {
       try {
         const r = await db.query(
-          `INSERT INTO users (public_id, username, email, gate_sub, age_confirmed_at)
-           VALUES ($1, $2, $3, $4, now())
+          `INSERT INTO users (public_id, username, email, gate_sub, age_confirmed_at,
+                              legal_version, legal_accepted_at)
+           VALUES ($1, $2, $3, $4, now(), $5::text,
+                   CASE WHEN $5::text IS NULL THEN NULL ELSE now() END)
            RETURNING ${USER_COLS}`,
-          [u.publicId, u.username, u.email, u.gateSub],
+          [u.publicId, u.username, u.email, u.gateSub, u.legalVersion ?? null],
         );
         return { ok: true, user: r.rows[0] as UserRow };
       } catch (e) {

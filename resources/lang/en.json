@@ -1582,6 +1582,18 @@
     "xp_tab": "Level / XP",
     "your_ranking": "Your Ranking"
   },
+  "legal": {
+    "error_signup": "Please confirm the statement above to create an account.",
+    "reconsent_accept": "I agree",
+    "reconsent_body": "We have updated our Terms of Service and Privacy Policy. Please read and accept them to keep playing.",
+    "reconsent_decline": "Sign out",
+    "reconsent_delete": "Delete my account",
+    "reconsent_error": "Could not save that. Please try again.",
+    "reconsent_title": "Updated terms",
+    "signup_after": "for me.",
+    "signup_before": "I am 18 or older, or I am at least 13 and my parent or guardian has agreed to the",
+    "verified_sign_in": "Email verified. Sign in to continue."
+  },
   "legend_ceremony": {
     "continue": "Continue",
     "label": "You became a Legend",

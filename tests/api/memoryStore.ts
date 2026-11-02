@@ -135,6 +135,7 @@ export function memoryStore(
         rank: "PLAYER",
         disabled_at: null,
         gate_sub: null,
+        legal_version: n.legalVersion ?? null,
       };
       users.push(user);
       hashes[user.id] = n.passwordHash;
@@ -142,6 +143,9 @@ export function memoryStore(
     },
     setPassword: async (id, h) => {
       hashes[id] = h;
+    },
+    setLegalAcceptance: async (id, version) => {
+      users.find((u) => u.id === id)!.legal_version = version;
     },
     deleteUser: async (id) => {
       users.splice(
@@ -312,6 +316,7 @@ export function memoryStore(
             loginName: p.loginName,
             emailApproved: p.emailApproved,
             idToken: p.idToken,
+            legalVersion: p.legalVersion ?? null,
           }
         : null;
     },
@@ -346,6 +351,7 @@ export function memoryStore(
         rank: "PLAYER",
         disabled_at: null,
         gate_sub: n.gateSub,
+        legal_version: n.legalVersion ?? null,
       };
       users.push(user);
       return { ok: true, user };

@@ -61,7 +61,11 @@ export function checkUsername(
 export const USERNAME_COOLDOWN_MS = 7 * 24 * 60 * 60 * 1000;
 
 /** Validates the register body; returns a stable error code or the clean values. */
-export function validateRegister(body: Record<string, unknown>):
+export function validateRegister(
+  body: Record<string, unknown>,
+  /** LEGAL_VERSION; when set, `legalAccepted` replaces `ageConfirmed` (the contract sign-up wording). */
+  legalVersion = "",
+):
   | { error: string }
   | {
       firstName: string;
@@ -87,7 +91,9 @@ export function validateRegister(body: Record<string, unknown>):
   const username = checked.username;
   const pw = checkPassword(body.password);
   if (pw) return { error: pw };
-  if (body.ageConfirmed !== true) return { error: "age_unconfirmed" };
+  if (legalVersion) {
+    if (body.legalAccepted !== true) return { error: "legal_unaccepted" };
+  } else if (body.ageConfirmed !== true) return { error: "age_unconfirmed" };
   return {
     firstName,
     lastName,
@@ -114,7 +120,7 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
       const ipOk = d.limits.registerIp.hit(ipOf(req));
       if (!ipOk) return tooMany(res);
 
-      const v = validateRegister(body);
+      const v = validateRegister(body, env.legalVersion);
       if ("error" in v) return void res.status(400).json({ error: v.error });
 
       const created = await store.createUser({
@@ -124,6 +130,7 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
         lastName: v.lastName,
         email: v.email,
         passwordHash: await hashPassword(v.password),
+        ...(env.legalVersion ? { legalVersion: env.legalVersion } : {}),
       });
       if (!created.ok) {
         return void res.status(409).json({
@@ -134,6 +141,22 @@ export function mountAccountRoutes(app: express.Express, d: AccountDeps): void {
       res
         .status(201)
         .json({ ok: true, userId: uuidToBase64url(created.user.id) });
+    } catch (e) {
+      next(e);
+    }
+  });
+
+  // Legal v2 reconsent: the signed-in account accepts the API's current version
+  // (never one the client names). 404 while dark.
+  app.post("/users/@me/legal", async (req, res, next) => {
+    try {
+      if (!env.legalVersion) return void res.status(404).end();
+      const auth = await d.authenticate(req);
+      if (!auth) return void res.status(401).json({ error: "unauthorized" });
+      await store.setLegalAcceptance(auth.user.id, env.legalVersion);
+      res.json({
+        legal: { required: env.legalVersion, accepted: env.legalVersion },
+      });
     } catch (e) {
       next(e);
     }

@@ -10,6 +10,8 @@ export interface AuthConfig {
   gateUrl: string;
   /** GLL ID friends are on (HT_GATE_FRIENDS not off): the account modal shows the Friends tab. */
   friends: boolean;
+  /** Legal v2 effective date; absent while the API has it off. */
+  legalVersion?: string;
 }
 
 export interface GatePending {
@@ -51,6 +53,9 @@ export async function fetchAuthConfig(): Promise<AuthConfig> {
       legacy: body.legacy,
       gateUrl: typeof body.gateUrl === "string" ? body.gateUrl : "",
       friends: body.friends === true,
+      ...(typeof body.legalVersion === "string" && body.legalVersion !== ""
+        ? { legalVersion: body.legalVersion }
+        : {}),
     };
   } catch {
     return DEFAULT_AUTH_CONFIG;

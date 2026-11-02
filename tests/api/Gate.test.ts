@@ -1170,3 +1170,64 @@ describe("migration 004_gate.sql", () => {
     expect(sql).not.toMatch(/email[^,;]*DROP NOT NULL/);
   });
 });
+
+describe("legal v2: the GATE legal_version claim", () => {
+  const V = "2026-11-15";
+  const accepted = (h: H) =>
+    h.mem.users.find((u) => u.id === h.linked.id)!.legal_version ?? null;
+
+  test("on, equal claim: acceptance is recorded at sign-in", async () => {
+    const h = await harness({ env: { LEGAL_VERSION: V } });
+    const r = await h.login({ mint: { claims: { legal_version: V } } });
+    expect(r.where).toBe(`${GAME}/#gate=ok`);
+    expect(accepted(h)).toBe(V);
+  });
+
+  test("on, different or missing claim: nothing is recorded (the app prompts)", async () => {
+    const h = await harness({ env: { LEGAL_VERSION: V } });
+    await h.login({ mint: { claims: { legal_version: "2026-01-01" } } });
+    expect(accepted(h)).toBeNull();
+    await h.login({});
+    expect(accepted(h)).toBeNull();
+  });
+
+  test("dark: the claim is ignored", async () => {
+    const h = await harness();
+    await h.login({ mint: { claims: { legal_version: V } } });
+    expect(accepted(h)).toBeNull();
+  });
+});
+
+describe("legal v2: the pending-link path is stamped too", () => {
+  const V = "2026-11-15";
+  const fresh = (legal?: string) => ({
+    mint: {
+      claims: {
+        sub: "s-fresh",
+        login_name: "gatealice", // taken, so GATE's identity waits as a pending
+        email: "fresh@kmlhs.org",
+        ...(legal ? { legal_version: legal } : {}),
+      },
+    },
+  });
+
+  test("create from a pending whose token matched stores the acceptance", async () => {
+    const h = await harness({ env: { LEGAL_VERSION: V } });
+    const c = await h.pendingFor(fresh(V));
+    const r = await h.post("/auth/gate/create", { username: "FreshName" }, c);
+    expect(r.status).toBe(201);
+    expect(
+      h.mem.users.find((u) => u.username === "FreshName")!.legal_version,
+    ).toBe(V);
+  });
+
+  test("a pending with a different or no claim is not stamped (the app prompts)", async () => {
+    const h = await harness({ env: { LEGAL_VERSION: V } });
+    const c = await h.pendingFor(fresh("2026-01-01"));
+    await h.post("/auth/gate/create", { username: "FreshName" }, c);
+    expect(
+      h.mem.users.find((u) => u.username === "FreshName")!.legal_version ??
+        null,
+    ).toBeNull();
+  });
+});

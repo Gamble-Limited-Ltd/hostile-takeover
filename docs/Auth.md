@@ -62,6 +62,14 @@ WebSocket code never see GATE. HT talks to GATE only over standard OIDC/HTTP; no
 - **Flags:** `GATE_ISSUER` empty turns GLL ID off (the client shows the password form exactly as before).
   `LEGACY_LOGIN=off` makes `/auth/login` and `/auth/register` answer 403 `legacy_login_disabled`; linking an old account
   by password keeps working. `GET /auth/config` tells the client which to show.
+- **Legal v2 (dark launch):** `LEGAL_VERSION=YYYY-MM-DD` in `.env.prod` (read by `ht-api` at start; empty or unset = exactly
+  today). When set: `GET /auth/config` gains `legalVersion` (absent while dark; this is how the client learns the state);
+  `/auth/register` needs `legalAccepted: true` (the contract sentence in `packages/shared/src/Legal.ts`) instead of
+  `ageConfirmed` and stores `users.legal_version` + `legal_accepted_at` (migration `010_legal_v2.sql`); `GET /users/@me` gains
+  `legal: {required, accepted}`; `POST /users/@me/legal` records the API's own version (404 while dark); a GATE id_token
+  `legal_version` equal to `LEGAL_VERSION` records acceptance at sign-in (linked or newly created accounts). The client then
+  links Footer, sign-up and GateDirectModal to `hall.taps-holdings.org` and `<legal-reconsent-modal>` asks once per page load.
+  Go-live: set it in `.env.prod`, then recreate `ht-api` (`docker compose ... up -d ht-api`); no rebuild.
 - **Ranks:** HT's own `users.rank` stays the source of root; GATE's `global_rank` is ignored.
 
 ### New-tab sign-in

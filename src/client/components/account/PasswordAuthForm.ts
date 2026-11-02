@@ -1,5 +1,6 @@
 import { html, LitElement, nothing, PropertyValues, TemplateResult } from "lit";
 import { customElement, property, state } from "lit/decorators.js";
+import { hallDoc, legalV2On } from "../../LegalV2";
 import {
   loginErrorKey,
   loginWithPassword,
@@ -46,9 +47,15 @@ export class PasswordAuthForm extends LitElement {
     username: "",
   };
   @state() private ageConfirmed = false;
+  @state() private legalOn = false;
 
   createRenderRoot() {
     return this;
+  }
+
+  connectedCallback(): void {
+    super.connectedCallback();
+    void legalV2On().then((v) => (this.legalOn = v));
   }
 
   protected willUpdate(changed: PropertyValues): void {
@@ -101,6 +108,8 @@ export class PasswordAuthForm extends LitElement {
       username: this.values.username,
       password: this.values.password,
       ageConfirmed: this.ageConfirmed,
+      // Legal v2: the checkbox carries the contract wording; the API requires it when on.
+      ...(this.legalOn ? { legalAccepted: this.ageConfirmed } : {}),
     };
     const problems = validateRegisterFields(fields);
     if (Object.keys(problems).length > 0) {
@@ -238,20 +247,25 @@ export class PasswordAuthForm extends LitElement {
               (this.ageConfirmed = (e.target as HTMLInputElement).checked)}
           />
           <span>
-            ${translateText("password_auth.age_agree_before")}
+            ${translateText(
+              this.legalOn
+                ? "legal.signup_before"
+                : "password_auth.age_agree_before",
+            )}
             <a
-              href="/terms-of-service.html"
+              href=${this.legalOn ? hallDoc("terms") : "/terms-of-service.html"}
               target="_blank"
               class="underline hover:text-white transition-colors"
               >${translateText("main.terms_of_service")}</a
             >
             ${translateText("password_auth.age_agree_and")}
             <a
-              href="/privacy-policy.html"
+              href=${this.legalOn ? hallDoc("privacy") : "/privacy-policy.html"}
               target="_blank"
               class="underline hover:text-white transition-colors"
               >${translateText("main.privacy_policy")}</a
             >
+            ${this.legalOn ? translateText("legal.signup_after") : nothing}
           </span>
         </label>
         ${this.error(this.fieldErrors.age)}

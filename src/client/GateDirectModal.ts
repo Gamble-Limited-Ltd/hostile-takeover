@@ -10,6 +10,7 @@ import {
   type DirectError,
   type DirectResult,
 } from "./GateDirectApi";
+import { hallDoc } from "./LegalV2";
 import { translateText } from "./Utils";
 
 // Same input styling as <password-auth-form>.
@@ -18,7 +19,14 @@ const INPUT_CLASS =
 const LINK_CLASS =
   "text-xs font-bold text-white/40 hover:text-white transition-colors uppercase tracking-widest";
 
-type Mode = "signin" | "signup" | "code" | "forgot" | "reset" | "link";
+type Mode =
+  | "signin"
+  | "signup"
+  | "code"
+  | "forgot"
+  | "reset"
+  | "link"
+  | "legal";
 
 /**
  * "Redirect failed? Sign in here": GLL ID's own forms inside Hostile Takeover.
@@ -31,9 +39,12 @@ export class GateDirectModal extends BaseModal {
   @state() private notice = "";
   @state() private error: DirectError | null = null;
   @state() private gateUrl = "";
+  @state() private legalOn = false;
 
   /** The handle GLL ID gave for the emailed code, and what the code is for. */
   private pending = "";
+  // Kept for the legal step only; the password is never stored, the form asks again.
+  private legalIdentifier = "";
   private codeFor: "login" | "signup" | "reset" = "login";
   private pendingCode = "";
 
@@ -52,7 +63,10 @@ export class GateDirectModal extends BaseModal {
   protected onOpen(): void {
     this.querySelector("form")?.reset();
     this.setMode("signin");
-    void fetchAuthConfig().then((c) => (this.gateUrl = c.gateUrl));
+    void fetchAuthConfig().then((c) => {
+      this.gateUrl = c.gateUrl;
+      this.legalOn = !!c.legalVersion;
+    });
   }
 
   private setMode(mode: Mode, notice = ""): void {
@@ -105,6 +119,15 @@ export class GateDirectModal extends BaseModal {
     const r = await call();
     this.busy = false;
     if (r.ok) return next(r);
+    // GLL ID's legal v2 rule, handled from its answer alone (whatever our own flag is).
+    if (r.error.code === "LEGAL_ACCEPTANCE_REQUIRED") {
+      if (this.mode === "signin" || this.mode === "legal") {
+        this.setMode("legal");
+      } else {
+        this.setMode("signin", translateText("legal.verified_sign_in"));
+      }
+      return;
+    }
     if (r.error.code === "EMAIL_UNVERIFIED" && r.pending) {
       this.toCode(r.pending, "login", r.error.message);
       return;
@@ -140,11 +163,30 @@ export class GateDirectModal extends BaseModal {
     e.preventDefault();
     const f = new FormData(e.target as HTMLFormElement);
     const v = (k: string) => String(f.get(k) ?? "");
-    if (this.mode === "signin") {
+    if (this.mode === "legal") {
+      if (!f.has("legalAgreed")) {
+        this.error = {
+          code: "HT_CONSENT",
+          message: translateText("legal.error_signup"),
+          fields: {},
+        };
+        return;
+      }
       void this.run(
         () =>
           directCall("login", {
-            identifier: v("identifier").trim(),
+            identifier: this.legalIdentifier,
+            password: v("password"),
+            acceptedLegal: true,
+          }),
+        (r) => this.signedIn(r.status ?? "ok"),
+      );
+    } else if (this.mode === "signin") {
+      this.legalIdentifier = v("identifier").trim();
+      void this.run(
+        () =>
+          directCall("login", {
+            identifier: this.legalIdentifier,
             password: v("password"),
           }),
         (r) => this.signedIn(r.status ?? "ok"),
@@ -166,8 +208,9 @@ export class GateDirectModal extends BaseModal {
             loginName: v("loginName").trim(),
             email: v("email").trim(),
             password: v("password"),
-            ageConfirmed13: true,
-            acceptedLegal: true,
+            ...(this.legalOn
+              ? { parentOr18Confirmed: true, acceptedLegal: true }
+              : { ageConfirmed13: true, acceptedLegal: true }),
           }),
         (r) =>
           r.pending
@@ -246,11 +289,14 @@ export class GateDirectModal extends BaseModal {
     return html`<p class="text-sm text-red-200" role="alert">${e.message}</p>`;
   }
 
-  private renderLegalLinks(): TemplateResult {
+  /** `hall`: the legal step always uses the contract wording and HALL, whatever our own flag is. */
+  private renderLegalLinks(hall = this.legalOn): TemplateResult {
     const base = this.gateUrl;
-    return html`${translateText("gate_direct.terms_before")}
+    return html`${translateText(
+        hall ? "legal.signup_before" : "gate_direct.terms_before",
+      )}
       <a
-        href="${base}/terms"
+        href="${hall ? hallDoc("terms") : `${base}/terms`}"
         target="_blank"
         rel="noopener"
         class="underline hover:text-white transition-colors"
@@ -258,12 +304,12 @@ export class GateDirectModal extends BaseModal {
       >
       ${translateText("password_auth.age_agree_and")}
       <a
-        href="${base}/privacy"
+        href="${hall ? hallDoc("privacy") : `${base}/privacy`}"
         target="_blank"
         rel="noopener"
         class="underline hover:text-white transition-colors"
         >${translateText("main.privacy_policy")}</a
-      >`;
+      >${hall ? html` ${translateText("legal.signup_after")}` : nothing}`;
   }
 
   private renderMode(): TemplateResult {
@@ -290,6 +336,30 @@ export class GateDirectModal extends BaseModal {
                 this.setMode("signup"),
               )}
               ${this.link("gate_direct.forgot", () => this.setMode("forgot"))}
+            </div>
+          </form>
+        `;
+      case "legal":
+        return html`
+          <form class="space-y-3" novalidate @submit=${this.onSubmit}>
+            <label
+              class="flex items-start gap-2 text-xs text-white/60 cursor-pointer"
+            >
+              <input type="checkbox" name="legalAgreed" class="mt-0.5" />
+              <span>${this.renderLegalLinks(true)}</span>
+            </label>
+            ${this.input(
+              "password",
+              "password",
+              "password_auth.password",
+              "current-password",
+            )}
+            ${this.renderFormError()}
+            ${this.submitButton("password_auth.sign_in")}
+            <div class="pt-1">
+              ${this.link("gate_direct.back_to_sign_in", () =>
+                this.setMode("signin"),
+              )}
             </div>
           </form>
         `;

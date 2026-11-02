@@ -373,7 +373,9 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
       if (isBanned(user)) {
         return void res.status(403).json({ error: "account_banned" });
       }
-      res.json(buildUserMe(user, await store.getProgress(user.id)));
+      res.json(
+        buildUserMe(user, await store.getProgress(user.id), env.legalVersion),
+      );
     } catch (e) {
       next(e);
     }

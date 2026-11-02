@@ -503,3 +503,73 @@ describe("new-tab flag", () => {
     expect(h.cookieVal(s, "ht_gate_tab")).toBeNull();
   });
 });
+
+describe("legal v2 on the direct routes (GATE answers; HT's own flag is irrelevant)", () => {
+  const needed = {
+    error: {
+      code: "LEGAL_ACCEPTANCE_REQUIRED",
+      message: "Accept the terms to continue.",
+      fields: { acceptedLegal: "Accept the terms to continue." },
+    },
+  };
+
+  test("login: acceptedLegal is forwarded only when true; the 403 reaches the browser whole", async () => {
+    const h = await harness();
+    h.fake.state.direct.login = () => ({ status: 403, json: needed });
+    const first = await h.post("/auth/gate/direct/login", LOGIN);
+    expect(first.status).toBe(403);
+    expect(await first.json()).toEqual(needed);
+    expect(h.fake.state.directRequests[0].body).not.toHaveProperty(
+      "acceptedLegal",
+    );
+    h.fake.state.direct.login = h.accept();
+    const again = await h.post("/auth/gate/direct/login", {
+      ...LOGIN,
+      acceptedLegal: true,
+    });
+    expect(again.status).toBe(200);
+    expect(h.fake.state.directRequests[1].body.acceptedLegal).toBe(true);
+    const bad = await h.post("/auth/gate/direct/login", {
+      ...LOGIN,
+      acceptedLegal: "yes",
+    });
+    expect(bad.status).toBe(400);
+  });
+
+  test("verify 403 and reset 204 pass through unchanged", async () => {
+    const h = await harness();
+    h.fake.state.direct.verify = () => ({ status: 403, json: needed });
+    h.fake.state.direct.reset = () => ({ status: 204 });
+    const body = { pending: "p1", code: "123456" };
+    const v = await h.post("/auth/gate/direct/verify", body);
+    expect(v.status).toBe(403);
+    expect((await v.json()).error.code).toBe("LEGAL_ACCEPTANCE_REQUIRED");
+    const r = await h.post("/auth/gate/direct/reset", {
+      ...body,
+      newPassword: "Aa1!aaaa",
+    });
+    expect(r.status).toBe(204);
+  });
+
+  test("signup: parentOr18Confirmed is forwarded and ageConfirmed13 is optional", async () => {
+    const h = await harness();
+    h.fake.state.direct.signup = () => ({
+      status: 201,
+      json: { pending: "p-new" },
+    });
+    const su = await h.post("/auth/gate/direct/signup", {
+      firstName: "A",
+      lastName: "B",
+      loginName: "ab",
+      email: "ab@kmlhs.org",
+      password: "Aa1!aaaa",
+      parentOr18Confirmed: true,
+      acceptedLegal: true,
+    });
+    expect(su.status).toBe(201);
+    const sent = h.fake.state.directRequests[0].body;
+    expect(sent.parentOr18Confirmed).toBe(true);
+    expect(sent.acceptedLegal).toBe(true);
+    expect(sent).not.toHaveProperty("ageConfirmed13");
+  });
+});

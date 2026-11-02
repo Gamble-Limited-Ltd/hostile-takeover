@@ -64,6 +64,8 @@ export interface ApiEnv {
   newsNoticeId: string;
   /** Whether username/password sign-in and sign-up are still allowed. */
   legacyLogin: boolean;
+  /** Legal v2 dark launch: the terms/privacy effective date (YYYY-MM-DD); "" = off, today's behaviour. */
+  legalVersion: string;
 }
 
 /** The repo root, wherever the process was started from. */
@@ -87,6 +89,14 @@ function int(value: string | undefined, fallback: number): number {
     throw new Error(`Expected a positive integer, got "${value}"`);
   }
   return n;
+}
+
+function legalVersion(value: string | undefined): string {
+  const v = str(value, "").trim();
+  if (v !== "" && !/^\d{4}-\d{2}-\d{2}$/.test(v)) {
+    throw new Error(`LEGAL_VERSION must be YYYY-MM-DD, got "${v}"`);
+  }
+  return v;
 }
 
 export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
@@ -143,6 +153,7 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     newsNotice: str(source.HT_NEWS_NOTICE, "").trim(),
     newsNoticeId: str(source.HT_NEWS_NOTICE_ID, "").trim(),
     legacyLogin: str(source.LEGACY_LOGIN, "on").toLowerCase() !== "off",
+    legalVersion: legalVersion(source.LEGAL_VERSION),
   };
 }
 
