@@ -2,19 +2,19 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Hostile Takeover (this fork) — read first
+## Hostile Takeover (this fork): read first
 
 This repo is **Hostile Takeover**, a fork of OpenFront.io published by **Gamble Limited Ltd.** for a
 private friend group. Fork: `github.com/Gamble-Limited-Ltd/hostile-takeover` (public, `origin`);
 OpenFront is `upstream`. Where this section conflicts with the OpenFront sections below, this
-section wins.
+section wins. In `gh`, always pass `-R Gamble-Limited-Ltd/hostile-takeover` (the default is upstream).
 
 ### Hard rules
 
 - **Isolation:** never start/stop/rebuild or touch the GLL (`gamble-limited-v2-*`, DB 5433) or
   Meridian (compose `meridian`, DB 5435) containers or databases.
 - **License direction:** never copy code _out of_ this repo into GLL or Meridian (AGPL). Copying GLL
-  code _in_ is allowed but avoided — match GLL's look and rules, write the code fresh.
+  code _in_ is allowed but avoided: match GLL's look and rules, write the code fresh.
 - **Licensing:** all code (including our API) is AGPL v3; `resources/` is CC BY-SA; leave
   `LICENSE`, `LICENSING.md` and `proprietary/` untouched. Keep a `NOTICE` saying what's OpenFront's,
   what's ours and which licenses apply.
@@ -30,7 +30,7 @@ section wins.
 
 | Area           | Decision                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | -------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Domains        | Game `hostile-takeover.taps-holdings.org`, API `hostile-takeover-api.taps-holdings.org` (one level each, so the free Cloudflare cert covers them). Both go through cloudflared. From 2026-10-26 the game and API hosts rotate daily as `hostile-takeover-N` / `hostile-takeover-api-N` (see `plans/daily-rotation.md`)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                           |
+| Domains        | Game `hostile-takeover.taps-holdings.org`, API `hostile-takeover-api.taps-holdings.org` (one level each, so the free Cloudflare cert covers them). Both go through cloudflared. From 2026-10-26 the game and API hosts rotate daily as `hostile-takeover-N` / `hostile-takeover-api-N` (see `plans/daily-rotation.md`). The rotation (`~/gll-planning/rotation/rotate.sh`) runs `./ht-deploy.sh <.last-deploy-hash>`, so commits on main do not affect it, but it does use this working tree's `ht-deploy.sh` and `docker-compose.prod.yml`, and it restarts the stack daily at 07:00 Chicago                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
 | API URL        | Comes from its own `API_URL` env var, never derived as `api.<DOMAIN>`. JWT `iss` must equal `API_URL` exactly. `aud` comes from `DOMAIN`                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
 | API            | Our own workspace package in this repo, AGPL. Uses schemas from `@openfront/shared`. Update `tests/LayerBoundaries.test.ts` to allow it                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                          |
 | Accounts       | Username + password (argon2id). Sign-up asks for first name, last name, email, username, password and a required "I'm 13 or older" checkbox                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                      |
@@ -75,36 +75,12 @@ they were always part of the game.
    screenshot of the new or changed screen next to the nearest existing screen, and compare them.
    Any visible difference beyond the content has to be justified or fixed.
 
-### Work plan (in order)
-
-1. Make the API URL configurable (`src/client/ApiBase.ts`, `src/server/ServerEnv.ts` `jwtIssuer()`)
-2. Stub API: JWKS (Ed25519), refresh, `/auth/revoke`, `/users/@me`, `POST/GET /game/:id`,
-   join_verify, `cosmetics.json`, `cluster.json`
-3. Sign-up/login with username + password, ranks, admin reset
-4. Remove, in this order: Turnstile → login providers → Stripe/store → ads/telemetry
-5. Rebrand (index.html, `en.json`, logo, hardcoded `openfront.io`/`openfront.dev` hosts, nginx, deploy scripts)
-6. Deploy: Compose, nginx, tunnel, Postgres 5436
-7. Fix tests as you go (`npm test`, `npm run typecheck`, `npm run lint`)
-
-Facts:
-
-- Raw persistent-ID auth only works with `GAME_ENV=dev` (`jwt.ts`). Production needs real EdDSA
-  JWTs with `jti`, `sub` (UUID as base64url), `iat`, `iss`, `aud`, `exp`, and optional `role` and `provider`.
-- `/users/@me` is parsed strictly. If any field fails to parse, the player shows as signed out.
-
-### Dev setup on the shared VM
+### Run / dev on the shared VM
 
 - **Node 24.21 + npm 12, for this repo only.** `.nvmrc` pins it. The VM's nvm default stays on
   Node 22 for GLL and Meridian. Run `export PATH=~/.nvm/versions/node/v24.21.0/bin:$PATH` in a
   shell before any npm command (`nvm use` complains about the `prefix` in `~/.npmrc`; leave that
   file alone). Never `npm install -g` into `~/.npm-global`, because the other projects share it.
-- **Ports.** Upstream's dev ports (3000, 3001, 9000) are taken on this VM. The gitignored `.env`
-  sets `MASTER_PORT=3400` (workers 3401+) and `VITE_PORT=5178`; `example.env` documents them. The
-  dev API will use 8787 (the client's built-in dev default), and the dev Postgres 5436. Open the
-  game at `http://localhost:5178`.
-- **`.env` leaks into Vitest's `process.env`.** Only put values in `.env` that differ from the
-  code defaults (`API_URL`, `DOMAIN` and `GAME_ORIGIN` already default to the local dev values), or
-  upstream tests that assume the defaults will break.
 - **Dev API:** run `npm run api:db:up` once, then `npm run api:migrate`, `api:keygen` and `api:seed`. After that,
   `npm run dev:all` runs the game plus the API. Seeded users are `thestrongest` (root) and `tester1`. `POST /dev/login`
   `{username}` signs in without a password, on localhost only (the API binds `127.0.0.1` by default, and
@@ -120,14 +96,41 @@ http://localhost:8787/auth/gate/callback --post-logout http://localhost:5178/`),
   `API_HOST=0.0.0.0`, `API_URL=http://<lan-ip>:8787` and `EXTRA_GAME_ORIGINS=http://<lan-ip>:5178` set inline
   (never in `.env`); it detects the IP, or use `LAN_HOST=<ip>`. Open the printed URL on the other device. Sign in
   with a real account (register/login); `/dev/login` only works from the VM itself. localhost still works on the VM.
-- **Baseline** (2026-10-10): typecheck is clean, and 7980/7982 tests pass. The failures are
-  `InventoryModal` tests timing out at random under VM load; they belong to the store UI we're
-  removing.
+
+### Ports and prod
+
+- **Dev:** upstream's dev ports (3000, 3001, 9000) are taken on this VM. The gitignored `.env`
+  sets `MASTER_PORT=3400` (workers 3401+) and `VITE_PORT=5178`; `example.env` documents them. Dev API 8787
+  (the client's built-in dev default), dev Postgres 5436. Open the game at `http://localhost:5178`.
+- **Prod:** game `127.0.0.1:8280`, API `127.0.0.1:8287` (compose `hostile_takeover`, containers `ht-*`), behind
+  cloudflared at the rotating `hostile-takeover-N` / `hostile-takeover-api-N` hosts.
+
+### Test / build
+
 - **CI (GitHub Actions):** `.github/workflows/ht-ci.yml` (ours) runs typecheck, lint, the Oxfmt format check and the
   full test suite (4 shards plus `tests/server` alone) on every pushed branch. Upstream's workflows stay
   in the tree but are disabled on the fork with `gh workflow disable`. Slices land as `slice/<n>` branches:
   run targeted tests locally (`npx vitest <file> --run`), push, and merge to `main` once CI is green.
-  Never run the full suite on the VM while the dev stack or headless Chromium is up.
+- **Never run the full suite on the VM** (Boss, 2026-10-18): full checks go to GitHub CI or the build PC. Remote
+  builder (global rules apply): `buildpc-run --node-from .nvmrc --npm-version 12 --fallback none -- npm run typecheck`;
+  tests `-- npm test` (`.remotebuilder` and `--setup`: see the remotebuilder README).
+- Facts: raw persistent-ID auth only works with `GAME_ENV=dev` (`jwt.ts`). Production needs real EdDSA
+  JWTs with `jti`, `sub` (UUID as base64url), `iat`, `iss`, `aud`, `exp`, and optional `role` and `provider`.
+  `/users/@me` is parsed strictly: if any field fails to parse, the player shows as signed out.
+
+### Deploy / release
+
+- Follow `~/.claude/docs/release-procedure.md`. **Boss runs every deploy and rollback**; Claude pastes the exact
+  command and the rollback command. Prod is the commit in `.last-deploy-hash`.
+- `ht-deploy.sh` and `docker-compose.prod.yml` are used from this working tree by the daily rotation: keep them
+  compatible with what is live, never half-edited.
+
+### Known gotchas
+
+- **`.env` leaks into Vitest's `process.env`.** Only put values in `.env` that differ from the
+  code defaults (`API_URL`, `DOMAIN` and `GAME_ORIGIN` already default to the local dev values), or
+  upstream tests that assume the defaults will break.
+- `InventoryModal` tests time out at random under VM load (store UI we removed; baseline 2026-10-10).
 
 ### Syncing with upstream OpenFront
 
@@ -282,48 +285,15 @@ Only `tests/client/**` runs under jsdom; everything else runs in the `node` envi
 - **Server:** Node.js, Express, ws (WebSocket)
 
 <!-- remotebuilder -->
-## Remote builder
-Slow checks (typecheck, tests, builds) can run on Boss's PC instead of this VM: `buildpc-run --node-from .nvmrc --fallback none -- npm run typecheck`; tests: `-- npm test`. HT needs npm 12, so add `--npm-version 12` (see the remotebuilder README for `.remotebuilder` and `--setup`). `--fallback none` exits 75 if the PC is off or busy (then run locally or push for CI). Dev and test only: never real credentials, player data or prod. Details in the global `~/.claude/CLAUDE.md` and `~/gll-remotebuilder/README.md`.
+
+Remote builder: see "Test / build" in the fork section and the global `~/.claude/CLAUDE.md`.
+
 <!-- /remotebuilder -->
 
 <!-- code-review-graph MCP tools -->
-## MCP Tools: code-review-graph
 
-**IMPORTANT: This project has a knowledge graph. ALWAYS use the
-code-review-graph MCP tools BEFORE using Grep/Glob/Read to explore
-the codebase.** The graph is faster, cheaper (fewer tokens), and gives
-you structural context (callers, dependents, test coverage) that file
-scanning cannot.
+Code-review-graph: use its MCP tools before Grep/Read (global rule); the graph auto-updates on file changes.
 
-### When to use graph tools FIRST
+<!-- /code-review-graph MCP tools -->
 
-- **Exploring code**: `semantic_search_nodes_tool` or `query_graph_tool` instead of Grep
-- **Understanding impact**: `get_impact_radius_tool` instead of manually tracing imports
-- **Code review**: `detect_changes_tool` + `get_review_context_tool` instead of reading entire files
-- **Finding relationships**: `query_graph_tool` with callers_of/callees_of/imports_of/tests_for
-- **Architecture questions**: `get_architecture_overview_tool` + `list_communities_tool`
-
-Fall back to Grep/Glob/Read **only** when the graph doesn't cover what you need.
-
-### Key Tools
-
-| Tool | Use when |
-| ------ | ---------- |
-| `detect_changes_tool` | Reviewing code changes - gives risk-scored analysis |
-| `get_review_context_tool` | Need source snippets for review - token-efficient |
-| `get_impact_radius_tool` | Understanding blast radius of a change |
-| `get_affected_flows_tool` | Finding which execution paths are impacted |
-| `query_graph_tool` | Tracing callers, callees, imports, tests, dependencies |
-| `semantic_search_nodes_tool` | Finding functions/classes by name or keyword |
-| `get_architecture_overview_tool` | Understanding high-level codebase structure |
-| `refactor_tool` | Planning renames, finding dead code |
-
-### Workflow
-
-1. The graph auto-updates on file changes (via hooks).
-2. Use `detect_changes_tool` for code review.
-3. Use `get_affected_flows_tool` to understand impact.
-4. Use `query_graph_tool` pattern="tests_for" to check coverage.
-
-## Shipping updates
-Boss ships prod updates with the `up` CLI. For each update write a spec in `~/updates/` (format: `~/up/README.md`, project key `ht`), with a rollback step. Agent deploys approved in Paperclip carry the release record and use no spec. Details in `~/.claude/CLAUDE.md`.
+Last verified: 2026-11-02
