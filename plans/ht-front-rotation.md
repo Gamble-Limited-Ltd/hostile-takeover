@@ -25,3 +25,6 @@ merged into the live tree together with the rotation repo change (`rotate.sh` ex
 `ht-15` (game) and `ht-api-15` (API). Mismatch in either direction makes rotate.sh's host check fail.
 Boss steps for the first run: GATE client callback and post-logout URIs for `ht-15` / `ht-api-15`
 (rotation already handles this daily), and Cloudflare routes for the new prefixes.
+
+## Cutover prefix override (hardening, 2026-11-03)
+`.env.prod` may hold `HT_GAME_PREFIX` and `HT_API_PREFIX` (default `ht` / `ht-api`, a-z 0-9 and - only). Before the bridge rotation Boss sets them to `hostile-takeover` / `hostile-takeover-api`, so the new `ht-deploy.sh` still derives the live names (`hostile-takeover-14`) and any rollback or manual deploy before the bridge run is safe. The bridge rotation deletes both keys while moving to `ht-15`; a rolled-back run restores the old `.env.prod` and keeps the old names. After the bridge the keys are gone and unused.

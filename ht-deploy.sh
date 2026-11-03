@@ -43,6 +43,14 @@ case "$HT_DOMAIN_NUMBER" in
 *) HT_DOMAIN_SUFFIX="-$HT_DOMAIN_NUMBER" ;;
 esac
 export HT_DOMAIN_SUFFIX
+# Optional prefix overrides, only for the one-time cutover from hostile-takeover-N (see plans/ht-front-rotation.md): the
+# rotation clears them. Empty = ht / ht-api. A rollback restores the old .env.prod, so old hosts keep their old names.
+HT_GAME_PREFIX="$(sed -n 's/^HT_GAME_PREFIX=//p' .env.prod | tail -n 1)"
+HT_API_PREFIX="$(sed -n 's/^HT_API_PREFIX=//p' .env.prod | tail -n 1)"
+for p in "$HT_GAME_PREFIX" "$HT_API_PREFIX"; do
+    case "$p" in *[!a-z0-9-]*) fail "HT_GAME_PREFIX/HT_API_PREFIX in .env.prod may only hold a-z, 0-9 and - (got '$p')" ;; esac
+done
+export HT_GAME_PREFIX="${HT_GAME_PREFIX:-ht}" HT_API_PREFIX="${HT_API_PREFIX:-ht-api}"
 
 wait_healthy() {
     local deadline=$((SECONDS + WAIT_SECONDS)) c status all
