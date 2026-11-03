@@ -29,10 +29,10 @@ describe("getApiBase", () => {
   });
 
   it("uses the injected apiUrl", () => {
-    bootstrap({ apiUrl: "https://hostile-takeover-api.taps-holdings.org" });
-    expect(getApiBase()).toBe("https://hostile-takeover-api.taps-holdings.org");
+    bootstrap({ apiUrl: "https://ht-api.taps-holdings.org" });
+    expect(getApiBase()).toBe("https://ht-api.taps-holdings.org");
     expect(ClientEnv.jwtIssuer()).toBe(
-      "https://hostile-takeover-api.taps-holdings.org",
+      "https://ht-api.taps-holdings.org",
     );
   });
 

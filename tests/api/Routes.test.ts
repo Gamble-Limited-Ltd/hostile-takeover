@@ -138,7 +138,7 @@ describe("server callers parse the real responses", () => {
     const keys = await keysFromPem(generatePrivateKeyPem());
     const withNotice = readEnv({
       API_KEY: KEY,
-      HT_NEWS_NOTICE: "Tomorrow's URL is hostile-takeover-5",
+      HT_NEWS_NOTICE: "Tomorrow's URL is ht-5",
     });
     const server = createApp(
       { query: async () => ({}) },
@@ -151,8 +151,8 @@ describe("server callers parse the real responses", () => {
       const items = z.array(NewsItemSchema).parse(await res.json());
       expect(items.slice(1)).toEqual(newsFile);
       expect(items[0]).toMatchObject({
-        title: "Tomorrow's URL is hostile-takeover-5",
-        description: "Tomorrow's URL is hostile-takeover-5",
+        title: "Tomorrow's URL is ht-5",
+        description: "Tomorrow's URL is ht-5",
         url: null,
         type: "warning",
       });

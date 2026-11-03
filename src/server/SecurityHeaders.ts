@@ -14,7 +14,7 @@ const CF_BEACON_SCRIPT = "https://static.cloudflareinsights.com";
 const CF_BEACON_REPORT = "https://cloudflareinsights.com";
 
 export interface CspOptions {
-  /** The account API's origin (scheme + host), e.g. https://hostile-takeover-api... */
+  /** The account API's origin (scheme + host), e.g. https://ht-api... */
   apiOrigin: string;
   /** The game's own host[:port], where the page, /w<N>/ sockets and /api live. */
   gameHost: string;

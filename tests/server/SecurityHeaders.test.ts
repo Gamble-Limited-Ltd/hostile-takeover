@@ -4,7 +4,7 @@ import { describe, expect, test } from "vitest";
 import { buildCsp, inlineScriptHashes } from "../../src/server/SecurityHeaders";
 
 const opts = {
-  apiOrigin: "https://hostile-takeover-api.taps-holdings.org",
+  apiOrigin: "https://ht-api.taps-holdings.org",
   gameHost: "hostile-takeover.taps-holdings.org",
 };
 
@@ -30,7 +30,7 @@ describe("buildCsp", () => {
       "'self'",
       "https://hostile-takeover.taps-holdings.org",
       "wss://hostile-takeover.taps-holdings.org",
-      "https://hostile-takeover-api.taps-holdings.org",
+      "https://ht-api.taps-holdings.org",
       "https://static.cloudflareinsights.com",
       "https://cloudflareinsights.com",
     ]);
