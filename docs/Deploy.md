@@ -4,7 +4,7 @@ Three containers in the compose project `hostile_takeover` (`docker-compose.prod
 (upstream's Dockerfile: nginx + supervisord + the Node server, serving its own static files),
 `ht-api` (`Dockerfile.api`, `packages/api`) and `ht-db` (Postgres 17, volume `ht_db_data`, no host
 port). Host ports, loopback only: game `127.0.0.1:8280`, API `127.0.0.1:8287`. The tunnel (Slice 5.2)
-points `hostile-takeover-N.taps-holdings.org` at 8280 and `hostile-takeover-api-N.taps-holdings.org` at 8287 (N rotates daily; the routes are swapped by `~/gll-planning/rotation/rotate.sh`).
+points `ht-N.taps-holdings.org` at 8280 and `ht-api-N.taps-holdings.org` at 8287 (N rotates daily; the routes are swapped by `~/gll-planning/rotation/rotate.sh`).
 
 Day-to-day operations (deploy, rollback, admins, backups, logs): [HT-RUNBOOK.md](HT-RUNBOOK.md).
 
@@ -25,8 +25,8 @@ Every compose command needs `-p hostile_takeover -f docker-compose.prod.yml`. Ne
 - `HT_SKIP_BUILD=1 ./ht-deploy.sh` (or `HT_SKIP_BUILD=1 ./ht-name N`) reuses the images already built
   for the current HEAD: no pull, no build, then `up -d`, wait healthy, write `.last-deploy-hash`.
   Use it for a host-only change (daily rotation); it fails if HEAD was never built here.
-- Rotating hosts: `HT_DOMAIN_NUMBER=N` in `.env.prod` moves both the game (`hostile-takeover-N`) and
-  the API (`hostile-takeover-api-N`) under `.taps-holdings.org`; both are read at runtime, so a restart
+- Rotating hosts: `HT_DOMAIN_NUMBER=N` in `.env.prod` moves both the game (`ht-N`) and
+  the API (`ht-api-N`) under `.taps-holdings.org`; both are read at runtime, so a restart
   is enough. The tunnel/nginx routes and GATE's callback and post-logout URIs must follow.
 - `HT_NEWS_NOTICE=<text>` in `.env.prod` (read by `ht-deploy.sh`) puts one extra warning item first in
   the news box (e.g. "Tomorrow's URL is ..."); `HT_NEWS_NOTICE_ID` optionally pins its id. Empty = none.
