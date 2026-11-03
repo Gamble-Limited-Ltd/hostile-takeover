@@ -34,8 +34,8 @@ export MERIDIAN_URL
 # HT_NEWS_NOTICE is optional runtime text for the news box (e.g. "Tomorrow's URL is ...").
 HT_NEWS_NOTICE="$(sed -n 's/^HT_NEWS_NOTICE=//p' .env.prod | tail -n 1)"
 export HT_NEWS_NOTICE
-# HT_DOMAIN_NUMBER=N moves the game to hostile-takeover-N and the API to hostile-takeover-api-N (.taps-holdings.org).
-# Empty/unset = hostile-takeover.taps-holdings.org. docker-compose.prod.yml reads HT_DOMAIN_SUFFIX.
+# HT_DOMAIN_NUMBER=N moves the game to ht-N and the API to ht-api-N (.taps-holdings.org).
+# Empty/unset = ht.taps-holdings.org (API ht-api). docker-compose.prod.yml reads HT_DOMAIN_SUFFIX.
 HT_DOMAIN_NUMBER="$(sed -n 's/^HT_DOMAIN_NUMBER=//p' .env.prod | tail -n 1)"
 case "$HT_DOMAIN_NUMBER" in
 '') HT_DOMAIN_SUFFIX= ;;

@@ -1,11 +1,11 @@
 #!/usr/bin/env bash
-# Move the game to hostile-takeover-N.taps-holdings.org and redeploy.
+# Move the game to ht-N.taps-holdings.org and redeploy.
 #
-#   ./ht-name 2        game host hostile-takeover-2.taps-holdings.org
-#   ./ht-name none     back to hostile-takeover.taps-holdings.org
+#   ./ht-name 2        game host ht-2.taps-holdings.org
+#   ./ht-name none     back to ht.taps-holdings.org
 #
 # Writes HT_DOMAIN_NUMBER into .env.prod, then runs ./ht-deploy.sh (rebuild + up; HT_SKIP_BUILD=1 reuses
-# HEAD's images, no rebuild). The API host follows the number (hostile-takeover-api-N). Works with uncommitted changes. Pulls nothing by default (HT_SKIP_PULL=1); run with HT_SKIP_PULL=0 to git pull first.
+# HEAD's images, no rebuild). The API host follows the number (ht-api-N). Works with uncommitted changes. Pulls nothing by default (HT_SKIP_PULL=1); run with HT_SKIP_PULL=0 to git pull first.
 # Still needs the tunnel route and GATE's post-logout URI for the new host (see example.env.prod).
 set -Eeuo pipefail
 cd "$(dirname "$0")"
@@ -19,7 +19,7 @@ case "$n" in *[!0-9]*) echo "ht-name: '$n' is not a whole number" >&2; exit 1 ;;
 sed -i '/^HT_DOMAIN_NUMBER=/d' .env.prod
 echo "HT_DOMAIN_NUMBER=$n" >> .env.prod
 chmod 600 .env.prod
-echo "ht-name: game host is now hostile-takeover${n:+-$n}.taps-holdings.org"
+echo "ht-name: game host is now ht${n:+-$n}.taps-holdings.org"
 
 # Uncommitted files (docs, notes) must never block a host change: the host is runtime config, so a dirty
 # tree is fine here. Pull only when asked.
