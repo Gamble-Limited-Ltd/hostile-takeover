@@ -20,15 +20,15 @@ unranked game awards nothing. Switching `Features.friends` or `Features.achievem
 
 ## Open decisions (Boss, before the brief is approved)
 
-| #   | Question                                                    | Recommendation                                                                                          |
-| --- | ----------------------------------------------------------- | ------------------------------------------------------------------------------------------------------- |
-| D1  | Who pulls: does HT ask GATE on demand, or does GATE push?   | HT pulls on demand, short cache (30 s). No webhooks                                                      |
-| D2  | Do friends need a GLL ID link in HT?                        | Yes. Unlinked accounts see "Link your GLL ID to add friends"                                             |
-| D3  | Online/in-lobby presence and "join friend's lobby"?         | Not in this update                                                                                      |
-| D4  | Which achievements count?                                   | OpenFront's map-clear ones plus ~8 of our own simple feats (list in A1). Boss edits the list            |
-| D5  | Do singleplayer games award achievements?                   | Multiplayer only at first (see Risks: singleplayer records are client-authored)                         |
-| D6  | Friend cap and block list?                                  | Cap 100 friends, block list in GATE v1                                                                  |
-| D7  | Privacy: can anyone send a request, or only by exact name?  | By exact GLL ID username only, rate limited; blocked users cannot request                               |
+| #   | Question                                                   | Recommendation                                                                               |
+| --- | ---------------------------------------------------------- | -------------------------------------------------------------------------------------------- |
+| D1  | Who pulls: does HT ask GATE on demand, or does GATE push?  | HT pulls on demand, short cache (30 s). No webhooks                                          |
+| D2  | Do friends need a GLL ID link in HT?                       | Yes. Unlinked accounts see "Link your GLL ID to add friends"                                 |
+| D3  | Online/in-lobby presence and "join friend's lobby"?        | Not in this update                                                                           |
+| D4  | Which achievements count?                                  | OpenFront's map-clear ones plus ~8 of our own simple feats (list in A1). Boss edits the list |
+| D5  | Do singleplayer games award achievements?                  | Multiplayer only at first (see Risks: singleplayer records are client-authored)              |
+| D6  | Friend cap and block list?                                 | Cap 100 friends, block list in GATE v1                                                       |
+| D7  | Privacy: can anyone send a request, or only by exact name? | By exact GLL ID username only, rate limited; blocked users cannot request                    |
 
 ## Slice F1 - GATE friend graph (repo: `~/gll-id`, needs Boss's OK to write there)
 
@@ -90,26 +90,26 @@ unranked game awards nothing. Switching `Features.friends` or `Features.achievem
 
 ### Fixes in v0.35.4 to v0.35.6 worth taking (sync candidate)
 
-| Version | Item | Why it matters to us |
-| ------- | ---- | -------------------- |
+| Version | Item                                                                                                                   | Why it matters to us                                                                                      |
+| ------- | ---------------------------------------------------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------- |
 | 0.35.4  | Public games since 0.35.3 were not awarding XP, stats or rewards: the game server gave up saving large games too early | **Check our server.** HT's XP pipeline uses the same save path. Verify large games reach `POST /game/:id` |
-| 0.35.3  | Troop duplication exploit when a cancelled attack ended on the same tick a new one started (engine) | Already in our merge. Confirm the test came with it |
-| 0.35.5  | "Server security improvements"; privacy policy now discloses hashed network identifiers | Read the diff before merging; our policy and chat/IP handling may need a matching line |
-| 0.35.5  | Public lobby map rotation tunable without a release | Check it does not fight our daily rotation |
-| 0.35.5  | Team spawns on several maps; leaderboard clan column off by default; Solo page fills small screens | Safe gameplay/UI; check strict-UI rules |
-| 0.35.6  | Fix clicking a lobby right after page load skipping the join screen; "Prepare for the Poki integration" | Take the fix; Poki code stays hidden (portal paths) |
-| 0.35.6  | Terms: unapproved extensions not allowed | Our ToS is our own wording; no copy |
+| 0.35.3  | Troop duplication exploit when a cancelled attack ended on the same tick a new one started (engine)                    | Already in our merge. Confirm the test came with it                                                       |
+| 0.35.5  | "Server security improvements"; privacy policy now discloses hashed network identifiers                                | Read the diff before merging; our policy and chat/IP handling may need a matching line                    |
+| 0.35.5  | Public lobby map rotation tunable without a release                                                                    | Check it does not fight our daily rotation                                                                |
+| 0.35.5  | Team spawns on several maps; leaderboard clan column off by default; Solo page fills small screens                     | Safe gameplay/UI; check strict-UI rules                                                                   |
+| 0.35.6  | Fix clicking a lobby right after page load skipping the join screen; "Prepare for the Poki integration"                | Take the fix; Poki code stays hidden (portal paths)                                                       |
+| 0.35.6  | Terms: unapproved extensions not allowed                                                                               | Our ToS is our own wording; no copy                                                                       |
 
 ### Open upstream bugs and proposals worth watching
 
-| Issue | Title | Relevance |
-| ----- | ----- | --------- |
-| #5978 | Arbitrary XP fabrication via client-authored singleplayer game records (open) | **Applies to us.** See Risks |
-| #6011 | XP from games with nations disabled (that had some by default) | Check our XP rules for the same hole |
-| #6174, #5018, #3211, #2921 | Nameplate hover area when zoomed out; train path preview; map spoiled in invite embed; PollingLoop stop | Minor client bugs, approved for PRs upstream |
-| #5989, #5963 | Connection error joining a game; reconnecting banner when the connection stalls | Could help our friends playing over Cloudflare tunnel |
-| #3144 | Public achievements support (API + UI) | Upstream's own achievements; closed API, not usable. Our A1 is independent |
-| #5752, #5969, #5603 | Nations "gratitude" system, better nation behaviour, MIRV hits the full team (proposed) | Gameplay changes coming in v36 or later; engine files, expect conflicts |
+| Issue                      | Title                                                                                                   | Relevance                                                                  |
+| -------------------------- | ------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| #5978                      | Arbitrary XP fabrication via client-authored singleplayer game records (open)                           | **Applies to us.** See Risks                                               |
+| #6011                      | XP from games with nations disabled (that had some by default)                                          | Check our XP rules for the same hole                                       |
+| #6174, #5018, #3211, #2921 | Nameplate hover area when zoomed out; train path preview; map spoiled in invite embed; PollingLoop stop | Minor client bugs, approved for PRs upstream                               |
+| #5989, #5963               | Connection error joining a game; reconnecting banner when the connection stalls                         | Could help our friends playing over Cloudflare tunnel                      |
+| #3144                      | Public achievements support (API + UI)                                                                  | Upstream's own achievements; closed API, not usable. Our A1 is independent |
+| #5752, #5969, #5603        | Nations "gratitude" system, better nation behaviour, MIRV hits the full team (proposed)                 | Gameplay changes coming in v36 or later; engine files, expect conflicts    |
 
 ### Upcoming (milestones)
 
