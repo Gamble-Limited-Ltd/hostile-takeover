@@ -1301,6 +1301,8 @@ export const FriendEntrySchema = z.object({
   // `username ?? publicId`; identify players by publicId only.
   username: z.string().nullable().optional(),
   createdAt: z.iso.datetime(),
+  // GLL ID friends: the game the friend is playing now (client id), if shown.
+  onlineApp: z.string().nullable().optional(),
 });
 export type FriendEntry = z.infer<typeof FriendEntrySchema>;
 

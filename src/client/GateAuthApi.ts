@@ -8,6 +8,8 @@ export interface AuthConfig {
   legacy: boolean;
   /** GLL ID's public address ("" when off); the direct form links its Terms and Privacy. */
   gateUrl: string;
+  /** GLL ID friends are on (HT_GATE_FRIENDS not off): the account modal shows the Friends tab. */
+  friends: boolean;
 }
 
 export interface GatePending {
@@ -31,6 +33,7 @@ export const DEFAULT_AUTH_CONFIG: AuthConfig = {
   gate: false,
   legacy: true,
   gateUrl: "",
+  friends: false,
 };
 
 export async function fetchAuthConfig(): Promise<AuthConfig> {
@@ -47,6 +50,7 @@ export async function fetchAuthConfig(): Promise<AuthConfig> {
       gate: body.gate,
       legacy: body.legacy,
       gateUrl: typeof body.gateUrl === "string" ? body.gateUrl : "",
+      friends: body.friends === true,
     };
   } catch {
     return DEFAULT_AUTH_CONFIG;

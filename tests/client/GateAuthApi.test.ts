@@ -24,16 +24,20 @@ afterEach(() => vi.unstubAllGlobals());
 
 describe("fetchAuthConfig", () => {
   it("returns the config", async () => {
-    vi.stubGlobal("fetch", reply(200, { gate: true, legacy: false }));
+    vi.stubGlobal(
+      "fetch",
+      reply(200, { gate: true, legacy: false, friends: true }),
+    );
     expect(await fetchAuthConfig()).toEqual({
       gate: true,
       legacy: false,
       gateUrl: "",
+      friends: true,
     });
   });
 
   it("falls back on http error, bad shape or network failure", async () => {
-    const fallback = { gate: false, legacy: true, gateUrl: "" };
+    const fallback = { gate: false, legacy: true, gateUrl: "", friends: false };
     vi.stubGlobal("fetch", reply(500, {}));
     expect(await fetchAuthConfig()).toEqual(fallback);
     vi.stubGlobal("fetch", reply(200, { gate: "yes" }));

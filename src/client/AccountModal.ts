@@ -50,6 +50,7 @@ import { steamGlyph, steamLinkButton } from "./components/ui/SteamLinkButton";
 import { desktopLinkGate, isDesktopShell } from "./DesktopShell";
 import { Features } from "./Features";
 import { gamePortal, type PortalUser } from "./GamePortal";
+import { fetchAuthConfig } from "./GateAuthApi";
 import "./GameStatsModal";
 import { takeGateError, takeGateLink, takeGateLogoutUrl } from "./GateHash";
 import {
@@ -152,8 +153,12 @@ export class AccountModal extends BaseModal {
   private gamesScrollTop = 0;
   private restoreGamesScrollAfterOpen = false;
 
+  // GLL ID friends are on server-side (/auth/config); the Friends tab waits for it.
+  @state() private gateFriendsOn = false;
+
   constructor() {
     super();
+    void fetchAuthConfig().then((c) => (this.gateFriendsOn = c.friends));
 
     // The level shown counts XP from games still waiting to be scored, and
     // that changed (ProvisionalProgress.ts).
@@ -273,7 +278,7 @@ export class AccountModal extends BaseModal {
         label: translateText("account_modal.tab_progression"),
       });
     }
-    if (Features.friends) {
+    if (Features.friends && this.gateFriendsOn) {
       tabs.push({
         key: "friends",
         label: translateText("account_modal.tab_friends"),
@@ -326,7 +331,8 @@ export class AccountModal extends BaseModal {
         if (Features.xp) return this.renderProgressionTab();
         return this.renderAccountTab();
       case "friends":
-        if (Features.friends) return this.renderFriendsTab();
+        if (Features.friends && this.gateFriendsOn)
+          return this.renderFriendsTab();
         return this.renderAccountTab();
       default:
         return this.renderAccountTab();

@@ -12,7 +12,6 @@ import {
 import { showInGameConfirm } from "../InGameModal";
 import { parsePlayerProfilePath } from "../utilities/PlayerProfileUrl";
 import { showToast, translateText } from "../Utils";
-import { playerNameLink } from "./ui/PlayerNameLink";
 
 const PAGE_LIMIT = 20;
 
@@ -55,6 +54,7 @@ export class FriendsList extends LitElement {
   @property({ type: String }) myPublicId = "";
 
   @state() private loading = true;
+  @state() private unavailable = false;
   @state() private actionPending = false;
   @state() private friends: FriendEntry[] = [];
   @state() private friendsTotal = 0;
@@ -75,6 +75,7 @@ export class FriendsList extends LitElement {
         fetchFriendRequests(),
         fetchFriends(1, PAGE_LIMIT),
       ]);
+      this.unavailable = !requests && !firstPage;
       if (requests) {
         this.incoming = requests.incoming;
         this.outgoing = requests.outgoing;
@@ -218,8 +219,9 @@ export class FriendsList extends LitElement {
 
   private async handleRemove(publicId: string): Promise<void> {
     if (this.actionPending) return;
+    const name = this.friends.find((f) => f.publicId === publicId)?.username;
     const confirmed = await showInGameConfirm(
-      translateText("friends.confirm_remove", { publicId }),
+      translateText("friends.confirm_remove", { publicId: name ?? publicId }),
     );
     if (!confirmed) return;
     this.actionPending = true;
@@ -246,9 +248,25 @@ export class FriendsList extends LitElement {
         return "friends.error_conflict";
       case "bad_request":
         return "friends.error_bad_request";
+      case "link_required":
+        return "friends.error_link_required";
+      case "unavailable":
+        return "friends.unavailable";
       default:
         return "common.error_generic";
     }
+  }
+
+  // GLL ID friends have no HT profile, so the name is plain text.
+  private nameOf(e: FriendEntry): TemplateResult {
+    return html`<div class="font-bold text-blue-300 truncate">
+        ${e.username ?? e.publicId}
+      </div>
+      ${e.onlineApp
+        ? html`<div class="text-green-400 text-[10px]">
+            ${translateText("friends.online_in", { game: e.onlineApp })}
+          </div>`
+        : ""}`;
   }
 
   private formatDate(iso: string): string {
@@ -264,6 +282,12 @@ export class FriendsList extends LitElement {
           ></div>
         </div>
       `;
+    }
+
+    if (this.unavailable) {
+      return html`<p class="text-white/60 text-sm p-6">
+        ${translateText("friends.unavailable")}
+      </p>`;
     }
 
     return html`
@@ -371,7 +395,7 @@ export class FriendsList extends LitElement {
         class="flex items-center gap-3 bg-white/5 rounded-lg border border-white/10 p-3"
       >
         <div class="flex-1 min-w-0">
-          ${playerNameLink(this, entry.username, entry.publicId)}
+          ${this.nameOf(entry)}
           <div class="text-white/30 text-[10px] mt-0.5">
             ${this.formatDate(entry.createdAt)}
           </div>
@@ -440,7 +464,7 @@ export class FriendsList extends LitElement {
                 class="flex items-center gap-3 bg-white/5 rounded-lg border border-white/10 p-3"
               >
                 <div class="flex-1 min-w-0">
-                  ${playerNameLink(this, f.username, f.publicId)}
+                  ${this.nameOf(f)}
                   <div class="text-white/30 text-[10px] mt-0.5">
                     ${translateText("friends.friends_since", {
                       date: this.formatDate(f.createdAt),
