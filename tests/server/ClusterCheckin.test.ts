@@ -16,6 +16,18 @@ function fetchReturning(body: unknown, status = 200) {
   ) as unknown as typeof fetch;
 }
 
+describe("checkinBody players", () => {
+  afterEach(() => vi.unstubAllEnvs());
+  test("carries the player list only when given", () => {
+    vi.stubEnv("GAME_ENV", "prod");
+    vi.stubEnv("SUBDOMAIN", "blue");
+    vi.stubEnv("DOMAIN", "openfront.io");
+    expect(checkinBody(1, ["p1"])?.players).toEqual(["p1"]);
+    expect(checkinBody(1, [])?.players).toEqual([]);
+    expect(checkinBody(1)).not.toHaveProperty("players");
+  });
+});
+
 describe("checkinBody", () => {
   beforeEach(() => {
     vi.stubEnv("GAME_ENV", "prod");

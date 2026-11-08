@@ -62,6 +62,9 @@ export interface CheckinBody {
   // MACHINE is unset or malformed — the registry's schema predates the field
   // and an absent key is exactly what it expects.
   machine?: string;
+  // HT account ids (JWT subjects) of signed-in players connected to a game or
+  // lobby on this server right now; the API reports them to GLL ID.
+  players?: string[];
 }
 
 const CheckinReplySchema = z.object({ state: ServerStateSchema });
@@ -87,7 +90,10 @@ export function registeredSite(): string | undefined {
  * no SUBDOMAIN, so no public host), where there is nothing to register.
  * Every deployed host has one and registers under its own site.
  */
-export function checkinBody(liveGames: number): CheckinBody | null {
+export function checkinBody(
+  liveGames: number,
+  players?: string[],
+): CheckinBody | null {
   const host = ServerEnv.publicHost();
   if (host === undefined) return null;
   const machine = ServerEnv.machine();
@@ -102,6 +108,7 @@ export function checkinBody(liveGames: number): CheckinBody | null {
     // either way, but an explicit undefined would make every equality
     // assertion here and every future reader wonder which it is.
     ...(machine !== undefined ? { machine } : {}),
+    ...(players !== undefined ? { players } : {}),
   };
 }
 

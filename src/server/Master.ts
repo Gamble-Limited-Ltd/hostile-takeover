@@ -306,7 +306,10 @@ export async function startMaster() {
     );
     let lastRefusal: string | null = null;
     startPolling(async () => {
-      const body = checkinBody(lobbyService.liveGames());
+      const body = checkinBody(
+        lobbyService.liveGames(),
+        lobbyService.onlinePlayers(),
+      );
       if (body === null) return;
       const result = await sendCheckin(body);
       if (isRefusal(result)) {
