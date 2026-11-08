@@ -13,7 +13,7 @@ What changed (only when LEGAL_VERSION is set on ht-api):
   - /auth/config carries legalVersion only while on.
 Gates:
   Typecheck on the build PC after rebase onto main 6e633c8bf [x]
-  Targeted tests (7 files, 211 tests) [x]; full suite: CI on push [ ]
+  Targeted tests (7 files, 211 tests) [x]; full suite: HT CI green on 93c8492 [x]
   Redirect sign-in with the switch on: unrehearsed (manual steps in the handoff) [ ]
 Kill switch: unset LEGAL_VERSION in .env.prod and restart ht-api.
 Go-live: same YYYY-MM-DD on GATE, HT, others; must differ from GATE TOS_VERSION / PRIVACY_VERSION.
