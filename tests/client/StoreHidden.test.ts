@@ -40,6 +40,7 @@ describe("Features", () => {
       expect(value).toBe(
         [
           "usernameChange",
+          "friends",
           "xp",
           "profile",
           "leaderboard",

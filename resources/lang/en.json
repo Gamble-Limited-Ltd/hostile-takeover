@@ -1041,8 +1041,8 @@
     "request_sent": "Friend request sent",
     "request_withdrawn": "Friend request withdrawn",
     "send_request": "Send Request",
-    "unavailable": "Friends is not available right now",
     "team_info": "Your friends list comes from GLL ID and is shared across Gamble Limited games.",
+    "unavailable": "Friends is not available right now",
     "withdraw": "Withdraw",
     "your_friends": "Your Friends"
   },

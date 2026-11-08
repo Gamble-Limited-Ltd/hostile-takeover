@@ -32,7 +32,6 @@ const SWITCHES = [
   "gameHistory",
   "ranked",
   "clans",
-  "friends",
   "stream",
   "steam",
   "discord",
@@ -56,6 +55,8 @@ describe("Slice 3.5 switches", () => {
     // On since U2.4.
     expect(Features.xp).toBe(true);
     expect(Features.profile).toBe(true);
+    // On with GLL ID friends; the tab also waits for /auth/config.
+    expect(Features.friends).toBe(true);
     expect(Features.leaderboard).toBe(true);
   });
 });
