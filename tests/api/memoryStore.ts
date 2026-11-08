@@ -279,6 +279,10 @@ export function memoryStore(
     },
     findUserByGateSub: async (sub) =>
       users.find((u) => u.gate_sub === sub) ?? null,
+    gateSubsForUserIds: async (ids) =>
+      users
+        .filter((u) => ids.includes(u.id) && u.gate_sub && !u.disabled_at)
+        .map((u) => u.gate_sub as string),
     createGateFlow: async (f) => {
       flows.push({ ...f, usedAt: null });
     },

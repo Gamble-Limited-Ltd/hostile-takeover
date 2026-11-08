@@ -81,5 +81,6 @@ code change that ships with it follows the normal lanes.
 | 2026-10-23 | Shared counter; banner via the existing notice slot; static status page; Limitless excluded |
 
 ## Front rename (2026-11-03): ht-N and ht-api-N
+
 Only HT's prefixes change: game `hostile-takeover-N` -> `ht-N`, API `hostile-takeover-api-N` -> `ht-api-N`.
 The shared counter and the other projects are unchanged. See `plans/ht-front-rotation.md`.

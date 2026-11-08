@@ -44,6 +44,7 @@ export class MasterLobbyService {
   private readonly workerLobbies = new Map<number, InternalGameInfo[]>();
   // Worker id => games it last reported running (lobbies included).
   private readonly workerLiveGames = new Map<number, number>();
+  private readonly workerPlayers = new Map<number, string[]>();
   private readonly readyWorkers = new Set<number>();
   // gameID => consecutive broadcast cycles a hosted lobby has lost the
   // per-creator dedup or overflowed the cluster-wide cap. Losing once can be
@@ -111,6 +112,7 @@ export class MasterLobbyService {
         case "lobbyList":
           this.workerLobbies.set(workerId, this.validLobbies(msg.lobbies));
           this.workerLiveGames.set(workerId, msg.liveGames ?? 0);
+          this.workerPlayers.set(workerId, msg.players ?? []);
           // The client coalesces: at most one report a second, plus a
           // heartbeat. Every change is offered so a numClients-only change
           // still reaches the site roster within a second.
@@ -142,6 +144,7 @@ export class MasterLobbyService {
     this.workers.delete(workerId);
     this.workerLobbies.delete(workerId);
     this.workerLiveGames.delete(workerId);
+    this.workerPlayers.delete(workerId);
     this.readyWorkers.delete(workerId);
   }
 
@@ -151,6 +154,12 @@ export class MasterLobbyService {
     let total = 0;
     for (const n of this.workerLiveGames.values()) total += n;
     return total;
+  }
+
+  // Signed-in players connected on this server, over the workers' last
+  // reports. Sent to the API at check-in for GLL ID presence.
+  onlinePlayers(): string[] {
+    return [...new Set([...this.workerPlayers.values()].flat())];
   }
 
   isHealthy(): boolean {

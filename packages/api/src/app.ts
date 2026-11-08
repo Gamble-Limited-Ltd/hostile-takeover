@@ -8,6 +8,7 @@ import type { ApiEnv } from "./env";
 import { mountFlagRoutes } from "./flagRoutes";
 import { mountGameRoutes } from "./gameRoutes";
 import { createGate, type GateClient } from "./gate";
+import type { PresenceTracker } from "./gatePresence";
 import { mountGateRoutes } from "./gateRoutes";
 import type { SigningKeys } from "./keys";
 import { mountLeaderboardRoutes } from "./leaderboardRoutes";
@@ -36,6 +37,8 @@ export interface AppContext {
   store: Store;
   /** In-memory rate limits; tests pass tight ones. */
   limits?: RateLimits;
+  /** Where the game servers' check-ins leave who is online (GATE presence). */
+  presence?: PresenceTracker;
 }
 
 /** A just-rotated refresh token still works this long (two tabs refreshing at once). */
@@ -421,7 +424,11 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   mountModerationRoutes(app, { env, store, authenticate, limits });
   mountFlagRoutes(app, { store, authenticate });
   mountLeaderboardRoutes(app, { store });
-  mountGameRoutes(app, env, { store, authenticate });
+  mountGameRoutes(app, env, {
+    store,
+    authenticate,
+    presence: ctx?.presence,
+  });
 
   app.use(
     (

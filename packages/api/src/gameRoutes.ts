@@ -6,6 +6,7 @@ import newsItems from "../../../resources/news.json";
 import { requireApiKey } from "./apiKey";
 import { censorPlayer } from "./censor";
 import { isLoopbackHost, type ApiEnv } from "./env";
+import type { PresenceTracker } from "./gatePresence";
 import { ingestGame } from "./progression";
 import type { Store } from "./store";
 import type { UserRow } from "./userMe";
@@ -26,6 +27,7 @@ export function mountGameRoutes(
   env: ApiEnv,
   d: {
     store: Store;
+    presence?: PresenceTracker;
     authenticate(
       req: express.Request,
     ): Promise<{ user: UserRow; role: unknown } | null>;
@@ -137,9 +139,22 @@ export function mountGameRoutes(
 
   // Server only: src/server/ClusterCheckin.ts sendCheckin(), which parses
   // `{ state }` (ServerStateSchema). We never drain or fence the one server.
-  app.post("/cluster/checkin", serverOnly, express.json(), (_req, res) => {
-    res.json({ state: "open" });
-  });
+  app.post(
+    "/cluster/checkin",
+    serverOnly,
+    express.json({ limit: "1mb" }),
+    (req, res) => {
+      // Optional `players`: the HT account ids (JWT subjects) connected right now.
+      const body = z
+        .object({
+          host: z.string(),
+          players: z.array(z.string().max(64)).max(20_000),
+        })
+        .safeParse(req.body);
+      if (body.success) d.presence?.record(body.data.host, body.data.players);
+      res.json({ state: "open" });
+    },
+  );
 
   // Game records are not kept (no replays), only a summary and the XP.
   // POST: server src/server/Archive.ts archive(), which only checks

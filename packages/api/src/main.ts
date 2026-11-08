@@ -1,6 +1,7 @@
 import { createApp } from "./app";
 import { createPool } from "./db";
 import { readEnv } from "./env";
+import { PresenceTracker, startPresence } from "./gatePresence";
 import { loadSigningKeys } from "./keys";
 import { migrate } from "./migrate";
 import { pgStore } from "./store";
@@ -20,7 +21,11 @@ const keys = await loadSigningKeys(env.jwtPrivateKeyFile).catch((err) => {
   process.exit(1);
 });
 
-const server = createApp(pool, { env, keys, store: pgStore(pool) }).listen(
+const store = pgStore(pool);
+const presence = new PresenceTracker();
+const stopPresence = startPresence(env, store, presence);
+
+const server = createApp(pool, { env, keys, store, presence }).listen(
   env.apiPort,
   env.apiHost,
   () => {
@@ -30,6 +35,7 @@ const server = createApp(pool, { env, keys, store: pgStore(pool) }).listen(
 
 for (const sig of ["SIGINT", "SIGTERM"] as const) {
   process.on(sig, () => {
+    stopPresence();
     server.close();
     void pool.end().finally(() => process.exit(0));
   });

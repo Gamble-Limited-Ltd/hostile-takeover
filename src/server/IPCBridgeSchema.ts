@@ -54,6 +54,9 @@ const WorkerLobbyListSchema = z.object({
   // when a draining server is empty. Optional for a worker build that
   // predates it; absent counts as zero.
   liveGames: z.number().int().min(0).optional(),
+  // persistentIDs of signed-in (token) clients connected to this worker's
+  // games; the master unions them for the check-in. Optional like liveGames.
+  players: z.array(z.string()).optional(),
 });
 
 const WorkerReadySchema = z.object({

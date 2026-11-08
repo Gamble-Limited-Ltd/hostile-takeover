@@ -138,6 +138,17 @@ export class GameManager {
     return this.games.size;
   }
 
+  /** persistentIDs of connected clients that joined with a token (not guests). */
+  signedInPlayers(): string[] {
+    const ids = new Set<string>();
+    for (const game of this.games.values()) {
+      for (const c of game.activeClients()) {
+        if (c.claims !== null) ids.add(c.persistentID);
+      }
+    }
+    return [...ids];
+  }
+
   activeClients(): number {
     let totalClients = 0;
     this.games.forEach((game: GameServer) => {

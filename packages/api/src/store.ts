@@ -66,6 +66,8 @@ export interface Store {
 
   // Sign in with GLL ID (GATE)
   findUserByGateSub(sub: string): Promise<UserRow | null>;
+  /** GATE subjects of the given HT user ids that are linked to GATE (others skipped). */
+  gateSubsForUserIds(ids: string[]): Promise<string[]>;
   /** Stores a started sign-in (sha256 of state, sha256 of the browser binding value). */
   createGateFlow(f: {
     stateHash: string;
@@ -723,6 +725,13 @@ export function pgStore(db: SqlClient): Store {
         [sub],
       );
       return (r.rows[0] as UserRow | undefined) ?? null;
+    },
+    async gateSubsForUserIds(ids) {
+      const r = await db.query(
+        "SELECT gate_sub FROM users WHERE id = ANY($1::uuid[]) AND gate_sub IS NOT NULL AND disabled_at IS NULL",
+        [ids],
+      );
+      return r.rows.map((x) => x.gate_sub as string);
     },
     async createGateFlow(f) {
       await db.query(

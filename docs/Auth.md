@@ -101,6 +101,16 @@ exactly. Production: `GATE_DIRECT_URL=http://gate:3301` over the external Docker
 declared in `docker-compose.prod.yml`; `ht-deploy.sh` creates it with `--internal` if missing). Dev: `http://127.0.0.1:3302`.
 Takes precedence over `GATE_BACKCHANNEL_URL`.
 
+### Presence (play time in HALL)
+
+Every 60 s the API tells GATE which linked players are online (`POST {GATE_DIRECT_URL or issuer}/oidc/presence`, HTTP
+Basic with `GATE_CLIENT_ID`/`GATE_CLIENT_SECRET`, `{"subs":[...]}`, batches of 500, no call when nobody is online). Online
+comes from the game server: each worker lists the persistentIDs of token-joined clients in its games and lobbies
+(guests excluded), the master unions them into the 10 s `/cluster/checkin` body (`players`), and the API keeps the latest
+list per server (stale after 35 s). The API maps HT user ids to `users.gate_sub` and skips unlinked players. Errors,
+404, 401 and 429 are logged once per change and never thrown. `HT_GATE_PRESENCE=off` turns it off (default on); it is
+also off when GATE is not configured. Code: `packages/api/src/gatePresence.ts`.
+
 ## Bans
 
 Root can ban an account for N minutes or for good (`users.banned_until`, `'infinity'` = permanent) and mute it in
