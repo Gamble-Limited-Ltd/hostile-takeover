@@ -2,6 +2,8 @@
 
 🆕 **What's new**
 
+- Friends now come from GLL ID, one friends list for all Gamble Limited games. Open your account and use the Friends tab: add people by their GLL ID login name, accept requests, and see which game a friend is playing.
+  → The old Hostile Takeover friends list is retired and was not copied over, so you start with an empty list. Ask your friends again with their GLL ID login names.
 - In-game text chat. Press Enter to type, Enter to send.
   → Two channels: Global (everyone in the game) and Alliance (your allies, or your team in team games). Tab switches channel, or start a message with /g or /a.
   → Bad words are masked, messages are up to 200 characters, and there is a short limit on how fast you can send.

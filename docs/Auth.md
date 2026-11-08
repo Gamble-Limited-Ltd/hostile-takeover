@@ -111,6 +111,24 @@ list per server (stale after 35 s). The API maps HT user ids to `users.gate_sub`
 404, 401 and 429 are logged once per change and never thrown. `HT_GATE_PRESENCE=off` turns it off (default on); it is
 also off when GATE is not configured. Code: `packages/api/src/gatePresence.ts`.
 
+### Friends (GLL ID)
+
+One friends list per GLL ID, owned by GATE (contract: GATE's `docs/FRIENDS.md`). HT starts fresh: the old HT friendships
+were not imported and the old list is retired. The API mounts `/friends*` for the signed-in HT user and calls GATE's server
+door (`{GATE_DIRECT_URL or issuer}/oidc/me/friends...?sub=<users.gate_sub>`, HTTP Basic with `GATE_CLIENT_ID`/
+`GATE_CLIENT_SECRET`, helpers shared with presence). Code: `packages/api/src/gateFriends.ts`.
+
+- Routes keep the old client shapes: `GET /friends?page&limit`, `GET /friends/requests`, `POST /friends/requests/:loginName`
+  (send by GLL ID login name), `POST /friends/requests/:id/accept`, `DELETE /friends/requests/:id` (decline or cancel),
+  `DELETE /friends/:accountId`. In the answers `publicId` is GATE's `accountId` (friends) or the request id (requests) and
+  `username` is the login name; `onlineApp` is the game the friend is playing. No email or real name is ever returned.
+- Errors: GATE 404 / 409 / 400 pass through as `not_found` / `conflict` / `bad_request`; 429 keeps `Retry-After`; an account
+  without a GLL ID link gets 403 `gate_required`; GATE 401/403 (HT not switched on yet), 5xx, timeouts and bad answers give
+  one 503 `friends_unavailable`, shown as "Friends is not available right now".
+- `HT_GATE_FRIENDS=off` unmounts the routes and hides the tab (`/auth/config` `friends`); default on when GATE is configured.
+  GATE answers 403 until the owner runs `./manage.sh clients friends hostile-takeover on` there.
+- No blocks, settings or reports UI in HT: those live in HALL.
+
 ## Bans
 
 Root can ban an account for N minutes or for good (`users.banned_until`, `'infinity'` = permanent) and mute it in
