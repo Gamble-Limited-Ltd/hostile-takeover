@@ -282,6 +282,7 @@ describe("GateDirectModal", () => {
     vi.mocked(fetchAuthConfig).mockResolvedValueOnce({
       gate: true,
       legacy: false,
+      friends: false,
       gateUrl: "https://id.test",
       legalVersion: "2026-11-15",
     });
@@ -398,6 +399,7 @@ describe("GateDirectModal", () => {
       vi.mocked(fetchAuthConfig).mockResolvedValueOnce({
         gate: true,
         legacy: false,
+        friends: false,
         gateUrl: "https://id.test",
         legalVersion: "2026-11-15",
       });
