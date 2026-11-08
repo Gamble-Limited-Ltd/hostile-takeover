@@ -27,7 +27,17 @@ export type FriendActionError =
   | "not_found"
   | "conflict"
   | "bad_request"
+  | "link_required"
+  | "unavailable"
   | "request_failed";
+
+// The API answers 403 when the account has no GLL ID link and 503 when GATE
+// friends is off or unreachable; both get their own calm message.
+function failure(res: Response): FriendActionError {
+  if (res.status === 403) return "link_required";
+  if (res.status === 503) return "unavailable";
+  return "request_failed";
+}
 
 export async function fetchFriendRequests(): Promise<
   FriendRequestsResponse | false
@@ -85,7 +95,7 @@ export async function sendFriendRequest(
     if (res.status === 404) return "not_found";
     if (res.status === 409) return "conflict";
     if (res.status === 400) return "bad_request";
-    if (!res.ok) return "request_failed";
+    if (!res.ok) return failure(res);
     const parsed = SendFriendRequestResponseSchema.safeParse(await res.json());
     if (!parsed.success) return "request_failed";
     return parsed.data;
@@ -104,7 +114,7 @@ export async function acceptFriendRequest(
       { method: "POST" },
     );
     if (res.status === 404) return "not_found";
-    if (!res.ok) return "request_failed";
+    if (!res.ok) return failure(res);
     return true;
   } catch (err) {
     console.warn("acceptFriendRequest: request failed", err);
@@ -121,7 +131,7 @@ export async function deleteFriendRequest(
       { method: "DELETE" },
     );
     if (res.status === 404) return "not_found";
-    if (!res.ok) return "request_failed";
+    if (!res.ok) return failure(res);
     return true;
   } catch (err) {
     console.warn("deleteFriendRequest: request failed", err);
@@ -137,7 +147,7 @@ export async function removeFriend(
       method: "DELETE",
     });
     if (res.status === 404) return "not_found";
-    if (!res.ok) return "request_failed";
+    if (!res.ok) return failure(res);
     return true;
   } catch (err) {
     console.warn("removeFriend: request failed", err);

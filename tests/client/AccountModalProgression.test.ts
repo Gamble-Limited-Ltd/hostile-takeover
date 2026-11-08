@@ -102,6 +102,9 @@ vi.mock(
   () => ({}),
 );
 vi.mock("../../src/client/components/FriendsList", () => ({}));
+vi.mock("../../src/client/GateAuthApi", () => ({
+  fetchAuthConfig: async () => ({ friends: true }),
+}));
 
 vi.stubGlobal("localStorage", {
   getItem: vi.fn(() => null),

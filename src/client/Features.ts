@@ -92,8 +92,10 @@ export const Features = Object.freeze({
   clans: false,
   /**
    * Friends: the account modal's FRIENDS tab (`FriendsList`, `/friends*`).
+   * On: the list lives in GLL ID (GATE); the API proxies it (`gateFriends.ts`)
+   * and `/auth/config` `friends` (HT_GATE_FRIENDS) decides if the tab shows.
    */
-  friends: false,
+  friends: true,
   /**
    * Public profiles and stats (on since U2.4): the account modal's STATS tab
    * and "Share Profile" button (and the `/player/<id>` fetch behind them), the

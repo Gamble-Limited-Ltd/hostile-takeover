@@ -34,6 +34,20 @@ export class PresenceTracker {
   }
 }
 
+/** Where HT's server reaches GATE (private network path when set). */
+export function gateBaseUrl(env: ApiEnv): string {
+  return env.gateDirectUrl || env.gateIssuer;
+}
+
+/** HTTP Basic header for GATE's server-to-server endpoints. */
+export function gateBasicAuth(env: ApiEnv): string {
+  // RFC 6749 2.3.1: id and secret are form-urlencoded before Basic.
+  const enc = (s: string) => encodeURIComponent(s).replace(/%20/g, "+");
+  return `Basic ${Buffer.from(
+    `${enc(env.gateClientId)}:${enc(env.gateClientSecret)}`,
+  ).toString("base64")}`;
+}
+
 export function presenceEnabled(env: ApiEnv, source = process.env): boolean {
   return (
     source.HT_GATE_PRESENCE !== "off" &&
@@ -64,12 +78,8 @@ export async function reportPresence(
     }
     if (uuids.length === 0) return;
     const subs = [...new Set(await store.gateSubsForUserIds(uuids))];
-    const base = env.gateDirectUrl || env.gateIssuer;
-    // RFC 6749 2.3.1: id and secret are form-urlencoded before Basic.
-    const enc = (s: string) => encodeURIComponent(s).replace(/%20/g, "+");
-    const auth = `Basic ${Buffer.from(
-      `${enc(env.gateClientId)}:${enc(env.gateClientSecret)}`,
-    ).toString("base64")}`;
+    const base = gateBaseUrl(env);
+    const auth = gateBasicAuth(env);
     for (let i = 0; i < subs.length; i += BATCH) {
       const res = await fetchFn(`${base}/oidc/presence`, {
         method: "POST",

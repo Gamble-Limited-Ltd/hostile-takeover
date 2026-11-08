@@ -38,7 +38,11 @@ async function mount(
   config: { gate: boolean; legacy: boolean },
   props: Partial<GateSignIn> = {},
 ) {
-  vi.mocked(fetchAuthConfig).mockResolvedValue({ ...config, gateUrl: "" });
+  vi.mocked(fetchAuthConfig).mockResolvedValue({
+    ...config,
+    gateUrl: "",
+    friends: false,
+  });
   el = document.createElement("gate-sign-in");
   Object.assign(el, props);
   document.body.appendChild(el);
