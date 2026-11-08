@@ -8,6 +8,7 @@ import type { ApiEnv } from "./env";
 import { mountFlagRoutes } from "./flagRoutes";
 import { mountGameRoutes } from "./gameRoutes";
 import { createGate, type GateClient } from "./gate";
+import { friendsEnabled, mountGateFriends } from "./gateFriends";
 import type { PresenceTracker } from "./gatePresence";
 import { mountGateRoutes } from "./gateRoutes";
 import type { SigningKeys } from "./keys";
@@ -424,6 +425,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   mountModerationRoutes(app, { env, store, authenticate, limits });
   mountFlagRoutes(app, { store, authenticate });
   mountLeaderboardRoutes(app, { store });
+  if (friendsEnabled(env)) mountGateFriends(app, { env, authenticate });
   mountGameRoutes(app, env, {
     store,
     authenticate,

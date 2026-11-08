@@ -19,7 +19,7 @@ const JoinVerifyBodySchema = z.object({
 /**
  * The routes the game server and client call that Hostile Takeover answers
  * with fixed or empty data (Stage 1.4). Each comment names the caller and the
- * schema it parses. Anything not mounted here (matchmaking, clans, friends,
+ * schema it parses. Anything not mounted here (matchmaking, clans,
  * XP, public profiles, lobby queue) falls through to the 404 below.
  */
 export function mountGameRoutes(
@@ -245,7 +245,7 @@ export function mountGameRoutes(
   });
 
   // Everything else is unimplemented in v1: ranked (/matchmaking/*), the lobby
-  // queue (/users/@me/lobby_queue), clans, friends, XP, prestige, /public/*.
+  // queue (/users/@me/lobby_queue), clans, XP, prestige, /public/*.
   app.use((_req, res) => {
     res.status(404).json({ error: "not_found" });
   });

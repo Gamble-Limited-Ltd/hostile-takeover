@@ -16,6 +16,7 @@ import {
   type GateClient,
   type GateIdentity,
 } from "./gate";
+import { friendsEnabled } from "./gateFriends";
 import { verifyPassword } from "./passwords";
 import { generatePublicId } from "./publicId";
 import { RateLimiter, type RateLimits } from "./rateLimit";
@@ -67,6 +68,8 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       legacy: env.legacyLogin,
       // GLL ID's public address, for the Terms and Privacy links in the direct form.
       gateUrl: gate.enabled ? env.gateIssuer : "",
+      // Friends tab (GATE friends, gateFriends.ts); HT_GATE_FRIENDS=off hides it.
+      friends: friendsEnabled(env),
     });
   });
 
