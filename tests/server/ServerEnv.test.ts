@@ -161,9 +161,7 @@ describe("ServerEnv.jwtIssuer", () => {
   test("API_URL overrides the derived issuer", () => {
     vi.stubEnv("DOMAIN", "hostile-takeover.taps-holdings.org");
     vi.stubEnv("API_URL", "https://ht-api.taps-holdings.org");
-    expect(ServerEnv.jwtIssuer()).toBe(
-      "https://ht-api.taps-holdings.org",
-    );
+    expect(ServerEnv.jwtIssuer()).toBe("https://ht-api.taps-holdings.org");
     expect(ServerEnv.jwtAudience()).toBe("hostile-takeover.taps-holdings.org");
   });
 
