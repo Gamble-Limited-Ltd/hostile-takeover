@@ -1,3 +1,4 @@
+import { ownHosts } from "@openfront/shared/Wayfinder";
 import { randomBytes } from "node:crypto";
 import type { ApiEnv } from "./env";
 import type { Store } from "./store";
@@ -7,7 +8,9 @@ export const RESET_TTL_MS = 24 * 60 * 60 * 1000;
 
 /** The link the sign-in UI reads: the game origin with `#reset=<token>`. */
 export function resetLink(env: Pick<ApiEnv, "gameOrigin">, token: string) {
-  return `${env.gameOrigin}/#reset=${token}`;
+  // shortcut: under Wayfinder the host dies at the next rotation plus grace, so hand the link over at once; route via HALL if that bites.
+  const host = ownHosts("ht")[0];
+  return `${host ? `https://${host}` : env.gameOrigin}/#reset=${token}`;
 }
 
 /**

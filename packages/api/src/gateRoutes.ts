@@ -273,6 +273,9 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
   app.post("/auth/launch", json, async (req, res, next) => {
     if (!wayfinderHosts() || !gate.enabled) return void res.sendStatus(404);
     res.setHeader("Cache-Control", "no-store");
+    if (!d.limits.launchIp.hit(ipOf(req))) {
+      return void res.status(429).json({ error: "rate_limited" });
+    }
     const ticket = str(req.body?.ticket);
     if (!ticket || ticket.length > 4000) {
       return void res.status(400).json({ error: "invalid" });

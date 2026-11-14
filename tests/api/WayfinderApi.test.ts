@@ -15,7 +15,11 @@ import {
   keysFromPem,
 } from "../../packages/api/src/keys";
 import { generatePublicId } from "../../packages/api/src/publicId";
-import { defaultRateLimits } from "../../packages/api/src/rateLimit";
+import {
+  defaultRateLimits,
+  RateLimiter,
+} from "../../packages/api/src/rateLimit";
+import { resetLink } from "../../packages/api/src/resets";
 import type { UserRow } from "../../packages/api/src/userMe";
 import { FAKE_CLIENT_ID, FAKE_CLIENT_SECRET, startFakeGate } from "./fakeGate";
 import { memoryStore } from "./memoryStore";
@@ -69,7 +73,7 @@ function row(name: string, extra: Partial<UserRow> = {}): UserRow {
   };
 }
 
-async function harness(users: UserRow[] = []) {
+async function harness(users: UserRow[] = [], limits = defaultRateLimits()) {
   const fake = await startFakeGate();
   cleanup.push(fake.close);
   const hall = await generateKeyPair("EdDSA", { extractable: true });
@@ -90,7 +94,7 @@ async function harness(users: UserRow[] = []) {
       env,
       keys: await keysFromPem(generatePrivateKeyPem()),
       store: mem.store,
-      limits: defaultRateLimits(),
+      limits,
       launchKeys: async () => hall.publicKey,
     },
   ).listen(0, "127.0.0.1");
@@ -303,5 +307,34 @@ describe("launch ticket", () => {
       body: "{}",
     });
     expect(r.status).toBe(400);
+  });
+  test("a flood from one address is cut off with 429", async () => {
+    const limits = defaultRateLimits();
+    limits.launchIp = new RateLimiter(2, 60_000);
+    const h = await harness([], limits);
+    const post = () =>
+      h.req("/auth/launch", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: "{}",
+      });
+    expect((await post()).status).toBe(400);
+    expect((await post()).status).toBe(400);
+    expect((await post()).status).toBe(429);
+  });
+});
+
+describe("password reset link", () => {
+  test("points at the current game host under Wayfinder", () => {
+    write("bbb", "ccc", ["old", "olda"]);
+    expect(resetLink({ gameOrigin: "https://ht-7.x" }, "tok")).toBe(
+      `https://bbb.${DOMAIN}/#reset=tok`,
+    );
+  });
+
+  test("uses GAME_ORIGIN in legacy mode", () => {
+    expect(resetLink({ gameOrigin: "https://ht-7.x" }, "tok")).toBe(
+      "https://ht-7.x/#reset=tok",
+    );
   });
 });
