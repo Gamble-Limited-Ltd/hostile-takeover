@@ -15,6 +15,7 @@ import {
   sendCheckin,
 } from "./ClusterCheckin";
 import { getDescriptor } from "./DesktopRelease";
+import { mountLaunch } from "./LaunchPage";
 import {
   coordinatorUrl,
   LobbyCoordinatorClient,
@@ -46,6 +47,9 @@ app.use(express.json());
 
 // Hostile Takeover: CSP (no framing, no third-party scripts), nosniff, Referrer-Policy.
 app.use(securityHeaders());
+
+// Wayfinder: HALL launch ticket landing page (404 unless a host table exists).
+mountLaunch(app);
 
 // Serve the shared app shell for the root document.
 app.use(async (req, res, next) => {
