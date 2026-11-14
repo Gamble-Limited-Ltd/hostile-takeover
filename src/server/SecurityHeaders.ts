@@ -1,4 +1,5 @@
 import { GameEnv } from "@openfront/shared/configuration/Env";
+import { ownHosts } from "@openfront/shared/Wayfinder";
 import { createHash } from "crypto";
 import type { RequestHandler, Response } from "express";
 import { ServerEnv } from "./ServerEnv";
@@ -18,6 +19,9 @@ export interface CspOptions {
   apiOrigin: string;
   /** The game's own host[:port], where the page, /w<N>/ sockets and /api live. */
   gameHost: string;
+  /** More game hosts and API origins (Wayfinder keeps the previous generation live). */
+  extraGameHosts?: readonly string[];
+  extraApiOrigins?: readonly string[];
   /** Allow plain http/ws to the game host (local dev only; production is TLS). */
   allowInsecure?: boolean;
   /** `sha256-...` sources for the page's inline <script> blocks. */
@@ -25,9 +29,10 @@ export interface CspOptions {
 }
 
 export function buildCsp(opts: CspOptions): string {
-  const own = [`https://${opts.gameHost}`, `wss://${opts.gameHost}`];
-  if (opts.allowInsecure) {
-    own.push(`http://${opts.gameHost}`, `ws://${opts.gameHost}`);
+  const own: string[] = [];
+  for (const host of [opts.gameHost, ...(opts.extraGameHosts ?? [])]) {
+    own.push(`https://${host}`, `wss://${host}`);
+    if (opts.allowInsecure) own.push(`http://${host}`, `ws://${host}`);
   }
   const hashes = (opts.inlineScriptHashes ?? []).map((h) => `'${h}'`);
   const directives: Record<string, string[]> = {
@@ -41,6 +46,7 @@ export function buildCsp(opts: CspOptions): string {
       "'self'",
       ...own,
       opts.apiOrigin,
+      ...(opts.extraApiOrigins ?? []),
       CF_BEACON_SCRIPT,
       CF_BEACON_REPORT,
     ],
@@ -71,11 +77,24 @@ export function inlineScriptHashes(html: string): string[] {
 }
 
 function cspOptions(): CspOptions {
-  const gameHost =
+  // Wayfinder: hosts come from the runtime file, read on every call (it is
+  // cached for 1 s inside ownHosts), so a rotation needs no restart.
+  const [gameHost, ...extraGameHosts] = ownHosts("ht");
+  if (gameHost !== undefined) {
+    const [api, ...extraApi] = ownHosts("htapi").map((h) => `https://${h}`);
+    return {
+      apiOrigin: api,
+      extraApiOrigins: extraApi,
+      gameHost,
+      extraGameHosts,
+      allowInsecure: ServerEnv.env() === GameEnv.Dev,
+    };
+  }
+  const legacyGameHost =
     ServerEnv.publicHost() ?? (ServerEnv.domain() || "localhost");
   return {
     apiOrigin: ServerEnv.jwtIssuer(),
-    gameHost,
+    gameHost: legacyGameHost,
     allowInsecure: ServerEnv.env() === GameEnv.Dev,
   };
 }
@@ -88,13 +107,18 @@ export const COMMON_SECURITY_HEADERS: Record<string, string> = {
 /** Express middleware: CSP, nosniff and Referrer-Policy on every response. */
 export function securityHeaders(): RequestHandler {
   // Built on first use so importing the module never reads the environment.
+  // Legacy hosts never change while running, so that CSP is cached; with
+  // Wayfinder it is rebuilt per request (cheap string work).
   let csp: string | undefined;
   return (_req, res, next) => {
-    csp ??= buildCsp(cspOptions());
+    const live = ownHosts("ht").length > 0;
+    const value = live
+      ? buildCsp(cspOptions())
+      : (csp ??= buildCsp(cspOptions()));
     for (const [name, value] of Object.entries(COMMON_SECURITY_HEADERS)) {
       res.setHeader(name, value);
     }
-    res.setHeader("Content-Security-Policy", csp);
+    res.setHeader("Content-Security-Policy", value);
     next();
   };
 }
