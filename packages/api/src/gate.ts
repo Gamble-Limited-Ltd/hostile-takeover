@@ -39,18 +39,24 @@ export interface GateClient {
     state: string;
     nonce: string;
     codeChallenge: string;
+    /** Wayfinder: the callback on the host this sign-in started on. */
+    redirectUri?: string;
   }): Promise<string>;
   exchange(p: {
     code: string;
     codeVerifier: string;
     nonce: string;
+    redirectUri?: string;
   }): Promise<GateIdentity>;
   /** Checks an id_token that GATE's direct endpoints returned (no code, no nonce). */
   verify(idToken: string): Promise<GateIdentity>;
   /** POST to GATE's /oidc/direct/<op> with the client's Basic credentials. */
   direct(op: string, body: Record<string, unknown>): Promise<DirectResult>;
   /** Where to send the browser to end the GATE session too. */
-  logoutUrl(idTokenHint?: string | null): Promise<string>;
+  logoutUrl(
+    idTokenHint?: string | null,
+    postLogoutUri?: string,
+  ): Promise<string>;
 }
 
 export interface DirectResult {
@@ -274,7 +280,7 @@ export function createGate(env: ApiEnv): GateClient {
       const u = new URL(d.authorizationEndpoint);
       u.searchParams.set("response_type", "code");
       u.searchParams.set("client_id", env.gateClientId);
-      u.searchParams.set("redirect_uri", env.gateRedirectUri);
+      u.searchParams.set("redirect_uri", p.redirectUri ?? env.gateRedirectUri);
       u.searchParams.set("scope", "openid profile email");
       u.searchParams.set("state", p.state);
       u.searchParams.set("nonce", p.nonce);
@@ -295,7 +301,7 @@ export function createGate(env: ApiEnv): GateClient {
         body: new URLSearchParams({
           grant_type: "authorization_code",
           code: p.code,
-          redirect_uri: env.gateRedirectUri,
+          redirect_uri: p.redirectUri ?? env.gateRedirectUri,
           code_verifier: p.codeVerifier,
         }),
       });
@@ -347,7 +353,7 @@ export function createGate(env: ApiEnv): GateClient {
       };
     },
 
-    async logoutUrl(idTokenHint) {
+    async logoutUrl(idTokenHint, postLogoutUri) {
       let endpoint = `${env.gateIssuer}/oidc/logout`;
       try {
         endpoint = (await discovery()).endSessionEndpoint ?? endpoint;
@@ -357,7 +363,10 @@ export function createGate(env: ApiEnv): GateClient {
       const u = new URL(endpoint);
       u.searchParams.set("client_id", env.gateClientId);
       if (idTokenHint) u.searchParams.set("id_token_hint", idTokenHint);
-      u.searchParams.set("post_logout_redirect_uri", env.gatePostLogoutUri);
+      u.searchParams.set(
+        "post_logout_redirect_uri",
+        postLogoutUri ?? env.gatePostLogoutUri,
+      );
       return u.toString();
     },
   };

@@ -1,3 +1,4 @@
+import { wayfinderHosts } from "@openfront/shared/Wayfinder";
 import { PartialAnalyticsRecordSchema } from "@openfront/shared/WireSchemas";
 import { createHash } from "crypto";
 import express from "express";
@@ -7,6 +8,7 @@ import { requireApiKey } from "./apiKey";
 import { censorPlayer } from "./censor";
 import { isLoopbackHost, type ApiEnv } from "./env";
 import type { PresenceTracker } from "./gatePresence";
+import { wayfinderOrigins } from "./hosts";
 import { ingestGame } from "./progression";
 import type { Store } from "./store";
 import type { UserRow } from "./userMe";
@@ -22,6 +24,9 @@ const JoinVerifyBodySchema = z.object({
  * schema it parses. Anything not mounted here (matchmaking, clans,
  * XP, public profiles, lobby queue) falls through to the 404 below.
  */
+/** The only news notice in Wayfinder mode (tomorrow's address is never announced). */
+const HALL_NOTICE = "Always play through HALL";
+
 export function mountGameRoutes(
   app: express.Express,
   env: ApiEnv,
@@ -80,15 +85,17 @@ export function mountGameRoutes(
   // means the homepage load is not a 404 in the network log (Slice 3.5b).
   app.get("/news.json", (_req, res) => {
     res.setHeader("Cache-Control", "public, max-age=60");
-    if (!env.newsNotice) return void res.json(newsItems);
+    // Wayfinder: the address changes all day, so never announce one.
+    const notice = wayfinderHosts() ? HALL_NOTICE : env.newsNotice;
+    if (!notice) return void res.json(newsItems);
     const id =
       env.newsNoticeId ||
-      createHash("sha256").update(env.newsNotice).digest("hex").slice(0, 8);
+      createHash("sha256").update(notice).digest("hex").slice(0, 8);
     res.json([
       {
         id: `url-notice-${id}`,
-        title: env.newsNotice,
-        description: env.newsNotice,
+        title: notice,
+        description: notice,
         url: null,
         type: "warning",
       },
@@ -119,8 +126,9 @@ export function mountGameRoutes(
   // omitted so no client is redirected to a /v/<commit>/ page. A loopback game
   // host (local dev) answers 404: the client then falls back to the page's own
   // origin, since it would otherwise build wss:// URLs to a server with no TLS.
-  app.get("/cluster.json", (_req, res) => {
-    if (isLoopbackHost(env.gameHost)) {
+  app.get("/cluster.json", (req, res) => {
+    const gameHost = wayfinderOrigins(req)?.gameHost ?? env.gameHost;
+    if (isLoopbackHost(gameHost)) {
       res.status(404).json({ error: "not_found" });
       return;
     }
@@ -128,7 +136,7 @@ export function mountGameRoutes(
     res.json({
       servers: {
         a: {
-          host: env.gameHost,
+          host: gameHost,
           numWorkers: 2,
           version: env.gameVersion,
           state: "open",
