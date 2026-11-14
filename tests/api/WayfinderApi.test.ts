@@ -2,7 +2,7 @@
 // HT API under Wayfinder: hosts come from the runtime host table per request;
 // with no table the env behaviour is unchanged. Also the HALL launch ticket.
 import fs from "fs";
-import { SignJWT, exportJWK, generateKeyPair } from "jose";
+import { SignJWT, generateKeyPair } from "jose";
 import type { AddressInfo } from "net";
 import { randomUUID } from "node:crypto";
 import os from "os";
@@ -39,7 +39,6 @@ const write = (ht: string, htapi: string, prev?: [string, string]) => {
   );
   fs.renameSync(table + ".tmp", table);
 };
-const bump = () => vi.setSystemTime(Date.now() + 1500);
 
 const cleanup: (() => void)[] = [];
 beforeEach(() => {

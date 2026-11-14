@@ -141,8 +141,10 @@ export function requestHost(
   headers: Record<string, string | string[] | undefined>,
   remoteAddress: string | undefined,
 ): string | undefined {
-  const first = (v: string | string[] | undefined) =>
-    (Array.isArray(v) ? v[0] : v)?.split(",")[0].trim() || undefined;
+  const first = (v: string | string[] | undefined) => {
+    const h = (Array.isArray(v) ? v[0] : v)?.split(",")[0].trim();
+    return h === "" ? undefined : h;
+  };
   if (remoteAddress && LOOPBACK.has(remoteAddress)) {
     const fwd = first(headers["x-forwarded-host"]);
     if (fwd) return fwd;
