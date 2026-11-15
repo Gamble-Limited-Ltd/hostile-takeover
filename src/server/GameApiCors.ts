@@ -1,3 +1,4 @@
+import { ownHosts } from "@openfront/shared/Wayfinder";
 import type { NextFunction, Request, Response } from "express";
 import { ServerEnv } from "./ServerEnv";
 
@@ -10,6 +11,8 @@ export const DESKTOP_APP_ORIGIN = "app://openfront";
 
 function isAllowedOrigin(origin: string): boolean {
   if (origin === DESKTOP_APP_ORIGIN) return true;
+  // Wayfinder: this game's current and previous hosts (empty in legacy mode).
+  if (ownHosts("ht").some((h) => origin === `https://${h}`)) return true;
   const siteHost = ServerEnv.siteHost();
   if (siteHost !== undefined && origin === `https://${siteHost}`) return true;
 

@@ -47,6 +47,8 @@ export interface RateLimits {
   usernameChange: RateLimiter;
   /** Root moderation calls, per actor. */
   admin: RateLimiter;
+  /** HALL launch tickets per IP: a flood backstop only (shared school IPs). */
+  launchIp: RateLimiter;
 }
 
 const MIN = 60_000;
@@ -59,5 +61,6 @@ export function defaultRateLimits(): RateLimits {
     resetIp: new RateLimiter(20, 15 * MIN),
     usernameChange: new RateLimiter(10, 15 * MIN),
     admin: new RateLimiter(120, MIN),
+    launchIp: new RateLimiter(600, MIN),
   };
 }

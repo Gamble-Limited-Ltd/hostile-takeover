@@ -1,5 +1,7 @@
 import { base64urlToUuid, uuidToBase64url } from "@openfront/shared/Base64";
+import { isOwnHost } from "@openfront/shared/Wayfinder";
 import express from "express";
+import type { JWTVerifyGetKey } from "jose";
 import { mountAccountRoutes } from "./accountRoutes";
 import { mountAdminXpRoutes } from "./adminXpRoutes";
 import { hasValidApiKey } from "./apiKey";
@@ -11,6 +13,7 @@ import { createGate, type GateClient } from "./gate";
 import { friendsEnabled, mountGateFriends } from "./gateFriends";
 import type { PresenceTracker } from "./gatePresence";
 import { mountGateRoutes } from "./gateRoutes";
+import { wayfinderOrigins } from "./hosts";
 import type { SigningKeys } from "./keys";
 import { mountLeaderboardRoutes } from "./leaderboardRoutes";
 import { mountModerationRoutes } from "./moderationRoutes";
@@ -40,6 +43,8 @@ export interface AppContext {
   limits?: RateLimits;
   /** Where the game servers' check-ins leave who is online (GATE presence). */
   presence?: PresenceTracker;
+  /** Key source for HALL launch tickets; tests pass a fixed key, production fetches HALL's JWKS. */
+  launchKeys?: JWTVerifyGetKey;
 }
 
 /** A just-rotated refresh token still works this long (two tabs refreshing at once). */
@@ -122,7 +127,13 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
   app.use((req, res, next) => {
     const origin = req.headers.origin;
     if (origin !== undefined) {
-      if (origin !== env.gameOrigin && !env.extraOrigins.includes(origin)) {
+      const own =
+        origin.startsWith("https://") && isOwnHost("ht", origin.slice(8));
+      if (
+        !own &&
+        origin !== env.gameOrigin &&
+        !env.extraOrigins.includes(origin)
+      ) {
         if (req.method !== "GET" && req.method !== "HEAD") {
           res.status(403).json({ error: "origin_not_allowed" });
           return;
@@ -334,7 +345,11 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
         if (!all && gate.enabled) {
           const user = await store.findUserById(session.user_id);
           if (user?.gate_sub) {
-            gateLogoutUrl = await gate.logoutUrl();
+            const o = wayfinderOrigins(req);
+            gateLogoutUrl = await gate.logoutUrl(
+              undefined,
+              o ? `${o.gameOrigin}/` : undefined,
+            );
           }
         }
       }
@@ -417,6 +432,7 @@ function mountAuth(app: express.Express, ctx: AppContext): void {
     ctx,
     gate,
     limits,
+    launchKeys: ctx.launchKeys,
     startSession,
     readCookie: (req, name) => readCookie(req.headers.cookie, name),
     cookieFlags: { secure, sameSite: cookieOpts.sameSite },

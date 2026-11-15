@@ -1,4 +1,5 @@
 import { buildAssetUrl } from "@openfront/shared/AssetPaths";
+import { pairFor, requestHost } from "@openfront/shared/Wayfinder";
 import ejs from "ejs";
 import type { Response } from "express";
 import fs from "fs/promises";
@@ -34,6 +35,12 @@ export interface RenderHtmlOptions {
    * the page can be produced without a valid cluster entry for this host.
    */
   perServer?: boolean;
+  /**
+   * Wayfinder: the host the page is served on. The page then names that host
+   * and the API of the same generation instead of the env values. Ignored in
+   * legacy mode (no host table).
+   */
+  host?: string;
 }
 
 export async function renderHtmlContent(
@@ -41,6 +48,9 @@ export async function renderHtmlContent(
   opts: RenderHtmlOptions = {},
 ): Promise<string> {
   const perServer = opts.perServer ?? true;
+  const pair = pairFor(opts.host);
+  const serverHost = pair?.ht ?? ServerEnv.publicHost();
+  const apiUrl = pair ? `https://${pair.htapi}` : ServerEnv.apiUrl();
   const htmlContent = await fs.readFile(htmlPath, "utf-8");
   const assetManifest = await getRuntimeAssetManifest();
   const cdnBase = ServerEnv.cdnBase();
@@ -54,7 +64,7 @@ export async function renderHtmlContent(
         // Replaces the old numWorkers scalar: the client derives its
         // own-server worker count from cluster[instanceLetter]; foreign game
         // ids route by the API's list.
-        cluster: JSON.stringify(ServerEnv.cluster()),
+        cluster: JSON.stringify(ServerEnv.cluster(pair?.ht)),
         instanceLetter: JSON.stringify(ServerEnv.instanceLetter()),
         instanceId: JSON.stringify(ServerEnv.instanceId()),
         // The GAME host: the name this deployment answers sockets and /api
@@ -63,9 +73,7 @@ export async function renderHtmlContent(
         // dev deployment with GAME_DOMAIN). Pinning the tab to it is what
         // keeps a game alive across a balancer flip.
         serverHost:
-          ServerEnv.publicHost() === undefined
-            ? undefined
-            : JSON.stringify(ServerEnv.publicHost()),
+          serverHost === undefined ? undefined : JSON.stringify(serverHost),
         // The load-balancer apex, when this deployment sits behind one. The
         // client uses it as the unknown-letter redirect target — the apex shell
         // always carries the freshest cluster map. Absent for standalone
@@ -103,10 +111,7 @@ export async function renderHtmlContent(
         ? undefined
         : JSON.stringify(ServerEnv.faroCollectorUrl()),
     // Same shape: optional explicit API origin, line dropped when unset.
-    apiUrl:
-      ServerEnv.apiUrl() === undefined
-        ? undefined
-        : JSON.stringify(ServerEnv.apiUrl()),
+    apiUrl: apiUrl === undefined ? undefined : JSON.stringify(apiUrl),
     manifestHref: buildAssetUrl("manifest.json", assetManifest, cdnBase),
     faviconHref: buildAssetUrl(
       "images/HostileTakeoverFavicon.svg",
@@ -136,14 +141,25 @@ export async function renderHtmlContent(
   });
 }
 
-export async function getAppShellContent(htmlPath: string): Promise<string> {
-  let cachedContent = appShellContentCache.get(htmlPath);
+export async function getAppShellContent(
+  htmlPath: string,
+  host?: string,
+): Promise<string> {
+  // Legacy mode renders once per path. With Wayfinder the page differs per
+  // host (only own hosts reach here, so the key set is tiny); stale hosts are
+  // dropped when the map grows past a few generations.
+  const wf = pairFor(host);
+  const key = wf ? `${htmlPath}|${wf.ht}` : htmlPath;
+  if (appShellContentCache.size > 8) appShellContentCache.clear();
+  let cachedContent = appShellContentCache.get(key);
   if (!cachedContent) {
-    cachedContent = renderHtmlContent(htmlPath).catch((error: unknown) => {
-      appShellContentCache.delete(htmlPath);
-      throw error;
-    });
-    appShellContentCache.set(htmlPath, cachedContent);
+    cachedContent = renderHtmlContent(htmlPath, { host }).catch(
+      (error: unknown) => {
+        appShellContentCache.delete(key);
+        throw error;
+      },
+    );
+    appShellContentCache.set(key, cachedContent);
   }
   return cachedContent;
 }
@@ -167,7 +183,8 @@ export async function renderAppShell(
   res: Response,
   htmlPath: string,
 ): Promise<void> {
-  const rendered = await getAppShellContent(htmlPath);
+  const host = requestHost(res.req.headers, res.req.socket.remoteAddress);
+  const rendered = await getAppShellContent(htmlPath, host);
   setAppShellCacheHeaders(res);
   applyAppShellCsp(res, rendered);
   res.send(rendered);

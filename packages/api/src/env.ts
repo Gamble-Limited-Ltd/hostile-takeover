@@ -59,6 +59,9 @@ export interface ApiEnv {
    */
   gateDirectUrl: string;
   /** Plain-text notice shown first in the news box (daily URL rotation); "" = none. */
+  /** HALL launch tickets: issuer claim and where HALL publishes its key. */
+  launchIssuer: string;
+  launchJwksUrl: string;
   newsNotice: string;
   /** Stable id for the notice, so a dismissed one stays dismissed; "" = hash of the text. */
   newsNoticeId: string;
@@ -108,6 +111,10 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
     /\/+$/,
     "",
   );
+  const launchIssuer = str(
+    source.LAUNCH_ISSUER,
+    "https://hall.taps-holdings.org",
+  ).replace(/\/+$/, "");
   return {
     apiPort: int(source.API_PORT, 8787),
     dbHost: str(source.HT_DB_HOST, "127.0.0.1"),
@@ -150,6 +157,11 @@ export function readEnv(source: NodeJS.ProcessEnv = process.env): ApiEnv {
       "",
     ),
     gateDirectUrl: str(source.GATE_DIRECT_URL, "").replace(/\/+$/, ""),
+    launchIssuer,
+    launchJwksUrl: str(
+      source.LAUNCH_JWKS_URL,
+      `${launchIssuer}/.well-known/launch-jwks.json`,
+    ),
     newsNotice: str(source.HT_NEWS_NOTICE, "").trim(),
     newsNoticeId: str(source.HT_NEWS_NOTICE_ID, "").trim(),
     legacyLogin: str(source.LEGACY_LOGIN, "on").toLowerCase() !== "off",

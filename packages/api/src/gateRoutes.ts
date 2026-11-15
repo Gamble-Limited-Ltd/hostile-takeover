@@ -2,7 +2,9 @@
 // and JWT afterwards (startSession), so the game and its WebSocket code never
 // see GATE.
 import { uuidToBase64url } from "@openfront/shared/Base64";
+import { wayfinderHosts } from "@openfront/shared/Wayfinder";
 import express from "express";
+import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
 import { bodyOf, ipOf, USERNAME_RE } from "./accountRoutes";
 import type { AppContext } from "./app";
 import { AccountBannedError } from "./bans";
@@ -17,6 +19,8 @@ import {
   type GateIdentity,
 } from "./gate";
 import { friendsEnabled } from "./gateFriends";
+import { wayfinderOrigins } from "./hosts";
+import { createLaunchVerifier, LaunchError } from "./launch";
 import { verifyPassword } from "./passwords";
 import { generatePublicId } from "./publicId";
 import { RateLimiter, type RateLimits } from "./rateLimit";
@@ -33,6 +37,8 @@ export interface GateDeps {
   ctx: AppContext;
   gate: GateClient;
   limits: RateLimits;
+  /** Key source for HALL launch tickets (tests); default is HALL's published JWKS. */
+  launchKeys?: JWTVerifyGetKey;
   startSession(
     res: express.Response,
     userId: string,
@@ -59,7 +65,14 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
   };
   const back = (res: express.Response, hash: string, tab = false) => {
     res.setHeader("Cache-Control", "no-store");
-    res.redirect(302, `${env.gameOrigin}/#${hash}${tab ? "&tab=1" : ""}`);
+    const origin = wayfinderOrigins(res.req)?.gameOrigin ?? env.gameOrigin;
+    res.redirect(302, `${origin}/#${hash}${tab ? "&tab=1" : ""}`);
+  };
+
+  /** Wayfinder: the callback on the host this request came in on; env otherwise. */
+  const callbackUri = (req: express.Request) => {
+    const o = wayfinderOrigins(req);
+    return o ? `${o.apiOrigin}/auth/gate/callback` : undefined;
   };
 
   app.get("/auth/config", (_req, res) => {
@@ -88,6 +101,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
           state,
           nonce,
           codeChallenge: pkceChallenge(verifier),
+          redirectUri: callbackUri(req),
         });
       } catch (e) {
         if (e instanceof GateError) return back(res, "gate_error=unavailable");
@@ -234,6 +248,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
           code,
           codeVerifier: flow.codeVerifier,
           nonce: flow.nonce,
+          redirectUri: callbackUri(req),
         });
       } catch (e) {
         if (e instanceof GateError) return fail(e.code);
@@ -248,6 +263,57 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
       back(res, outcome === "ok" ? "gate=ok" : "gate=link", tab);
     } catch (e) {
       if (e instanceof AccountBannedError) return fail("account_banned");
+      next(e);
+    }
+  });
+
+  // HALL launch ticket (Wayfinder only): the game page reads the ticket from
+  // the URL fragment and POSTs it here. Same outcomes as a GATE sign-in.
+  let verifyTicket: ReturnType<typeof createLaunchVerifier> | undefined;
+  app.post("/auth/launch", json, async (req, res, next) => {
+    if (!wayfinderHosts() || !gate.enabled) return void res.sendStatus(404);
+    res.setHeader("Cache-Control", "no-store");
+    if (!d.limits.launchIp.hit(ipOf(req))) {
+      return void res.status(429).json({ error: "rate_limited" });
+    }
+    const ticket = str(req.body?.ticket);
+    if (!ticket || ticket.length > 4000) {
+      return void res.status(400).json({ error: "invalid" });
+    }
+    try {
+      verifyTicket ??= createLaunchVerifier({
+        issuer: env.launchIssuer,
+        audience: env.gateClientId,
+        keys: d.launchKeys ?? createRemoteJWKSet(new URL(env.launchJwksUrl)),
+      });
+      const c = await verifyTicket(ticket);
+      const text = (v: unknown) =>
+        typeof v === "string" && v.trim() !== "" ? v.trim() : null;
+      const email = text(c.email);
+      const who: GateIdentity = {
+        sub: c.sub!,
+        email: email !== null && email.length <= 254 ? email : null,
+        emailApproved:
+          typeof c.email_approved === "boolean" ? c.email_approved : null,
+        loginName: (text(c.login_name) ?? c.sub!).slice(0, 100),
+        legalVersion: text(c.legal_version),
+        idToken: "",
+      };
+      const outcome = await signInWho(req, res, who);
+      if (outcome === "disabled") {
+        return void res.status(403).json({ error: "account_disabled" });
+      }
+      if (outcome === "not_approved") {
+        return void res.status(403).json({ error: "email_not_approved" });
+      }
+      res.json({ hash: outcome === "ok" ? "gate=ok" : "gate=link" });
+    } catch (e) {
+      if (e instanceof LaunchError) {
+        return void res.status(400).json({ error: e.code });
+      }
+      if (e instanceof AccountBannedError) {
+        return void res.status(403).json({ error: "account_banned" });
+      }
       next(e);
     }
   });

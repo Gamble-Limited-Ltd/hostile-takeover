@@ -130,6 +130,15 @@ http://localhost:8787/auth/gate/callback --post-logout http://localhost:5178/`),
 - `ht-deploy.sh` and `docker-compose.prod.yml` are used from this working tree by the daily rotation: keep them
   compatible with what is live, never half-edited.
 
+### Wayfinder (dual mode, branch `slice/wayfinder-w3b`, not deployed)
+
+Hosts come from `/run/wayfinder/hosts.json` (helper `packages/shared/src/Wayfinder.ts`, test override
+`WAYFINDER_HOSTS_FILE`). **File absent = today's env behaviour** (daily rotation keeps working). File present:
+CSP, game CORS, page `serverHost`/`apiUrl`, API CORS, GATE redirect URI, `cluster.json` host and the news notice
+("Always play through HALL") are per request; `POST /auth/launch` (API) and `GET /auth/launch` + `/auth/launch.js`
+(game) take HALL tickets and are 404 without the file. Env still needed at cutover: fixed `API_URL`/`DOMAIN`
+(token issuer and audience must stop changing), `LAUNCH_ISSUER`/`LAUNCH_JWKS_URL` if not the HALL defaults.
+
 ### Known gotchas
 
 - **`.env` leaks into Vitest's `process.env`.** Only put values in `.env` that differ from the

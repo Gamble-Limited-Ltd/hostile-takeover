@@ -6,6 +6,7 @@ import {
 } from "@openfront/shared/ClusterConfig";
 import { GameEnv, parseGameEnv } from "@openfront/shared/configuration/Env";
 import { generateGameID } from "@openfront/shared/SharedUtil";
+import { ownHosts } from "@openfront/shared/Wayfinder";
 import { JWK } from "jose";
 import { z } from "zod";
 
@@ -242,6 +243,9 @@ export class ServerEnv {
   // SUBDOMAIN and GAME_DOMAIN alone. The derivation below is the standalone
   // shape and stays for env files written by hand.
   static publicHost(): string | undefined {
+    // Wayfinder (host table file) wins over env; absent file = legacy env.
+    const wf = ownHosts("ht")[0];
+    if (wf) return wf;
     const explicit = process.env.GAME_HOST;
     if (explicit && explicit.length > 0) return explicit;
     const subdomain = ServerEnv.subdomain();
@@ -278,10 +282,10 @@ export class ServerEnv {
   // count. This used to be the whole fleet, read from CLUSTER_JSON; the
   // fleet is the API registry's list now and this is only the page's own
   // server for when that list is unavailable.
-  static cluster(): ClusterConfig {
+  static cluster(host?: string): ClusterConfig {
     return {
       [ServerEnv.instanceLetter()]: {
-        host: ServerEnv.publicHost() ?? ServerEnv.domain(),
+        host: host ?? ServerEnv.publicHost() ?? ServerEnv.domain(),
         numWorkers: ServerEnv.numWorkers(),
       },
     };
