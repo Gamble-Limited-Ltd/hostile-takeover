@@ -130,7 +130,7 @@ http://localhost:8787/auth/gate/callback --post-logout http://localhost:5178/`),
 - `ht-deploy.sh` and `docker-compose.prod.yml` are used from this working tree by the daily rotation: keep them
   compatible with what is live, never half-edited.
 
-### Wayfinder (dual mode, branch `slice/wayfinder-w3b`, not deployed)
+### Wayfinder (dual mode, merged to `main` 2026-11-14, not deployed; record `docs/releases/2026-11-14-wayfinder-w3b.md`)
 
 Hosts come from `/run/wayfinder/hosts.json` (helper `packages/shared/src/Wayfinder.ts`, test override
 `WAYFINDER_HOSTS_FILE`). **File absent = today's env behaviour** (daily rotation keeps working). File present:
@@ -138,6 +138,7 @@ CSP, game CORS, page `serverHost`/`apiUrl`, API CORS, GATE redirect URI, `cluste
 ("Always play through HALL") are per request; `POST /auth/launch` (API) and `GET /auth/launch` + `/auth/launch.js`
 (game) take HALL tickets and are 404 without the file. Env still needed at cutover: fixed `API_URL`/`DOMAIN`
 (token issuer and audience must stop changing), `LAUNCH_ISSUER`/`LAUNCH_JWKS_URL` if not the HALL defaults.
+`/auth/launch` (API) has a per-IP flood limit (`launchIp`, 600/min); admin reset links use the current game host.
 
 ### Known gotchas
 
@@ -310,4 +311,4 @@ Code-review-graph: use its MCP tools before Grep/Read (global rule); the graph a
 
 <!-- /code-review-graph MCP tools -->
 
-Last verified: 2026-11-02
+Last verified: 2026-11-14
