@@ -127,6 +127,7 @@ http://localhost:8787/auth/gate/callback --post-logout http://localhost:5178/`),
 
 - Follow `~/.claude/docs/release-procedure.md`. **Boss runs every deploy and rollback**; Claude pastes the exact
   command and the rollback command. Prod is the commit in `.last-deploy-hash`.
+- **Prebuild and one-command ship (2026-11-17):** `./ht-deploy.sh build-only <sha>` builds the game + API images for a commit on `origin/main` from a throwaway worktree (nothing started or stopped; also tags `<image>:<first 12 of sha>`); `gll-prebuild` runs it. `./ht-deploy.sh ship <sha>` (what `gll ship ht <sha>` runs) fast-forwards this checkout to that sha, reuses the prebuilt images (builds if missing), then the normal deploy steps. `./ht-deploy.sh <hash>` (rollback, and the rotation's call) is unchanged. Test: `bash tests/deploy/ht-deploy-ship.test.sh` (stubbed docker, light).
 - `ht-deploy.sh` and `docker-compose.prod.yml` are used from this working tree by the daily rotation: keep them
   compatible with what is live, never half-edited.
 
@@ -311,4 +312,4 @@ Code-review-graph: use its MCP tools before Grep/Read (global rule); the graph a
 
 <!-- /code-review-graph MCP tools -->
 
-Last verified: 2026-11-14
+Last verified: 2026-11-17

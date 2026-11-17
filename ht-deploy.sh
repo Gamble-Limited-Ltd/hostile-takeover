@@ -4,12 +4,18 @@
 #   ./ht-deploy.sh            git pull --ff-only, build images tagged with the git hash, migrate, up, wait healthy
 #   ./ht-deploy.sh <hash>     roll back to the images already built for that commit (no pull, no build)
 #   HT_SKIP_BUILD=1 ./ht-deploy.sh   same, for the current HEAD's images (host change only; no pull, no build)
+#   ./ht-deploy.sh build-only <sha>  build the images for a commit on origin/main (no fetch) and stop: nothing is started,
+#                                    stopped or recorded (used by gll-prebuild). Also tags <image>:<first 12 of the sha>.
+#   ./ht-deploy.sh ship <sha>        what `gll ship` runs: fetch, fast-forward to <sha> (it must be on origin/main), reuse the
+#                                    images build-only made (build them if missing), then the normal deploy steps
 #
 # Only touches the compose project `hostile_takeover` (containers ht-db, ht-api, ht-game). Fails loudly.
 # Env knobs: HT_SKIP_PULL=1 (no git pull), HT_SKIP_BUILD=1 (reuse HEAD's images; implies no pull), HT_ALLOW_DIRTY=1 (build a tree with uncommitted changes; the
 # image is still tagged with HEAD's hash, so only for testing).
 set -Eeuo pipefail
 cd "$(dirname "$0")"
+MODE=
+case "${1:-}" in build-only | ship) MODE="$1"; shift ;; esac
 
 PROJECT=hostile_takeover
 FILE=docker-compose.prod.yml
@@ -52,6 +58,32 @@ for p in "$HT_GAME_PREFIX" "$HT_API_PREFIX"; do
 done
 export HT_GAME_PREFIX="${HT_GAME_PREFIX:-ht}" HT_API_PREFIX="${HT_API_PREFIX:-ht-api}"
 
+# sha_on_main <ref>: the full sha of a commit that is on origin/main, else fail
+sha_on_main() {
+    local s
+    s="$(git rev-parse --verify "$1^{commit}" 2> /dev/null)" || fail "unknown commit '$1'"
+    git merge-base --is-ancestor "$s" refs/remotes/origin/main || fail "$1 is not on origin/main; only pushed commits are built or shipped"
+    echo "$s"
+}
+images_exist() { local img; for img in "$GAME_IMAGE" "$API_IMAGE"; do docker image inspect "$img:$1" > /dev/null 2>&1 || return 1; done; }
+
+if [ "$MODE" = build-only ]; then
+    [ $# -eq 1 ] || fail "usage: ./ht-deploy.sh build-only <sha>"
+    HASH="$(sha_on_main "$1")"
+    if images_exist "$HASH"; then echo "Images for $HASH already exist, not rebuilding"; else
+        # Built from a clean checkout of that commit (the compose build context is its directory), never from this working tree.
+        WT="$(mktemp -d "${TMPDIR:-/tmp}/ht-build.XXXXXX")"
+        trap 'git worktree remove --force "$WT" 2> /dev/null || rm -rf "$WT"; git worktree prune 2> /dev/null || true' EXIT
+        git worktree add --detach "$WT" "$HASH" > /dev/null
+        ln -s "$PWD/.env.prod" "$WT/.env.prod" # compose reads env_file at parse time; .dockerignore keeps it out of the image
+        echo "Building $HASH (nothing is started or stopped)"
+        HT_TAG="$HASH" docker compose -p "$PROJECT" -f "$WT/$FILE" build
+    fi
+    for img in "$GAME_IMAGE" "$API_IMAGE"; do docker tag "$img:$HASH" "$img:${HASH:0:12}"; done
+    echo "Images ready: $HASH"
+    exit 0
+fi
+
 wait_healthy() {
     local deadline=$((SECONDS + WAIT_SECONDS)) c status all
     while [ "$SECONDS" -lt "$deadline" ]; do
@@ -72,7 +104,7 @@ wait_healthy() {
     fail "timed out after ${WAIT_SECONDS}s waiting for: $*"
 }
 
-if [ $# -ge 1 ] || [ -n "${HT_SKIP_BUILD:-}" ]; then
+if [ "$MODE" != ship ] && { [ $# -ge 1 ] || [ -n "${HT_SKIP_BUILD:-}" ]; }; then
     HASH="${1:-$(git rev-parse HEAD)}"
     [[ "$HASH" =~ ^[0-9a-f]{7,40}$ ]] || fail "'$HASH' is not a commit hash"
     for img in "$GAME_IMAGE" "$API_IMAGE"; do
@@ -83,10 +115,21 @@ else
     if [ -z "${HT_ALLOW_DIRTY:-}" ] && ! git diff --quiet HEAD --; then
         fail "tracked files have uncommitted changes; commit them (or HT_ALLOW_DIRTY=1 for a test build)"
     fi
-    [ -n "${HT_SKIP_PULL:-}" ] || git pull --ff-only
+    if [ "$MODE" = ship ]; then
+        [ $# -eq 1 ] || fail "usage: ./ht-deploy.sh ship <sha>"
+        GIT_TERMINAL_PROMPT=0 git fetch --quiet --no-tags origin main
+        WANT="$(sha_on_main "$1")"
+        [ "$(git rev-parse HEAD)" = "$WANT" ] || git merge --ff-only "$WANT" || fail "cannot fast-forward to ${WANT:0:12}; to go back to an older commit use ./ht-deploy.sh <hash>"
+    else
+        [ -n "${HT_SKIP_PULL:-}" ] || git pull --ff-only
+    fi
     HASH="$(git rev-parse HEAD)"
-    echo "Building $HASH"
-    HT_TAG="$HASH" dc build
+    if [ "$MODE" = ship ] && images_exist "$HASH"; then
+        echo "Reusing prebuilt images for $HASH"
+    else
+        echo "Building $HASH"
+        HT_TAG="$HASH" dc build
+    fi
 fi
 
 # `latest` always points at what is deployed, so a bare `docker compose up -d` stays consistent.
