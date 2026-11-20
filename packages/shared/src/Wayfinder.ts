@@ -24,7 +24,7 @@ interface Parsed extends WayfinderHosts {
 interface Slot {
   checkedAt: number;
   sig: string;
-  value: Parsed | null;
+  value: any;
 }
 const slots = new Map<string, Slot>();
 
@@ -56,7 +56,10 @@ function parse(text: string): Parsed | null {
   };
 }
 
-function load(file: string): Parsed | null {
+function load<T = Parsed>(
+  file: string,
+  parser: (text: string) => T | null = parse as any,
+): T | null {
   const now = Date.now();
   let slot = slots.get(file);
   if (slot && now - slot.checkedAt < CACHE_MS) return slot.value;
@@ -76,11 +79,96 @@ function load(file: string): Parsed | null {
   if (sig === slot.sig) return slot.value;
   slot.sig = sig;
   try {
-    slot.value = parse(fs.readFileSync(file, "utf8"));
+    slot.value = parser(fs.readFileSync(file, "utf8"));
   } catch {
     // Unreadable or half-written: keep the last good table.
   }
   return slot.value;
+}
+
+// --- Wayfinder v2 (personal routes). Off unless WAYFINDER_ROUTES_FILE is set
+// and readable; then it wins over the v1 host table. ---
+
+export interface RoutesV2 {
+  domain: string;
+  /** gate sub -> app -> in-use label */
+  players: Record<string, Partial<Record<WayfinderKey, string>>>;
+  /** app -> every label accepted now (live, spare and grace; all players) */
+  accepted: Record<WayfinderKey, string[]>;
+}
+
+const KEYS: WayfinderKey[] = ["ht", "htapi"];
+
+function parseV2(text: string): RoutesV2 | null {
+  const j = JSON.parse(text) as Record<string, any>;
+  if (!j || typeof j.players !== "object" || j.players === null) return null;
+  const domain = process.env.WAYFINDER_DOMAIN ?? j.domain ?? "taps-holdings.org";
+  if (typeof domain !== "string" || !/^[a-z0-9.-]+$/.test(domain)) return null;
+  const players: RoutesV2["players"] = {};
+  const seen: Record<WayfinderKey, Set<string>> = {
+    ht: new Set(),
+    htapi: new Set(),
+  };
+  for (const [sub, apps] of Object.entries<any>(j.players)) {
+    const row: Partial<Record<WayfinderKey, string>> = {};
+    for (const k of KEYS) {
+      const l = apps?.[k];
+      if (typeof l === "string" && LABEL_RE.test(l)) {
+        row[k] = l;
+        seen[k].add(l);
+      }
+    }
+    players[sub] = row;
+  }
+  const accepted = {} as RoutesV2["accepted"];
+  for (const k of KEYS) {
+    // Until the table lists `accepted`, the in-use labels are all we know.
+    const list = Array.isArray(j.accepted?.[k]) ? j.accepted[k] : [...seen[k]];
+    accepted[k] = list.filter(
+      (l: unknown): l is string => typeof l === "string" && LABEL_RE.test(l),
+    );
+  }
+  return { domain, players, accepted };
+}
+
+/** The v2 route table, or null when the flag is off or the file is absent. */
+export function routesV2(): RoutesV2 | null {
+  const file = process.env.WAYFINDER_ROUTES_FILE;
+  return file ? load<RoutesV2>(file, parseV2) : null;
+}
+
+/** Either Wayfinder mode is on (v2 table or v1 host table). */
+export function wayfinderOn(): boolean {
+  return routesV2() !== null || wayfinderHosts() !== null;
+}
+
+/** Full name of the in-use route of `sub` for `app`; null in v1 or legacy mode. */
+export function routeFor(sub: string, app: WayfinderKey): string | null {
+  const r = routesV2();
+  const l = r?.players[sub]?.[app];
+  return r && l ? `${l}.${r.domain}` : null;
+}
+
+/** The trusted edge player header: only from a loopback peer, like requestHost. */
+export function requestPlayer(
+  headers: Record<string, string | string[] | undefined>,
+  remoteAddress: string | undefined,
+): string | undefined {
+  if (!remoteAddress || !LOOPBACK.has(remoteAddress)) return undefined;
+  const v = headers["x-wayfinder-player"];
+  const p = (Array.isArray(v) ? v[0] : v)?.trim();
+  return p ? p : undefined;
+}
+
+/** The trusted edge route label this request arrived on, if any. */
+export function requestLabel(
+  headers: Record<string, string | string[] | undefined>,
+  remoteAddress: string | undefined,
+): string | undefined {
+  if (!remoteAddress || !LOOPBACK.has(remoteAddress)) return undefined;
+  const v = headers["x-wayfinder-label"];
+  const l = (Array.isArray(v) ? v[0] : v)?.trim();
+  return l && LABEL_RE.test(l) ? l : undefined;
 }
 
 /** The current and previous hosts, or null when Wayfinder is not running. */
@@ -97,6 +185,8 @@ export function wayfinderHosts(): WayfinderHosts | null {
 
 /** Full names for `key`, current first; empty in legacy mode. */
 export function ownHosts(key: WayfinderKey): string[] {
+  const r = routesV2();
+  if (r) return r.accepted[key].map((l) => `${l}.${r.domain}`);
   const w = wayfinderHosts();
   if (!w) return [];
   const names = [w.current[key]];
@@ -122,7 +212,23 @@ export function isOwnHost(
  */
 export function pairFor(
   host: string | undefined,
+  player?: string,
 ): { ht: string; htapi: string } | null {
+  const r = routesV2();
+  if (r) {
+    // v2: the player's own routes. Owner is the trusted edge player, else
+    // whoever has this label in use (spare and grace labels need the header).
+    const label = bareHost(host).split(".")[0];
+    const sub =
+      player ??
+      Object.keys(r.players).find(
+        (s) => r.players[s].ht === label || r.players[s].htapi === label,
+      );
+    const row = sub ? r.players[sub] : undefined;
+    return row?.ht && row.htapi
+      ? { ht: `${row.ht}.${r.domain}`, htapi: `${row.htapi}.${r.domain}` }
+      : null;
+  }
   const w = wayfinderHosts();
   if (!w) return null;
   const h = bareHost(host);

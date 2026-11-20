@@ -1,4 +1,4 @@
-import { wayfinderHosts } from "@openfront/shared/Wayfinder";
+import { wayfinderOn } from "@openfront/shared/Wayfinder";
 import { PartialAnalyticsRecordSchema } from "@openfront/shared/WireSchemas";
 import { createHash } from "crypto";
 import express from "express";
@@ -86,7 +86,7 @@ export function mountGameRoutes(
   app.get("/news.json", (_req, res) => {
     res.setHeader("Cache-Control", "public, max-age=60");
     // Wayfinder: the address changes all day, so never announce one.
-    const notice = wayfinderHosts() ? HALL_NOTICE : env.newsNotice;
+    const notice = wayfinderOn() ? HALL_NOTICE : env.newsNotice;
     if (!notice) return void res.json(newsItems);
     const id =
       env.newsNoticeId ||

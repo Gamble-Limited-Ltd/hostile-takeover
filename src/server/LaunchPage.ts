@@ -1,7 +1,8 @@
 import {
   pairFor,
   requestHost,
-  wayfinderHosts,
+  requestPlayer,
+  wayfinderOn,
 } from "@openfront/shared/Wayfinder";
 import type { Express, Request, Response } from "express";
 
@@ -59,13 +60,18 @@ function noStore(res: Response) {
 /** Only answers in Wayfinder mode; with no host table both routes are 404. */
 export function mountLaunch(app: Express): void {
   app.get("/auth/launch", (req: Request, res: Response) => {
-    if (!wayfinderHosts()) return void res.sendStatus(404);
-    const pair = pairFor(requestHost(req.headers, req.socket.remoteAddress))!;
+    if (!wayfinderOn()) return void res.sendStatus(404);
+    const ra = req.socket.remoteAddress;
+    const pair = pairFor(
+      requestHost(req.headers, ra),
+      requestPlayer(req.headers, ra),
+    );
+    if (!pair) return void res.sendStatus(404);
     noStore(res);
     res.type("html").send(page(`https://${pair.htapi}`));
   });
   app.get("/auth/launch.js", (_req: Request, res: Response) => {
-    if (!wayfinderHosts()) return void res.sendStatus(404);
+    if (!wayfinderOn()) return void res.sendStatus(404);
     noStore(res);
     res.type("application/javascript").send(SCRIPT);
   });

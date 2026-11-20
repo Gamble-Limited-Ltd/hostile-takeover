@@ -141,6 +141,16 @@ CSP, game CORS, page `serverHost`/`apiUrl`, API CORS, GATE redirect URI, `cluste
 (token issuer and audience must stop changing), `LAUNCH_ISSUER`/`LAUNCH_JWKS_URL` if not the HALL defaults.
 `/auth/launch` (API) has a per-IP flood limit (`launchIp`, 600/min); admin reset links use the current game host.
 
+**Wayfinder v2 (personal routes, slice `slice/wayfinder-v2`, OFF by default).** Set `WAYFINDER_ROUTES_FILE`
+(read-only `routes.v2.json`: `players: {sub: {ht, htapi}}`, optional `accepted: {ht: [labels], htapi: [labels]}`; without
+`accepted` the in-use labels count) to switch it on; it then wins over the v1 host table. `WAYFINDER_DOMAIN` overrides
+the domain (default `taps-holdings.org`). Helper additions in `Wayfinder.ts`: `routeFor`, `routesV2`, `wayfinderOn`,
+`requestPlayer`/`requestLabel` (edge `x-wayfinder-*` headers, trusted from a loopback peer only); `ownHosts`/`isOwnHost`
+now mean "accepted label of this app" (CSP, CORS, API CORS all follow). Owner check: `packages/api/src/leak.ts` runs on
+every GATE or launch-ticket sign-in and posts `{label, signedInSub}` to `${WAYFINDER_API_URL}/internal/leak` (Bearer
+`WAYFINDER_SERVICE_TOKEN`), fire and forget. The open-tab notice is injected by the edge (no HT code). Money: none in HT, so
+no step-up. Test: `npx vitest tests/shared/WayfinderV2.test.ts --run`.
+
 ### Known gotchas
 
 - **`.env` leaks into Vitest's `process.env`.** Only put values in `.env` that differ from the

@@ -2,6 +2,7 @@
 
 🆕 **What's new**
 
+- With Wayfinder, each player gets their own game address, and it changes over time. Settings the game keeps in your browser (such as your game options) belong to one address, so after a move to a new address you may need to set them again.
 - Friends now come from GLL ID, one friends list for all Gamble Limited games. Open your account and use the Friends tab: add people by their GLL ID login name, accept requests, and see which game a friend is playing.
   → The old Hostile Takeover friends list is retired and was not copied over, so you start with an empty list. Ask your friends again with their GLL ID login names.
 - In-game text chat. Press Enter to type, Enter to send.

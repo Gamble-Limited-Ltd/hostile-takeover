@@ -1,4 +1,4 @@
-import { pairFor, requestHost } from "@openfront/shared/Wayfinder";
+import { pairFor, requestHost, requestPlayer } from "@openfront/shared/Wayfinder";
 import type express from "express";
 
 /**
@@ -8,7 +8,11 @@ import type express from "express";
 export function wayfinderOrigins(
   req: Pick<express.Request, "headers" | "socket">,
 ): { gameHost: string; gameOrigin: string; apiOrigin: string } | null {
-  const pair = pairFor(requestHost(req.headers, req.socket.remoteAddress));
+  const ra = req.socket.remoteAddress;
+  const pair = pairFor(
+    requestHost(req.headers, ra),
+    requestPlayer(req.headers, ra),
+  );
   return (
     pair && {
       gameHost: pair.ht,

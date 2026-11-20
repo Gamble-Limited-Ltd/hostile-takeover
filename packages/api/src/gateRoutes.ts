@@ -2,7 +2,7 @@
 // and JWT afterwards (startSession), so the game and its WebSocket code never
 // see GATE.
 import { uuidToBase64url } from "@openfront/shared/Base64";
-import { wayfinderHosts } from "@openfront/shared/Wayfinder";
+import { wayfinderOn } from "@openfront/shared/Wayfinder";
 import express from "express";
 import { createRemoteJWKSet, type JWTVerifyGetKey } from "jose";
 import { bodyOf, ipOf, USERNAME_RE } from "./accountRoutes";
@@ -20,6 +20,7 @@ import {
 } from "./gate";
 import { friendsEnabled } from "./gateFriends";
 import { wayfinderOrigins } from "./hosts";
+import { reportLeak } from "./leak";
 import { createLaunchVerifier, LaunchError } from "./launch";
 import { verifyPassword } from "./passwords";
 import { generatePublicId } from "./publicId";
@@ -167,6 +168,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
     res: express.Response,
     who: GateIdentity,
   ): Promise<"ok" | "match" | "rename" | "disabled" | "not_approved"> {
+    reportLeak(req, who.sub);
     const user = await store.findUserByGateSub(who.sub);
     if (user) {
       if (user.disabled_at) return "disabled";
@@ -271,7 +273,7 @@ export function mountGateRoutes(app: express.Express, d: GateDeps): void {
   // the URL fragment and POSTs it here. Same outcomes as a GATE sign-in.
   let verifyTicket: ReturnType<typeof createLaunchVerifier> | undefined;
   app.post("/auth/launch", json, async (req, res, next) => {
-    if (!wayfinderHosts() || !gate.enabled) return void res.sendStatus(404);
+    if (!wayfinderOn() || !gate.enabled) return void res.sendStatus(404);
     res.setHeader("Cache-Control", "no-store");
     if (!d.limits.launchIp.hit(ipOf(req))) {
       return void res.status(429).json({ error: "rate_limited" });
