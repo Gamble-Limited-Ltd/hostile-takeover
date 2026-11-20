@@ -8,11 +8,11 @@ import {
   routeFor,
   wayfinderOn,
 } from "@openfront/shared/Wayfinder";
-import { reportLeak } from "../../packages/api/src/leak";
 import fs from "fs";
 import os from "os";
 import path from "path";
 import { afterEach, beforeEach, describe, expect, test, vi } from "vitest";
+import { reportLeak } from "../../packages/api/src/leak";
 
 let dir: string;
 let file: string;

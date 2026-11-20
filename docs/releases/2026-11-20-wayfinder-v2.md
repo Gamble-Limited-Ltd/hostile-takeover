@@ -28,7 +28,10 @@ Gates (2026-11-20):
   Targeted, local, Node 24.21: tests/shared/WayfinderV2.test.ts + tests/shared/Wayfinder.test.ts 21/21; tests/server/LaunchPage.test.ts,
     tests/server/WayfinderGame.test.ts, tests/api (whole folder) 26 files, 543 passed, 9 skipped [x].
   buildpc-run typecheck with --fallback none: exit 75, not offloaded (play-active); no local run (full checks never run on this VM).
-  HT CI (typecheck, lint, Oxfmt, full suite in shards) runs on every push: HT_CI_RESULT
+  HT CI (typecheck, lint, Oxfmt, full suite in shards) runs on every push: the first run on eb9fca4f4 FAILED only the lint/format job (oxlint prefer-nullish-coalescing in
+    packages/shared/src/Wayfinder.ts:160, plus Oxfmt on gateRoutes.ts, hosts.ts, WayfinderV2.test.ts); build, API tests and all 5 test shards
+    passed. Fixed in the commit after this record's first push (lint and format clean locally on the changed files, targeted tests 554 passed).
+    Re-run on the new tip: see gh run list -R Gamble-Limited-Ltd/hostile-takeover --branch slice/wayfinder-v2; do not merge until it is green
   FORK_CHANGES.md: the touched files (packages/api/src/*, packages/shared/src/Wayfinder.ts, src/server/LaunchPage.ts) were created by us,
     none is an upstream file, so no new row; re-check if CI's fork-drift step objects.
 Kill switch: unset WAYFINDER_ROUTES_FILE and recreate (no deploy). Before turn-on nothing to switch off.

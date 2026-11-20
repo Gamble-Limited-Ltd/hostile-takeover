@@ -102,7 +102,8 @@ const KEYS: WayfinderKey[] = ["ht", "htapi"];
 function parseV2(text: string): RoutesV2 | null {
   const j = JSON.parse(text) as Record<string, any>;
   if (!j || typeof j.players !== "object" || j.players === null) return null;
-  const domain = process.env.WAYFINDER_DOMAIN ?? j.domain ?? "taps-holdings.org";
+  const domain =
+    process.env.WAYFINDER_DOMAIN ?? j.domain ?? "taps-holdings.org";
   if (typeof domain !== "string" || !/^[a-z0-9.-]+$/.test(domain)) return null;
   const players: RoutesV2["players"] = {};
   const seen: Record<WayfinderKey, Set<string>> = {
@@ -157,7 +158,8 @@ export function requestPlayer(
   if (!remoteAddress || !LOOPBACK.has(remoteAddress)) return undefined;
   const v = headers["x-wayfinder-player"];
   const p = (Array.isArray(v) ? v[0] : v)?.trim();
-  return p ? p : undefined;
+  if (!p) return undefined;
+  return p;
 }
 
 /** The trusted edge route label this request arrived on, if any. */

@@ -20,8 +20,8 @@ import {
 } from "./gate";
 import { friendsEnabled } from "./gateFriends";
 import { wayfinderOrigins } from "./hosts";
-import { reportLeak } from "./leak";
 import { createLaunchVerifier, LaunchError } from "./launch";
+import { reportLeak } from "./leak";
 import { verifyPassword } from "./passwords";
 import { generatePublicId } from "./publicId";
 import { RateLimiter, type RateLimits } from "./rateLimit";

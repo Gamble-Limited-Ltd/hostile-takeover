@@ -1,4 +1,8 @@
-import { pairFor, requestHost, requestPlayer } from "@openfront/shared/Wayfinder";
+import {
+  pairFor,
+  requestHost,
+  requestPlayer,
+} from "@openfront/shared/Wayfinder";
 import type express from "express";
 
 /**
