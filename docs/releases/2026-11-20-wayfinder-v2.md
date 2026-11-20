@@ -16,10 +16,13 @@ What changes with the flag OFF: the new changelog line only (D44): "With Wayfind
 Compose and rotation: NO change to docker-compose*.yml, ht-deploy.sh, manage.sh or Dockerfile on this branch (git diff origin/main...HEAD
   lists none). Rotation safety verdict: SAFE for this branch. Note for Boss: main already carries the ht-deploy.sh change (37902415a) that
   the 06:00 rotation reads from the working tree; that was merged before this work and is unchanged by it.
-  Turn-on later needs compose changes (separate slice, rehearse on the old image): a read-only mount of routes.v2.json into BOTH the game
-  and API containers (mount the directory that holds it; today docker-compose.prod.yml mounts only /run/keys), and env.
+  Turn-on later needs compose changes (separate slice, rehearse on the old image): a read-only mount of the Wayfinder runtime/ DIRECTORY into BOTH the game
+  and API containers (directory, not the file: the tick replaces routes.v2.json by rename; WAYFINDER_ROUTES_FILE=/run/wayfinder/routes.v2.json
+  inside it; today docker-compose.prod.yml mounts only /run/keys), and env.
+  Network: ht-api is on `default` (a normal bridge) plus the internal gll_gate, so it reaches http://172.17.0.1:8987 via default; not tested
+  from inside the container (curl it at turn-on).
 Turn-on later (Boss, at V11): env on game and API: WAYFINDER_ROUTES_FILE (path of the mounted routes.v2.json; optional WAYFINDER_DOMAIN,
-  default taps-holdings.org); on the API: WAYFINDER_API_URL (Wayfinder internal API) and WAYFINDER_SERVICE_TOKEN (32+ chars, same token as
+  default taps-holdings.org); on the API: WAYFINDER_API_URL=http://172.17.0.1:8987 and WAYFINDER_SERVICE_TOKEN (32+ chars, same token as
   GATE, casino and Wayfinder). The open-tab notice is injected by the edge, no HT code. HT handles no money: no step-up.
 Gates (2026-11-20):
   Targeted, local, Node 24.21: tests/shared/WayfinderV2.test.ts + tests/shared/Wayfinder.test.ts 21/21; tests/server/LaunchPage.test.ts,
