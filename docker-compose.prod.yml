@@ -60,6 +60,10 @@ services:
       HT_TRUST_PROXY: loopback, uniquelocal
     volumes:
       - ${HT_KEYS_DIR:-${HOME}/.config/hostile-takeover/keys}:/run/keys:ro
+      # Wayfinder v2 runtime DIRECTORY (the tick replaces routes.v2.json by rename: never mount the single file). Default: an empty repo
+      # folder, so a missing host dir cannot break rotation; nothing reads it until WAYFINDER_ROUTES_FILE is set in .env.prod.
+      # Turn-on: WAYFINDER_RUNTIME_DIR=/home/thestrongest/gll-planning/wayfinder/runtime in .env.prod (ht-deploy.sh passes it on).
+      - ${WAYFINDER_RUNTIME_DIR:-./wayfinder-runtime-empty}:/run/wayfinder:ro
     # default keeps ht-db reachable; gll_gate is the private network to GATE (GATE_DIRECT_URL).
     networks:
       - default
@@ -94,6 +98,9 @@ services:
       ht-api:
         condition: service_healthy
     env_file: .env.prod # API_KEY
+    volumes:
+      # Wayfinder v2 runtime dir, see ht-api.
+      - ${WAYFINDER_RUNTIME_DIR:-./wayfinder-runtime-empty}:/run/wayfinder:ro
     environment:
       GAME_ENV: prod
       DOMAIN: ${HT_GAME_PREFIX:-ht}${HT_DOMAIN_SUFFIX:-}.taps-holdings.org

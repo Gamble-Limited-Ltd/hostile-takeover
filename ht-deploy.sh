@@ -40,6 +40,9 @@ export MERIDIAN_URL
 # HT_NEWS_NOTICE is optional runtime text for the news box (e.g. "Tomorrow's URL is ...").
 HT_NEWS_NOTICE="$(sed -n 's/^HT_NEWS_NOTICE=//p' .env.prod | tail -n 1)"
 export HT_NEWS_NOTICE
+# Wayfinder v2: host dir that docker-compose.prod.yml mounts read-only at /run/wayfinder. Empty/unset = the empty folder in the repo (inert).
+WAYFINDER_RUNTIME_DIR="$(sed -n 's/^WAYFINDER_RUNTIME_DIR=//p' .env.prod | tail -n 1)"
+export WAYFINDER_RUNTIME_DIR
 # HT_DOMAIN_NUMBER=N moves the game to ht-N and the API to ht-api-N (.taps-holdings.org).
 # Empty/unset = ht.taps-holdings.org (API ht-api). docker-compose.prod.yml reads HT_DOMAIN_SUFFIX.
 HT_DOMAIN_NUMBER="$(sed -n 's/^HT_DOMAIN_NUMBER=//p' .env.prod | tail -n 1)"

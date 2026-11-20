@@ -13,15 +13,18 @@ What changes with the flag OFF: the new changelog line only (D44): "With Wayfind
   new address you may need to set them again." Code paths: routes.v2.json helper in packages/shared/src/Wayfinder.ts (routeFor,
   routesV2, wayfinderOn, requestPlayer/requestLabel, loopback-only trust of x-wayfinder-*), accepted-label CORS and CSP, owner-check
   leak report (packages/api/src/leak.ts, fire and forget, no-op without WAYFINDER_API_URL).
-Compose and rotation: NO change to docker-compose*.yml, ht-deploy.sh, manage.sh or Dockerfile on this branch (git diff origin/main...HEAD
-  lists none). Rotation safety verdict: SAFE for this branch. Note for Boss: main already carries the ht-deploy.sh change (37902415a) that
-  the 06:00 rotation reads from the working tree; that was merged before this work and is unchanged by it.
-  Turn-on later needs compose changes (separate slice, rehearse on the old image): a read-only mount of the Wayfinder runtime/ DIRECTORY into BOTH the game
-  and API containers (directory, not the file: the tick replaces routes.v2.json by rename; WAYFINDER_ROUTES_FILE=/run/wayfinder/routes.v2.json
-  inside it; today docker-compose.prod.yml mounts only /run/keys), and env.
-  Network: ht-api is on `default` (a normal bridge) plus the internal gll_gate, so it reaches http://172.17.0.1:8987 via default; not tested
-  from inside the container (curl it at turn-on).
-Turn-on later (Boss, at V11): env on game and API: WAYFINDER_ROUTES_FILE (path of the mounted routes.v2.json; optional WAYFINDER_DOMAIN,
+Compose and rotation (updated 2026-11-20, turn-on wiring added so one deploy is enough): docker-compose.prod.yml gains one volume line on BOTH ht-api and
+  ht-game: ${WAYFINDER_RUNTIME_DIR:-./wayfinder-runtime-empty}:/run/wayfinder:ro (directory, not the file: the tick replaces routes.v2.json by rename).
+  The default is wayfinder-runtime-empty/ (committed, .gitkeep): empty, so nothing is read and behaviour is unchanged. ht-deploy.sh gains 3 lines that
+  read WAYFINDER_RUNTIME_DIR from .env.prod (same sed pattern as HT_NEWS_NOTICE; absent key = empty = default), because compose is run without --env-file
+  and rotation calls ht-deploy.sh. No other deploy script, Dockerfile or manage.sh change.
+  docker compose config evidence (render only, scratch .env.prod, removed after): env unset -> both services mount .../wayfinder-runtime-empty at /run/wayfinder,
+  read_only true; WAYFINDER_RUNTIME_DIR=/home/thestrongest/gll-planning/wayfinder/runtime -> both mount that dir, read_only true. Both render without error; bash -n ht-deploy.sh ok.
+  Rotation safety verdict: SAFE. Merged, the 06:00 rotation recreates on the deployed image with the empty read-only mount; WAYFINDER_ROUTES_FILE stays unset.
+  Network: ht-api is on `default` (a normal bridge) plus the internal gll_gate, so it reaches http://172.17.0.1:8987 via default. No network change needed.
+  Not tested from inside the container (none touched): curl it at turn-on.
+  Token: HT reads WAYFINDER_SERVICE_TOKEN as a value (leak.ts, no _FILE variant): it goes in .env.prod (mode 600), not a mount.
+Turn-on later (Boss, at V11; env only, no new compose change): .env.prod gets WAYFINDER_RUNTIME_DIR=/home/thestrongest/gll-planning/wayfinder/runtime and WAYFINDER_ROUTES_FILE=/run/wayfinder/routes.v2.json (the switch; WAYFINDER_V2 is not used in HT; optional WAYFINDER_DOMAIN,
   default taps-holdings.org); on the API: WAYFINDER_API_URL=http://172.17.0.1:8987 and WAYFINDER_SERVICE_TOKEN (32+ chars, same token as
   GATE, casino and Wayfinder). The open-tab notice is injected by the edge, no HT code. HT handles no money: no step-up.
 Gates (2026-11-20):
@@ -34,7 +37,7 @@ Gates (2026-11-20):
     HT CI re-run on f105ae549: green (all jobs) [x]. The record commit after it changes docs only
   FORK_CHANGES.md: the touched files (packages/api/src/*, packages/shared/src/Wayfinder.ts, src/server/LaunchPage.ts) were created by us,
     none is an upstream file, so no new row; re-check if CI's fork-drift step objects.
-Kill switch: unset WAYFINDER_ROUTES_FILE and recreate (no deploy). Before turn-on nothing to switch off.
+Kill switch: unset WAYFINDER_ROUTES_FILE (and the token) in .env.prod and recreate via ht-deploy.sh (no new image). Before turn-on nothing to switch off.
 Smoke after deploy: game loads on the current ht-N host, sign-in via GATE works, /auth/launch still works as in W3b; gll ship runs
   both HTTP checks (127.0.0.1:8280 and :8287/healthz) and rotate.sh check (preflight OK).
 Watch period: 24 h if Minor, none if Patch.
