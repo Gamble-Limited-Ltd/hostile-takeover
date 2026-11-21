@@ -3,6 +3,7 @@
 //
 // Dual mode: when the runtime file does not exist every function answers "not
 // Wayfinder" (null / [] / false) and callers keep their env-based behaviour.
+import crypto from "crypto";
 import fs from "fs";
 
 const DEFAULT_FILE = "/run/wayfinder/hosts.json";
@@ -150,12 +151,43 @@ export function routeFor(sub: string, app: WayfinderKey): string | null {
   return r && l ? `${l}.${r.domain}` : null;
 }
 
-/** The trusted edge player header: only from a loopback peer, like requestHost. */
+/**
+ * One trust check for every edge header (x-wayfinder-*, x-forwarded-host): a
+ * loopback peer and, when WAYFINDER_EDGE_SECRET_FILE or WAYFINDER_EDGE_SECRET
+ * is set, a matching x-wayfinder-edge (timing-safe). Unset keeps the
+ * loopback-only rule; set but unreadable or short fails closed.
+ */
+function edgeTrusted(
+  headers: Record<string, string | string[] | undefined>,
+  remoteAddress: string | undefined,
+): boolean {
+  if (!remoteAddress || !LOOPBACK.has(remoteAddress)) return false;
+  const file = process.env.WAYFINDER_EDGE_SECRET_FILE;
+  let want = process.env.WAYFINDER_EDGE_SECRET ?? "";
+  if (!file && !want) return true;
+  if (file) {
+    try {
+      want = fs.readFileSync(file, "utf8").trim();
+    } catch {
+      return false;
+    }
+  }
+  const v = headers["x-wayfinder-edge"];
+  const got = Buffer.from((Array.isArray(v) ? v[0] : v) ?? "");
+  const exp = Buffer.from(want);
+  return (
+    exp.length >= 32 &&
+    got.length === exp.length &&
+    crypto.timingSafeEqual(got, exp)
+  );
+}
+
+/** The trusted edge player header: only from a trusted edge, like requestHost. */
 export function requestPlayer(
   headers: Record<string, string | string[] | undefined>,
   remoteAddress: string | undefined,
 ): string | undefined {
-  if (!remoteAddress || !LOOPBACK.has(remoteAddress)) return undefined;
+  if (!edgeTrusted(headers, remoteAddress)) return undefined;
   const v = headers["x-wayfinder-player"];
   const p = (Array.isArray(v) ? v[0] : v)?.trim();
   if (!p) return undefined;
@@ -167,7 +199,7 @@ export function requestLabel(
   headers: Record<string, string | string[] | undefined>,
   remoteAddress: string | undefined,
 ): string | undefined {
-  if (!remoteAddress || !LOOPBACK.has(remoteAddress)) return undefined;
+  if (!edgeTrusted(headers, remoteAddress)) return undefined;
   const v = headers["x-wayfinder-label"];
   const l = (Array.isArray(v) ? v[0] : v)?.trim();
   return l && LABEL_RE.test(l) ? l : undefined;
@@ -253,7 +285,7 @@ export function requestHost(
     const h = (Array.isArray(v) ? v[0] : v)?.split(",")[0].trim();
     return h === "" ? undefined : h;
   };
-  if (remoteAddress && LOOPBACK.has(remoteAddress)) {
+  if (edgeTrusted(headers, remoteAddress)) {
     const fwd = first(headers["x-forwarded-host"]);
     if (fwd) return fwd;
   }

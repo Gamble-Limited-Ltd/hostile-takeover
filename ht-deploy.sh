@@ -43,6 +43,9 @@ export HT_NEWS_NOTICE
 # Wayfinder v2: host dir that docker-compose.prod.yml mounts read-only at /run/wayfinder. Empty/unset = the empty folder in the repo (inert).
 WAYFINDER_RUNTIME_DIR="$(sed -n 's/^WAYFINDER_RUNTIME_DIR=//p' .env.prod | tail -n 1)"
 export WAYFINDER_RUNTIME_DIR
+# Wayfinder v2 C1: host file mounted read-only at /run/secrets/wf-edge-secret. Empty/unset = the empty file in the repo (inert).
+WAYFINDER_EDGE_SECRET_HOST_FILE="$(sed -n 's/^WAYFINDER_EDGE_SECRET_HOST_FILE=//p' .env.prod | tail -n 1)"
+export WAYFINDER_EDGE_SECRET_HOST_FILE
 # HT_DOMAIN_NUMBER=N moves the game to ht-N and the API to ht-api-N (.taps-holdings.org).
 # Empty/unset = ht.taps-holdings.org (API ht-api). docker-compose.prod.yml reads HT_DOMAIN_SUFFIX.
 HT_DOMAIN_NUMBER="$(sed -n 's/^HT_DOMAIN_NUMBER=//p' .env.prod | tail -n 1)"

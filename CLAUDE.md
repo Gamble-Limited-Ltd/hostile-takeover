@@ -149,7 +149,7 @@ the domain (default `taps-holdings.org`). Helper additions in `Wayfinder.ts`: `r
 now mean "accepted label of this app" (CSP, CORS, API CORS all follow). Owner check: `packages/api/src/leak.ts` runs on
 every GATE or launch-ticket sign-in and posts `{label, signedInSub}` to `${WAYFINDER_API_URL}/internal/leak` (Bearer
 `WAYFINDER_SERVICE_TOKEN`), fire and forget. The open-tab notice is injected by the edge (no HT code). Money: none in HT, so
-no step-up. Compose mounts the runtime DIRECTORY read-only at `/run/wayfinder` in ht-api and ht-game (`WAYFINDER_RUNTIME_DIR` in `.env.prod`, passed on by `ht-deploy.sh`; default an empty repo folder `wayfinder-runtime-empty/`, inert); turning it on is `.env.prod` only (`WAYFINDER_ROUTES_FILE`, `WAYFINDER_API_URL`, `WAYFINDER_SERVICE_TOKEN`). Test: `npx vitest tests/shared/WayfinderV2.test.ts --run`.
+no step-up. Compose mounts the runtime DIRECTORY read-only at `/run/wayfinder` in ht-api and ht-game (`WAYFINDER_RUNTIME_DIR` in `.env.prod`, passed on by `ht-deploy.sh`; default an empty repo folder `wayfinder-runtime-empty/`, inert); turning it on is `.env.prod` only (`WAYFINDER_ROUTES_FILE`, `WAYFINDER_API_URL`, `WAYFINDER_SERVICE_TOKEN`). C1 edge proof: optional `WAYFINDER_EDGE_SECRET_FILE` (in-container path, host file `WAYFINDER_EDGE_SECRET_HOST_FILE` mounted read-only at `/run/secrets/wf-edge-secret`, default the empty `wayfinder-runtime-empty/no-secret`) or `WAYFINDER_EDGE_SECRET`: when set, `x-wayfinder-*` and `x-forwarded-host` are trusted only from loopback with a matching `x-wayfinder-edge` (one check, `edgeTrusted` in `Wayfinder.ts`; fails closed if unreadable); unset = loopback only. Test: `npx vitest tests/shared/WayfinderV2.test.ts --run`.
 
 ### Known gotchas
 

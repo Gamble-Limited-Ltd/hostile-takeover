@@ -3,6 +3,7 @@ import {
   isOwnHost,
   ownHosts,
   pairFor,
+  requestHost,
   requestLabel,
   requestPlayer,
   routeFor,
@@ -94,6 +95,52 @@ describe("v2 table", () => {
     expect(requestLabel(h, LO)).toBe("a1api");
     expect(requestPlayer(h, "203.0.113.9")).toBeUndefined();
     expect(requestLabel(h, undefined)).toBeUndefined();
+  });
+});
+
+describe("edge proof header", () => {
+  const SECRET = "e".repeat(64);
+  const base = {
+    "x-wayfinder-player": "alice",
+    "x-wayfinder-label": "a1api",
+    "x-forwarded-host": "a1ht.taps-holdings.org",
+    host: "127.0.0.1:3000",
+  };
+  afterEach(() => {
+    delete process.env.WAYFINDER_EDGE_SECRET;
+    delete process.env.WAYFINDER_EDGE_SECRET_FILE;
+  });
+  test("secret set: no or wrong proof is ignored, right proof is trusted", () => {
+    process.env.WAYFINDER_EDGE_SECRET = SECRET;
+    for (const bad of [undefined, "f".repeat(64), "short"]) {
+      const h = { ...base, ...(bad ? { "x-wayfinder-edge": bad } : {}) };
+      expect(requestPlayer(h, LO)).toBeUndefined();
+      expect(requestLabel(h, LO)).toBeUndefined();
+      expect(requestHost(h, LO)).toBe("127.0.0.1:3000");
+    }
+    const ok = { ...base, "x-wayfinder-edge": SECRET };
+    expect(requestPlayer(ok, LO)).toBe("alice");
+    expect(requestLabel(ok, LO)).toBe("a1api");
+    expect(requestHost(ok, LO)).toBe("a1ht.taps-holdings.org");
+    expect(requestPlayer(ok, "203.0.113.9")).toBeUndefined();
+  });
+  test("secret file works; unreadable or short fails closed", () => {
+    const f = path.join(dir, "edge");
+    fs.writeFileSync(f, SECRET + "\n");
+    process.env.WAYFINDER_EDGE_SECRET_FILE = f;
+    const ok = { ...base, "x-wayfinder-edge": SECRET };
+    expect(requestPlayer(ok, LO)).toBe("alice");
+    process.env.WAYFINDER_EDGE_SECRET_FILE = path.join(dir, "missing");
+    expect(requestPlayer(ok, LO)).toBeUndefined();
+    fs.writeFileSync(f, "tiny");
+    process.env.WAYFINDER_EDGE_SECRET_FILE = f;
+    expect(
+      requestPlayer({ ...base, "x-wayfinder-edge": "tiny" }, LO),
+    ).toBeUndefined();
+  });
+  test("unset keeps the old behaviour", () => {
+    expect(requestPlayer(base, LO)).toBe("alice");
+    expect(requestHost(base, LO)).toBe("a1ht.taps-holdings.org");
   });
 });
 

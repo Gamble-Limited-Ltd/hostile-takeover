@@ -64,6 +64,8 @@ services:
       # folder, so a missing host dir cannot break rotation; nothing reads it until WAYFINDER_ROUTES_FILE is set in .env.prod.
       # Turn-on: WAYFINDER_RUNTIME_DIR=/home/thestrongest/gll-planning/wayfinder/runtime in .env.prod (ht-deploy.sh passes it on).
       - ${WAYFINDER_RUNTIME_DIR:-./wayfinder-runtime-empty}:/run/wayfinder:ro
+      # C1 edge proof secret, read-only single file (never renamed). Default: an empty repo file; nothing reads it until WAYFINDER_EDGE_SECRET_FILE=/run/secrets/wf-edge-secret is in .env.prod.
+      - ${WAYFINDER_EDGE_SECRET_HOST_FILE:-./wayfinder-runtime-empty/no-secret}:/run/secrets/wf-edge-secret:ro
     # default keeps ht-db reachable; gll_gate is the private network to GATE (GATE_DIRECT_URL).
     networks:
       - default
@@ -101,6 +103,8 @@ services:
     volumes:
       # Wayfinder v2 runtime dir, see ht-api.
       - ${WAYFINDER_RUNTIME_DIR:-./wayfinder-runtime-empty}:/run/wayfinder:ro
+      # C1 edge proof secret, read-only single file (never renamed). Default: an empty repo file; nothing reads it until WAYFINDER_EDGE_SECRET_FILE=/run/secrets/wf-edge-secret is in .env.prod.
+      - ${WAYFINDER_EDGE_SECRET_HOST_FILE:-./wayfinder-runtime-empty/no-secret}:/run/secrets/wf-edge-secret:ro
     environment:
       GAME_ENV: prod
       DOMAIN: ${HT_GAME_PREFIX:-ht}${HT_DOMAIN_SUFFIX:-}.taps-holdings.org
