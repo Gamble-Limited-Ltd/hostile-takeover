@@ -45,7 +45,7 @@ C1 edge proof (added 2026-11-20, c61facdaf): optional WAYFINDER_EDGE_SECRET_FILE
   ${WAYFINDER_EDGE_SECRET_HOST_FILE:-./wayfinder-runtime-empty/no-secret}:/run/secrets/wf-edge-secret:ro (committed empty file); ht-deploy.sh passes
   WAYFINDER_EDGE_SECRET_HOST_FILE on from .env.prod like WAYFINDER_RUNTIME_DIR. Turn-on adds to .env.prod: WAYFINDER_EDGE_SECRET_HOST_FILE=/home/thestrongest/.config/gll-wayfinder/edge-secret,
   WAYFINDER_EDGE_SECRET_FILE=/run/secrets/wf-edge-secret (check the container user can read the file). Tests: 3 new cases in tests/shared/WayfinderV2.test.ts;
-  affected folders tests/shared, tests/api, LaunchPage and WayfinderGame tests 567 passed, 9 skipped locally; oxfmt clean. CI result for this head: see below once recorded.
+  affected folders tests/shared, tests/api, LaunchPage and WayfinderGame tests 567 passed, 9 skipped locally; oxfmt clean. CI on ced103d50 (run 44859139596): green (all jobs) [x].
 Kill switch: unset WAYFINDER_ROUTES_FILE (and the token) in .env.prod and recreate via ht-deploy.sh (no new image). Before turn-on nothing to switch off.
 Smoke after deploy: game loads on the current ht-N host, sign-in via GATE works, /auth/launch still works as in W3b; gll ship runs
   both HTTP checks (127.0.0.1:8280 and :8287/healthz) and rotate.sh check (preflight OK).
